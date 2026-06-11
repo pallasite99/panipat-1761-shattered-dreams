@@ -1,0 +1,116 @@
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700;900&family=Bodoni+Moda:ital,wght@0,400;0,700;1,400;1,700&family=Inter:wght@400;500;600&family=Playfair+Display:ital,wght@0,400;0,900;1,400;1,900&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-serif: "Cinzel", serif;
+  --font-body: "Bodoni Moda", serif;
+  --font-sans: "Inter", sans-serif;
+  --font-display: "Playfair Display", serif;
+
+  /* Custom Colors from Design System */
+  --color-saffron: #FF9933;
+  --color-bronze: #A38D7C;
+  --color-gold: #D4AF37;
+  --color-steel: #353535;
+  --color-parchment: #E8DCC4;
+  --color-afghan-red: #8B0000;
+  
+  /* Tactical Palette */
+  --color-primary: #ffc08d;
+  --color-on-primary: #4c2700;
+  --color-primary-container: #ff9933;
+  --color-surface: #0a0a09;
+  --color-surface-container: #1a1a18;
+  --color-outline: #8B5E3C;
+  --color-outline-variant: #554336;
+}
+
+@layer base {
+  body {
+    @apply bg-surface text-stone-200 antialiased overflow-hidden select-none;
+  }
+}
+
+@layer utilities {
+  .parchment {
+    background-color: var(--color-parchment);
+    background-image: url("https://www.transparenttextures.com/patterns/old-map.png");
+    color: #2D241E;
+  }
+
+  .hammered-metal {
+    background-image: radial-gradient(circle at 2px 2px, rgba(0,0,0,0.15) 1px, transparent 0);
+    background-size: 4px 4px;
+    background-color: #1a1a18;
+  }
+
+  .smoldering-glow {
+    text-shadow: 0 0 10px #FF9933, 0 0 20px rgba(255, 153, 51, 0.4);
+  }
+
+  .gold-glow {
+    text-shadow: 0 0 15px rgba(212, 175, 55, 0.6);
+  }
+
+  .bronze-bevel {
+    border: 1px solid rgba(163, 141, 124, 0.3);
+    border-bottom: 3px solid #8B5E3C;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+  }
+
+  @keyframes smoke {
+    0% { transform: translateY(0) scale(1) rotate(0deg); opacity: 0; }
+    30% { transform: translateY(-50px) scale(2) rotate(45deg); opacity: 0.2; }
+    100% { transform: translateY(-200px) scale(4) rotate(90deg); opacity: 0; }
+  }
+
+  @keyframes flash-fire {
+    0%, 100% { opacity: 0; filter: blur(2px); }
+    10% { opacity: 1; filter: blur(0px); background: #ff9933; }
+    20% { opacity: 0.5; filter: blur(10px); background: #ff4400; }
+  }
+
+  @keyframes vibration {
+    0%, 100% { transform: translate(0, 0); }
+    10% { transform: translate(-2px, 2px); }
+    20% { transform: translate(2px, -2px); }
+    30% { transform: translate(-2px, -2px); }
+    40% { transform: translate(2px, 2px); }
+  }
+
+  .smoke-effect {
+    animation: smoke 6s ease-out infinite;
+  }
+
+  .muzzle-flash {
+    animation: flash-fire 0.3s ease-out infinite;
+  }
+
+  .unit-clash {
+    animation: vibration 0.2s linear infinite;
+  }
+
+  @keyframes shake {
+    0% { transform: translate(1px, 1px) rotate(0deg); }
+    10% { transform: translate(-1px, -2px) rotate(-1deg); }
+    20% { transform: translate(-3px, 0px) rotate(1deg); }
+    30% { transform: translate(3px, 2px) rotate(0deg); }
+    40% { transform: translate(1px, -1px) rotate(1deg); }
+    50% { transform: translate(-1px, 2px) rotate(-1deg); }
+    60% { transform: translate(-3px, 1px) rotate(0deg); }
+    70% { transform: translate(3px, 1px) rotate(-1deg); }
+    80% { transform: translate(-1px, -1px) rotate(1deg); }
+    90% { transform: translate(1px, 2px) rotate(0deg); }
+    100% { transform: translate(1px, -2px) rotate(-1deg); }
+  }
+
+  .battle-shake {
+    animation: shake 0.5s;
+    animation-iteration-count: infinite;
+  }
+
+  .clip-soldier {
+    clip-path: polygon(50% 0%, 80% 10%, 90% 20%, 90% 50%, 75% 55%, 80% 100%, 20% 100%, 25% 55%, 10% 50%, 10% 20%, 20% 10%);
+  }
+}
+
