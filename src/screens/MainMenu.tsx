@@ -176,7 +176,7 @@ const StoryScreen = ({ faction, onComplete }: { faction: 'maratha' | 'durrani'; 
         <div className="border-4 border-stone-800 p-3 bg-stone-900 shadow-2xl flex flex-col justify-between">
           <div className="relative overflow-hidden w-full h-[300px] lg:h-full min-h-[300px] border border-stone-800">
             <img 
-              src={faction === 'maratha' ? "/historical_map.png" : "/afghan_map.png"} 
+              src={faction === 'maratha' ? "historical_map.png" : "afghan_map.png"} 
               alt="Historical Map" 
               className="w-full h-full object-cover rounded-sm filter brightness-90 sepia-[20%]" 
               onError={(e) => {
@@ -271,7 +271,7 @@ export const MainMenu: React.FC<{
                     className="flex flex-col items-center gap-6 group"
                   >
                       <div className="w-64 h-64 border border-saffron/30 rounded-full flex items-center justify-center p-6 bg-stone-900 group-hover:bg-stone-800 transition-all">
-                        <img src="/maratha_faction_logo.png" alt="Maratha Sigil" className="w-full h-full object-contain" />
+                        <img src="maratha_faction_logo.png" alt="Maratha Sigil" className="w-full h-full object-contain" />
                       </div>
                       <span className="text-saffron font-serif text-3xl uppercase tracking-widest">Maratha Confederacy</span>
                   </motion.button>
@@ -286,7 +286,7 @@ export const MainMenu: React.FC<{
                     className="flex flex-col items-center gap-6 group"
                   >
                       <div className="w-64 h-64 border border-afghan-red/30 rounded-full flex items-center justify-center p-6 bg-stone-900 group-hover:bg-stone-800 transition-all">
-                        <img src="/durrani_faction_logo.png" alt="Durrani Sigil" className="w-full h-full object-contain" />
+                        <img src="durrani_faction_logo.png" alt="Durrani Sigil" className="w-full h-full object-contain" />
                       </div>
                       <span className="text-red-650 font-serif text-3xl uppercase tracking-widest font-bold">Durrani Empire</span>
                   </motion.button>
