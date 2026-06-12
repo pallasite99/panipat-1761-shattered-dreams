@@ -63,15 +63,24 @@ Choose your faction and general, each bringing unique starting stats, resources,
 Command active battlefield engagements using the high-fidelity **Battle Canvas**. Draw, reposition, and deploy your troop types (Infantry, Cavalry, and French-discipline Artillery squares) on a real-time grids system while monitoring troop stamina, ammunition, and unit health.
 
 ### 🎯 4. Military Mini-Games & Simulators
-*   **Artillery Calibration**: Adjust elevation, powder charge, and windage factors to calibrate brass cannons and maximize impact against incoming lines.
+*   **Artillery Calibration**: Adjust elevation, powder charge, and windage factors using an interactive HTML5 `<canvas>` simulation to calibrate brass cannons and maximize impact against incoming lines.
 *   **Cavalry Charge Simulator**: Plan cavalry formations, charge speeds, and angles to break the defensive squares of your adversaries.
-*   **Sword Duel Arena**: Engage in hand-to-hand combat using dynamic sword striking, parrying, and defensive actions in key historical commander-on-commander duels.
+*   **Sword Duel Arena**: Engage in hand-to-hand combat using timing-based directional parrying and strikes, matching visual parry indicators to defeat enemy commanders.
 
 ### 🏛️ 5. Diplomacy Darbar
 Negotiate with northern powers (such as Najib-ud-Daula of the Rohillas and Shuja-ud-Daula of Awadh) to forge coalitions. Balance Faction Trust and Relations (Neutral, Hostile, Wary, Allied) to shift the balance of power before the final conflict.
 
 ### 💰 6. Camp Supply Tycoon (Logistics Engine)
 Manage the state coffers (**Gold Mohurs**), provisions, and caravan supply lines. Recruit reinforcements, pay mercenary fees, and watch out for winter food shortages and attrition that can decimate your camp followers.
+
+### 🧠 7. AI War Council & debates (Visual Novel Mode)
+Launch the **AI War Council** to witness Maratha generals (Sadashivrao Bhau, Malharrao Holkar, Ibrahim Khan Gardi) debate campaign tactics in a visual novel-style layout. Driven by Google Gemini AI with local fallbacks, siding with a general applies instant mechanical adjustments to your camp resources.
+
+### 🌐 8. Multiplayer Matchmaking Arena
+Open the **Multiplayer Matchmaking** simulator to view active rooms, regions, pings, and chat with local recruits. Enter turn-based card battles deploying unit counters against simulated live opponents to protect your campaign flanks.
+
+### 📰 9. Campaign Tension Ticker
+Keep track of the strategic status via a continuous scrolling newspaper marquee ticker at the top of the campaign map, feeded with real-time historical event logs.
 
 ---
 
@@ -89,6 +98,8 @@ panipat_-1761_updated/
 │   └── readme_banner.png        # Custom repository header banner
 ├── src/
 │   ├── components/              # Game engine sub-components & mini-games
+│   │   ├── AIDebateRoom.tsx     # Visual novel-style general debates powered by Gemini
+│   │   ├── MultiplayerLobbySimulator.tsx # Simulated multiplayer lobby and deck battles
 │   │   ├── ArtilleryCalibration.tsx # Cannon fire math & calibration mini-game
 │   │   ├── BattleCanvas.tsx     # Real-time deployment & battle renderer
 │   │   ├── CampSupplyTycoon.tsx # Logistics, provisions, and treasury system
