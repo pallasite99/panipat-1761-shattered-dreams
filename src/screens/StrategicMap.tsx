@@ -528,6 +528,49 @@ const MILESTONE_POLICY_DATABASE = {
   }
 };
 
+const TENSION_ALERTS: { [key in CampaignStage]: string[] } = {
+  [CampaignStage.NIZAM_CAMPAIGN]: [
+    "★ MILITARY BULLETIN: Sadashivrao Bhau marches on Udgir to confront the Nizam of Hyderabad.",
+    "★ STATE TREASURY ALERT: Pune expects 60 Lakhs in war indemnity from the upcoming battle.",
+    "★ INTELLIGENCE: Ibrahim Khan Gardi calibrates heavy French artillery squares."
+  ],
+  [CampaignStage.PUNE]: [
+    "★ WAR MOBILIZATION: Peshwa orders Huzurat cavalry mobilization at Shaniwar Wada.",
+    "★ FINANCIAL INTELLIGENCE: Gopikabai allocates 40,000 Gold Mohurs from the Pune Treasury.",
+    "★ FRONTIER VIGILANCE: Ahmad Shah Durrani gathers regional Khans in Kabul's slopes."
+  ],
+  [CampaignStage.BURHANPUR]: [
+    "★ BORDER DISPATCH: Vanguard forces cross the Narmada river. Attrition risks detected.",
+    "★ PROVISIONS UPDATE: Camp followers require 30 tons of flour per day.",
+    "★ HOSTILE ACTION: Durrani cavalry scouted near Lahore. Conflict imminent."
+  ],
+  [CampaignStage.GWALIOR]: [
+    "★ DIPLOMATIC ALARM: Malharrao Holkar coordinates northern vassal Raja councils.",
+    "★ CLAN PACTS: Najib-ud-Daula gathers 20,000 Rohilla riders under the Afghan banner.",
+    "★ SUPPLY CHAIN WARNING: Cold winds slow down grain shipments from central India."
+  ],
+  [CampaignStage.DELHI_NEGOTIATIONS]: [
+    "★ DELHI FALLS: Maratha vanguard captures Red Fort, finds imperial vaults bare.",
+    "★ COURT DISPATCH: High-stakes negotiations begin on the banks of the Yamuna with Awadh.",
+    "★ DIPLOMATIC DEBATE: Najib-ud-Daula crosses the river carrying a holy Koran to persuade the Nawab."
+  ],
+  [CampaignStage.SHINDE_STAND]: [
+    "★ BARARI GHAT INVASION: Ahmad Shah Durrani conducts a daring midnight river swim.",
+    "★ HEROIC STAND: Dattaji Shinde's rear guard faces overwhelming odds at the riverbank.",
+    "★ LEGENDARY RESOLVE: Dattaji Shinde's final cry echoes: 'Bachenge to aur bhi ladenge!'"
+  ],
+  [CampaignStage.DELHI_BATTLE]: [
+    "★ Fort Breached: Gardi's brass cannons reduce Kunjpura's stone walls to rubble.",
+    "★ SIEGE SUCCESS: Heavy supply reserves captured at the Kunjpura supply fort.",
+    "★ INTELLIGENCE REPORT: Durrani forces construct a starvation blockade around the city."
+  ],
+  [CampaignStage.PANIPAT]: [
+    "★ PLAIN SHOWDOWN: 40,000 starved Maratha warriors vow to charge the Afghan lines.",
+    "★ SAFFRON SACRED OATH: Warriors apply holy turmeric to face their final destiny.",
+    "★ FINAL DEPLOYMENT: camel-mounted Zamburak swivel-cannon lines arrayed in a semicircle."
+  ]
+};
+
 export const StrategicMap: React.FC<{ 
   onNavigate: (s: Screen) => void;
   isMenuOpen: boolean;
@@ -1341,6 +1384,25 @@ export const StrategicMap: React.FC<{
   return (
     <div className="relative h-screen w-screen bg-stone-950 overflow-hidden font-sans">
       <TopBar screen={Screen.STRATEGIC_MAP} onNavigate={onNavigate} onToggleMenu={onToggleMenu} onHelp={onHelp} onSettings={onSettings} />
+      
+      {/* Dynamic Tension Ticker */}
+      <div className="absolute top-14 left-0 w-full bg-[#1c140e]/95 border-b border-[#8B5E3C]/40 py-1.5 overflow-hidden z-30 select-none">
+        <div className="whitespace-nowrap flex gap-16 animate-marquee text-[10px] uppercase font-mono font-bold text-saffron tracking-widest">
+          {TENSION_ALERTS[campaignStage]?.map((alert, i) => (
+            <span key={i} className="flex items-center gap-2">
+              <span>{alert}</span>
+              <span className="text-stone-500">•</span>
+            </span>
+          ))}
+          {TENSION_ALERTS[campaignStage]?.map((alert, i) => (
+            <span key={`dup-${i}`} className="flex items-center gap-2">
+              <span>{alert}</span>
+              <span className="text-stone-500">•</span>
+            </span>
+          ))}
+        </div>
+      </div>
+
       <SideNav screen={Screen.STRATEGIC_MAP} onNavigate={onNavigate} isOpen={isMenuOpen} onClose={onMenuClose} />
 
       {/* Royal Decrees and Military Order Bulletins */}

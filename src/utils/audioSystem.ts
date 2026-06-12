@@ -417,6 +417,103 @@ class AudioEngine {
     osc2.stop(now + 1.3);
   }
 
+  public playNagada() {
+    this.init();
+    if (this.ctx && this.rhythmGain) {
+      this.synthesizeNagadaHeavyDrum(55, 0.85);
+    }
+  }
+
+  public playSnare() {
+    this.init();
+    if (this.ctx && this.rhythmGain) {
+      this.synthesizeMilitarySnare(0.12, 1400);
+    }
+  }
+
+  public playHorn() {
+    this.init();
+    if (this.ctx && this.rhythmGain) {
+      this.synthesizeWarHornBrassAlarm();
+    }
+  }
+
+  public playClash() {
+    this.init();
+    if (!this.ctx || !this.rhythmGain || !this.noiseBuffer) return;
+    const now = this.ctx.currentTime;
+    
+    const osc = this.ctx.createOscillator();
+    const oscGain = this.ctx.createGain();
+    osc.type = 'triangle';
+    osc.frequency.setValueAtTime(2200, now);
+    osc.frequency.exponentialRampToValueAtTime(800, now + 0.15);
+    
+    oscGain.gain.setValueAtTime(0.15, now);
+    oscGain.gain.exponentialRampToValueAtTime(0.001, now + 0.18);
+    
+    osc.connect(oscGain);
+    oscGain.connect(this.rhythmGain);
+    osc.start(now);
+    osc.stop(now + 0.2);
+
+    const noiseNode = this.ctx.createBufferSource();
+    const noiseGain = this.ctx.createGain();
+    const filter = this.ctx.createBiquadFilter();
+    
+    noiseNode.buffer = this.noiseBuffer;
+    filter.type = 'highpass';
+    filter.frequency.setValueAtTime(4000, now);
+    
+    noiseGain.gain.setValueAtTime(0.12, now);
+    noiseGain.gain.exponentialRampToValueAtTime(0.001, now + 0.1);
+    
+    noiseNode.connect(filter);
+    filter.connect(noiseGain);
+    noiseGain.connect(this.rhythmGain);
+    
+    noiseNode.start(now);
+    noiseNode.stop(now + 0.12);
+  }
+
+  public playExplosion() {
+    this.init();
+    if (!this.ctx || !this.rhythmGain || !this.noiseBuffer) return;
+    const now = this.ctx.currentTime;
+    
+    const osc = this.ctx.createOscillator();
+    const oscGain = this.ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(90, now);
+    osc.frequency.exponentialRampToValueAtTime(30, now + 0.4);
+    
+    oscGain.gain.setValueAtTime(0.9, now);
+    oscGain.gain.exponentialRampToValueAtTime(0.001, now + 0.5);
+    
+    osc.connect(oscGain);
+    oscGain.connect(this.rhythmGain);
+    osc.start(now);
+    osc.stop(now + 0.55);
+
+    const noiseNode = this.ctx.createBufferSource();
+    const noiseGain = this.ctx.createGain();
+    const filter = this.ctx.createBiquadFilter();
+    
+    noiseNode.buffer = this.noiseBuffer;
+    filter.type = 'lowpass';
+    filter.frequency.setValueAtTime(250, now);
+    
+    noiseGain.gain.setValueAtTime(0.6, now);
+    noiseGain.gain.exponentialRampToValueAtTime(0.001, now + 0.6);
+    
+    noiseNode.connect(filter);
+    filter.connect(noiseGain);
+    noiseGain.connect(this.rhythmGain);
+    
+    noiseNode.start(now);
+    noiseNode.stop(now + 0.65);
+  }
+
   /**
    * Destroys any active timer or interval loop.
    */

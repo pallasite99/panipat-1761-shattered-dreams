@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Target, Shield, Compass, Wind, RotateCcw, Award, AlertTriangle } from 'lucide-react';
+import { panipatAudioEngine } from '../utils/audioSystem';
 
 interface ArtilleryCalibrationProps {
   onClose: () => void;
@@ -29,6 +30,10 @@ export const ArtilleryCalibration: React.FC<ArtilleryCalibrationProps> = ({
   // Game Outcomes
   const [currentResult, setCurrentResult] = useState<'idle' | 'miss_short' | 'miss_long' | 'miss_wind' | 'direct_hit'>('idle');
   const [victoryConfirmed, setVictoryConfirmed] = useState<boolean>(false);
+
+  // Canvas References
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const animationRef = useRef<number | null>(null);
 
   // Initialize fresh dynamic coordinates
   useEffect(() => {
@@ -84,25 +89,434 @@ export const ArtilleryCalibration: React.FC<ArtilleryCalibrationProps> = ({
     };
   };
 
+  // Draw static state of canvas
+  useEffect(() => {
+    if (isFiring) return;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    // Clear canvas
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // Draw sky gradient
+    const skyGrad = ctx.createLinearGradient(0, 0, 0, canvas.height);
+    skyGrad.addColorStop(0, '#0c0a09'); // stone-950
+    skyGrad.addColorStop(1, '#1c1917'); // stone-900
+    ctx.fillStyle = skyGrad;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // Draw mountains in background
+    ctx.fillStyle = '#292524'; // stone-800
+    ctx.beginPath();
+    ctx.moveTo(0, 220);
+    ctx.lineTo(150, 130);
+    ctx.lineTo(300, 220);
+    ctx.lineTo(450, 110);
+    ctx.lineTo(650, 220);
+    ctx.lineTo(800, 140);
+    ctx.lineTo(800, 220);
+    ctx.lineTo(0, 220);
+    ctx.fill();
+
+    // Draw ground
+    ctx.fillStyle = '#44403c'; // stone-700
+    ctx.fillRect(0, 195, canvas.width, canvas.height - 195);
+    ctx.fillStyle = '#78716c'; // stone-500
+    ctx.fillRect(0, 195, canvas.width, 3); // top grass-line border
+
+    // Draw Target Fort at target position
+    const targetX = 400 + ((targetDistance - 800) / 700) * 320;
+    
+    // Draw Fort
+    ctx.fillStyle = '#8b5e3c'; // outline brown
+    ctx.fillRect(targetX - 25, 125, 50, 70); // Main tower
+    ctx.fillStyle = '#a37c5d'; // lighter brown fill
+    ctx.fillRect(targetX - 22, 128, 44, 67);
+    
+    // Battlement steps
+    ctx.fillStyle = '#8b5e3c';
+    for (let i = 0; i < 4; i++) {
+      ctx.fillRect(targetX - 25 + i * 15, 115, 8, 10);
+    }
+    // Dome/Minaret
+    ctx.beginPath();
+    ctx.arc(targetX, 115, 15, Math.PI, 0);
+    ctx.fillStyle = '#d4af37'; // gold dome
+    ctx.fill();
+    ctx.lineWidth = 1.5;
+    ctx.strokeStyle = '#8b5e3c';
+    ctx.stroke();
+
+    // Banner pole and red banner
+    ctx.strokeStyle = '#8b5e3c';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(targetX, 100);
+    ctx.lineTo(targetX, 80);
+    ctx.stroke();
+    
+    ctx.fillStyle = '#dc2626'; // Red flag
+    ctx.beginPath();
+    ctx.moveTo(targetX, 80);
+    ctx.lineTo(targetX - 15, 87);
+    ctx.lineTo(targetX, 95);
+    ctx.fill();
+
+    // Draw Cannon on the left (x=60, y=190)
+    ctx.save();
+    ctx.translate(60, 190);
+    
+    // Draw wheels
+    ctx.fillStyle = '#451a03'; // brown wood
+    ctx.beginPath();
+    ctx.arc(0, 5, 12, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = '#8b5e3c';
+    ctx.stroke();
+
+    // Draw barrel at elevation angle
+    ctx.rotate(-(elevation * Math.PI) / 180);
+    ctx.fillStyle = '#78716c'; // brass/iron metal
+    ctx.fillRect(-10, -5, 30, 8); // barrel body
+    ctx.fillStyle = '#d4af37'; // gold muzzle ring
+    ctx.fillRect(18, -6, 4, 10);
+    ctx.fillStyle = '#3f3f46';
+    ctx.beginPath();
+    ctx.arc(-10, -1, 4, 0, Math.PI * 2); // breech knob
+    ctx.fill();
+
+    ctx.restore();
+
+    // Draw Wind flag at top right (x=730, y=40)
+    ctx.save();
+    ctx.translate(730, 40);
+    ctx.strokeStyle = '#a38d7c';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.lineTo(0, 50);
+    ctx.stroke();
+
+    // Wave flag based on wind
+    ctx.fillStyle = windSpeed > 0 ? '#60a5fa' : '#f59e0b';
+    ctx.beginPath();
+    ctx.moveTo(0, 5);
+    const flagLength = windSpeed * 2.2;
+    ctx.lineTo(flagLength, 15);
+    ctx.lineTo(0, 25);
+    ctx.fill();
+    ctx.restore();
+  }, [elevation, targetDistance, windSpeed, isFiring]);
+
+  // Clean up animation on unmount
+  useEffect(() => {
+    return () => {
+      if (animationRef.current) {
+        cancelAnimationFrame(animationRef.current);
+      }
+    };
+  }, []);
+
   const handleFireCannon = () => {
     if (attempts <= 0 || isFiring || victoryConfirmed) return;
 
     setIsFiring(true);
-    setFireProgress(0);
+    panipatAudioEngine.playExplosion();
 
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    // Ballistics setup
+    let speed = 9;
+    if (powderCharge === 'Heavy (4 lbs)') speed = 11.5;
+    if (powderCharge === 'Reduced (2 lbs)') speed = 6.8;
+
+    const angleRad = (elevation * Math.PI) / 180;
+    
+    let px = 60 + Math.cos(angleRad) * 20;
+    let py = 190 - Math.sin(angleRad) * 20;
+    let pvx = speed * Math.cos(angleRad);
+    let pvy = -speed * Math.sin(angleRad);
+    
+    // Wind drift aim offset
+    pvx += windAim * 0.05;
+
+    const targetX = 400 + ((targetDistance - 800) / 700) * 320;
+    const trail: Array<{ x: number; y: number; size: number }> = [];
     const simulation = calculateTargetPhysics();
 
-    // Trigger projectile arc countdown animation
-    const interval = setInterval(() => {
-      setFireProgress(prev => {
-        if (prev >= 100) {
-          clearInterval(interval);
-          resolveShot(simulation);
-          return 100;
-        }
-        return prev + 5;
+    const animate = () => {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      
+      // Draw sky
+      const skyGrad = ctx.createLinearGradient(0, 0, 0, canvas.height);
+      skyGrad.addColorStop(0, '#0c0a09');
+      skyGrad.addColorStop(1, '#1c1917');
+      ctx.fillStyle = skyGrad;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      // Draw mountains
+      ctx.fillStyle = '#292524';
+      ctx.beginPath();
+      ctx.moveTo(0, 220);
+      ctx.lineTo(150, 130);
+      ctx.lineTo(300, 220);
+      ctx.lineTo(450, 110);
+      ctx.lineTo(650, 220);
+      ctx.lineTo(800, 140);
+      ctx.lineTo(800, 220);
+      ctx.lineTo(0, 220);
+      ctx.fill();
+
+      // Draw ground
+      ctx.fillStyle = '#44403c';
+      ctx.fillRect(0, 195, canvas.width, canvas.height - 195);
+      ctx.fillStyle = '#78716c';
+      ctx.fillRect(0, 195, canvas.width, 3);
+
+      // Draw Fort
+      ctx.fillStyle = '#8b5e3c';
+      ctx.fillRect(targetX - 25, 125, 50, 70);
+      ctx.fillStyle = '#a37c5d';
+      ctx.fillRect(targetX - 22, 128, 44, 67);
+      for (let i = 0; i < 4; i++) {
+        ctx.fillRect(targetX - 25 + i * 15, 115, 8, 10);
+      }
+      ctx.beginPath();
+      ctx.arc(targetX, 115, 15, Math.PI, 0);
+      ctx.fillStyle = '#d4af37';
+      ctx.fill();
+      ctx.lineWidth = 1.5;
+      ctx.strokeStyle = '#8b5e3c';
+      ctx.stroke();
+      ctx.strokeStyle = '#8b5e3c';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(targetX, 100);
+      ctx.lineTo(targetX, 80);
+      ctx.stroke();
+      ctx.fillStyle = '#dc2626';
+      ctx.beginPath();
+      ctx.moveTo(targetX, 80);
+      ctx.lineTo(targetX - 15, 87);
+      ctx.lineTo(targetX, 95);
+      ctx.fill();
+
+      // Draw Cannon
+      ctx.save();
+      ctx.translate(60, 190);
+      ctx.fillStyle = '#451a03';
+      ctx.beginPath();
+      ctx.arc(0, 5, 12, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      ctx.rotate(-angleRad);
+      ctx.fillStyle = '#78716c';
+      ctx.fillRect(-10, -5, 30, 8);
+      ctx.fillStyle = '#d4af37';
+      ctx.fillRect(18, -6, 4, 10);
+      ctx.fillStyle = '#3f3f46';
+      ctx.beginPath();
+      ctx.arc(-10, -1, 4, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+
+      // Draw Wind Flag
+      ctx.save();
+      ctx.translate(730, 40);
+      ctx.strokeStyle = '#a38d7c';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.lineTo(0, 50);
+      ctx.stroke();
+      ctx.fillStyle = windSpeed > 0 ? '#60a5fa' : '#f59e0b';
+      ctx.beginPath();
+      ctx.moveTo(0, 5);
+      ctx.lineTo(windSpeed * 2.2, 15);
+      ctx.lineTo(0, 25);
+      ctx.fill();
+      ctx.restore();
+
+      // Physics progression
+      pvy += 0.14; // gravity
+      pvx += windSpeed * 0.003; // horizontal wind forces
+      px += pvx;
+      py += pvy;
+
+      // Add trail particles
+      trail.push({ x: px, y: py, size: 2.5 + Math.random() * 2 });
+      if (trail.length > 25) trail.shift();
+
+      // Draw trail
+      trail.forEach((t, i) => {
+        ctx.fillStyle = `rgba(251, 153, 51, ${i / trail.length * 0.7})`;
+        ctx.beginPath();
+        ctx.arc(t.x, t.y, t.size * (i / trail.length), 0, Math.PI * 2);
+        ctx.fill();
       });
-    }, 80);
+
+      // Draw cannonball
+      ctx.fillStyle = '#27272a';
+      ctx.beginPath();
+      ctx.arc(px, py, 4.5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = '#ff9933';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+
+      // Hit boundary check
+      if (py >= 195) {
+        panipatAudioEngine.playExplosion();
+        triggerExplosionAnimation(px, py, targetX, simulation);
+        return;
+      }
+
+      animationRef.current = requestAnimationFrame(animate);
+    };
+
+    const triggerExplosionAnimation = (impactX: number, impactY: number, tX: number, sim: any) => {
+      let frame = 0;
+      const particles = Array.from({ length: 25 }).map(() => {
+        const a = Math.random() * Math.PI * 2;
+        const sp = Math.random() * 5 + 1.5;
+        return {
+          x: impactX,
+          y: impactY,
+          vx: Math.cos(a) * sp,
+          vy: -Math.abs(Math.sin(a) * sp) - 0.8,
+          color: Math.random() > 0.4 ? '#ff9933' : '#dc2626',
+          size: Math.random() * 3.5 + 1.5,
+          alpha: 1
+        };
+      });
+
+      const playExplosion = () => {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        // Draw static bg, mountains, ground
+        const skyGrad = ctx.createLinearGradient(0, 0, 0, canvas.height);
+        skyGrad.addColorStop(0, '#0c0a09');
+        skyGrad.addColorStop(1, '#1c1917');
+        ctx.fillStyle = skyGrad;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        ctx.fillStyle = '#292524';
+        ctx.beginPath();
+        ctx.moveTo(0, 220);
+        ctx.lineTo(150, 130);
+        ctx.lineTo(300, 220);
+        ctx.lineTo(450, 110);
+        ctx.lineTo(650, 220);
+        ctx.lineTo(800, 140);
+        ctx.lineTo(800, 220);
+        ctx.lineTo(0, 220);
+        ctx.fill();
+
+        ctx.fillStyle = '#44403c';
+        ctx.fillRect(0, 195, canvas.width, canvas.height - 195);
+        ctx.fillStyle = '#78716c';
+        ctx.fillRect(0, 195, canvas.width, 3);
+
+        // Draw Fort with camera shake if direct hit
+        const fortShake = sim.isHit ? (Math.random() * 6 - 3) * Math.max(0, (1 - frame/20)) : 0;
+        ctx.fillStyle = '#8b5e3c';
+        ctx.fillRect(tX - 25 + fortShake, 125, 50, 70);
+        ctx.fillStyle = '#a37c5d';
+        ctx.fillRect(tX - 22 + fortShake, 128, 44, 67);
+        for (let i = 0; i < 4; i++) {
+          ctx.fillRect(tX - 25 + i * 15 + fortShake, 115, 8, 10);
+        }
+        ctx.beginPath();
+        ctx.arc(tX + fortShake, 115, 15, Math.PI, 0);
+        ctx.fillStyle = '#d4af37';
+        ctx.fill();
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(tX + fortShake, 100);
+        ctx.lineTo(tX + fortShake, 80);
+        ctx.stroke();
+        ctx.fillStyle = '#dc2626';
+        ctx.beginPath();
+        ctx.moveTo(tX + fortShake, 80);
+        ctx.lineTo(tX - 15 + fortShake, 87);
+        ctx.lineTo(tX + fortShake, 95);
+        ctx.fill();
+
+        // Draw Cannon
+        ctx.save();
+        ctx.translate(60, 190);
+        ctx.fillStyle = '#451a03';
+        ctx.beginPath();
+        ctx.arc(0, 5, 12, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+        ctx.rotate(-angleRad);
+        ctx.fillStyle = '#78716c';
+        ctx.fillRect(-10, -5, 30, 8);
+        ctx.fillStyle = '#d4af37';
+        ctx.fillRect(18, -6, 4, 10);
+        ctx.fillStyle = '#3f3f46';
+        ctx.beginPath();
+        ctx.arc(-10, -1, 4, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+
+        // Draw Wind Flag
+        ctx.save();
+        ctx.translate(730, 40);
+        ctx.strokeStyle = '#a38d7c';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        ctx.lineTo(0, 50);
+        ctx.stroke();
+        ctx.fillStyle = windSpeed > 0 ? '#60a5fa' : '#f59e0b';
+        ctx.beginPath();
+        ctx.moveTo(0, 5);
+        ctx.lineTo(windSpeed * 2.2, 15);
+        ctx.lineTo(0, 25);
+        ctx.fill();
+        ctx.restore();
+
+        // Update and draw explosion particles
+        particles.forEach(p => {
+          p.x += p.vx;
+          p.y += p.vy;
+          p.vy += 0.15;
+          p.alpha -= 0.04;
+          ctx.fillStyle = p.color;
+          ctx.globalAlpha = Math.max(0, p.alpha);
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+          ctx.fill();
+        });
+        ctx.globalAlpha = 1.0;
+
+        // Draw expanding dust ring
+        ctx.strokeStyle = `rgba(251, 191, 36, ${Math.max(0, 1 - frame/20)})`;
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(impactX, impactY, frame * 3.0, 0, Math.PI * 2);
+        ctx.stroke();
+
+        frame++;
+        if (frame < 20) {
+          animationRef.current = requestAnimationFrame(playExplosion);
+        } else {
+          resolveShot(sim);
+        }
+      };
+
+      playExplosion();
+    };
+
+    animationRef.current = requestAnimationFrame(animate);
   };
 
   const resolveShot = (sim: ReturnType<typeof calculateTargetPhysics>) => {
@@ -133,6 +547,7 @@ export const ArtilleryCalibration: React.FC<ArtilleryCalibrationProps> = ({
 
   const handleClaimArtilleryBonus = () => {
     if (victoryConfirmed) {
+      localStorage.setItem('achieve_artillery', 'true');
       onApplyRewards({
         gold: 18000,
         morale: 25,
@@ -219,40 +634,13 @@ export const ArtilleryCalibration: React.FC<ArtilleryCalibrationProps> = ({
           </div>
 
           {/* Canvas trajectory visualization */}
-          <div className="h-44 bg-stone-950 border border-stone-850 rounded-sm relative overflow-hidden flex flex-col justify-end p-4">
-            <div className="absolute top-2 left-2 text-[9px] font-mono text-stone-500 uppercase font-black">
-              Battery Fire trajectory preview
-            </div>
-
-            {/* Simulated projectile animation trajectory */}
-            <svg className="absolute inset-0 w-full h-full pointer-events-none" xmlns="http://www.w3.org/2000/svg">
-              {isFiring && (
-                <motion.path
-                  d={`M 50,150 Q ${200 + (elevation * 3)},${150 - (elevation * 4)} ${200 + (physics.impactDistance / 4)},150`}
-                  fill="none"
-                  stroke="#fbbf24"
-                  strokeWidth="3"
-                  strokeDasharray="6 3"
-                  initial={{ pathLength: 0 }}
-                  animate={{ pathLength: fireProgress / 100 }}
-                  transition={{ duration: 0.1, ease: "linear" }}
-                />
-              )}
-            </svg>
-
-            {/* Ground line components */}
-            <div className="w-full h-1.5 bg-stone-900 relative">
-              {/* Gardi Brass Cannons */}
-              <div className="absolute left-6 -top-5">
-                <span className="text-2xl">💣</span>
-              </div>
-
-              {/* Target Outpost Fort */}
-              <div className="absolute right-12 -top-6">
-                <span className="text-3xl">🕌</span>
-                <span className="absolute -top-4 left-2.5 text-[8px] bg-red-800 text-white font-mono px-1 rounded-sm uppercase">Fort</span>
-              </div>
-            </div>
+          <div className="relative border border-stone-850 rounded-sm overflow-hidden bg-stone-950 h-[220px]">
+            <canvas 
+              ref={canvasRef} 
+              width={800} 
+              height={220} 
+              className="w-full h-full block"
+            />
           </div>
 
           {/* Shell Flight Diagnostics overlay */}

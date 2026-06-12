@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Shield, Swords, AlertTriangle, Zap, LogOut, Award, RefreshCw } from 'lucide-react';
+import { panipatAudioEngine } from '../utils/audioSystem';
 
 interface SwordDuelArenaProps {
   opponentName?: string;
@@ -129,6 +130,43 @@ export const SwordDuelArena: React.FC<SwordDuelArenaProps> = ({
         ctx.lineTo(canvas.width / 2 + (i - canvas.width / 2) * 1.5, canvas.height);
       }
       ctx.stroke();
+      
+      // Draw flashing telegraph arrow overlays directly on the canvas
+      if (enemyTelegraph && combatState === 'fighting') {
+        ctx.save();
+        ctx.strokeStyle = `rgba(239, 68, 68, ${0.4 + Math.sin(Date.now() * 0.015) * 0.35})`;
+        ctx.lineWidth = 4;
+        ctx.shadowColor = '#ef4444';
+        ctx.shadowBlur = 12;
+        ctx.beginPath();
+        if (enemyTelegraph.direction === 'left') {
+          // Pointing left-to-right down
+          ctx.moveTo(80, 160);
+          ctx.lineTo(210, 240);
+          ctx.moveTo(210, 240);
+          ctx.lineTo(175, 240);
+          ctx.moveTo(210, 240);
+          ctx.lineTo(200, 205);
+        } else if (enemyTelegraph.direction === 'right') {
+          // Pointing right-to-left down
+          ctx.moveTo(500, 160);
+          ctx.lineTo(370, 240);
+          ctx.moveTo(370, 240);
+          ctx.lineTo(405, 240);
+          ctx.moveTo(370, 240);
+          ctx.lineTo(380, 205);
+        } else {
+          // Overhead pointing straight down
+          ctx.moveTo(290, 75);
+          ctx.lineTo(290, 185);
+          ctx.moveTo(290, 185);
+          ctx.lineTo(275, 160);
+          ctx.moveTo(290, 185);
+          ctx.lineTo(305, 160);
+        }
+        ctx.stroke();
+        ctx.restore();
+      }
 
       // Screen shake offset calculation
       if (screenShakeRef.current > 0) {
@@ -314,10 +352,13 @@ export const SwordDuelArena: React.FC<SwordDuelArenaProps> = ({
       const directions: StrikeDirection[] = ['left', 'right', 'overhead'];
       const randomDirection = directions[Math.floor(Math.random() * directions.length)];
       
-      // Difficulty defines reaction window time
-      let windowMs = 2800;
-      if (difficulty === 'recruit') windowMs = 3800;
-      if (difficulty === 'peshwa') windowMs = 1950;
+      // Difficulty defines reaction window time - tightened for reflex play
+      let windowMs = 2000;
+      if (difficulty === 'recruit') windowMs = 3000;
+      if (difficulty === 'peshwa') windowMs = 950;
+
+      // Play warning snare ruffles to alert the player's reflexes
+      panipatAudioEngine.playSnare();
 
       setEnemyTelegraph({
         direction: randomDirection,
@@ -397,6 +438,9 @@ export const SwordDuelArena: React.FC<SwordDuelArenaProps> = ({
       }
       return remaining;
     });
+
+    // Play heavy Nagada thump for taking damage
+    panipatAudioEngine.playNagada();
 
     spawnDuelSparks(240, 240, '#f87171'); // red blood sparks
     floatingTextsRef.current.push({
@@ -516,6 +560,10 @@ export const SwordDuelArena: React.FC<SwordDuelArenaProps> = ({
         }
 
         if (perfectParry) {
+          // Play clash + extra dramatic high-pitched effects on critical riposte
+          panipatAudioEngine.playClash();
+          panipatAudioEngine.playSnare();
+          
           // Glorious counter shockwave! Posture break the enemy instantly & restore player posture!
           setEnemyPosture(prev => Math.max(0, prev - 45));
           setPlayerPosture(prev => Math.min(100, prev + 25));
@@ -536,6 +584,9 @@ export const SwordDuelArena: React.FC<SwordDuelArenaProps> = ({
 
           addCombatLog(`⚡ PERFECT PARRY! You deflect the commander's heavy iron blade and riposte! (-20 HP, Posture Broken!)`);
         } else {
+          // Play steel block clash sound
+          panipatAudioEngine.playClash();
+          
           // Standard block deflect
           setPlayerPosture(p => Math.min(100, p + 10));
           setEnemyPosture(p => Math.max(0, p - 15));
@@ -556,6 +607,7 @@ export const SwordDuelArena: React.FC<SwordDuelArenaProps> = ({
         setEnemyTelegraph(null);
       } else {
         // Punish wild blind parrying
+        panipatAudioEngine.playSnare();
         setPlayerPosture(p => Math.max(0, p - 10));
         addCombatLog(`⚠️ You swung into a defensive parry stance blindly, losing critical guard focus!`);
       }
@@ -567,6 +619,9 @@ export const SwordDuelArena: React.FC<SwordDuelArenaProps> = ({
   };
 
   const handleConcludeDuel = () => {
+    if (combatState === 'victory') {
+      localStorage.setItem('achieve_duel', 'true');
+    }
     onClose(playerHp, combatState === 'victory' ? 'victory' : 'defeat');
   };
 
