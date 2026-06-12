@@ -31,6 +31,8 @@ import { CavalryChargeSimulator } from '../components/CavalryChargeSimulator';
 import { ArtilleryCalibration } from '../components/ArtilleryCalibration';
 import { CampSupplyTycoon } from '../components/CampSupplyTycoon';
 import { CoalitionDiplomacyDarbar } from '../components/CoalitionDiplomacyDarbar';
+import { AIDebateRoom } from '../components/AIDebateRoom';
+import { MultiplayerLobbySimulator } from '../components/MultiplayerLobbySimulator';
 
 import avatarSurajMal from '../assets/images/maharaja_suraj_mal_1780981012497.png';
 import avatarShujaUdDaula from '../assets/images/nawab_shuja_ud_daula_1780981037889.png';
@@ -402,14 +404,17 @@ const SPY_CASES_DATABASE: SpyCase[] = [
   }
 ];
 
+import { CampaignStage } from '../types';
+
 export const WarCouncil: React.FC<{ 
+  campaignStage: CampaignStage;
   onNavigate: (s: Screen) => void;
   isMenuOpen: boolean;
   onToggleMenu: () => void;
   onMenuClose: () => void;
   onHelp?: () => void;
   onSettings?: () => void;
-}> = ({ onNavigate, isMenuOpen, onToggleMenu, onMenuClose, onHelp, onSettings }) => {
+}> = ({ campaignStage, onNavigate, isMenuOpen, onToggleMenu, onMenuClose, onHelp, onSettings }) => {
   // --- Game Global states --
   const [factions, setFactions] = useState<Faction[]>(() => {
     const saved = localStorage.getItem('panipat_campaign_factions');
@@ -470,8 +475,8 @@ export const WarCouncil: React.FC<{
   }, [rationsStance]);
 
   // --- Layout Active Tab ---
-  // 'diplomacy' | 'scenarios' | 'provisions' | 'espionage' | 'simulations'
-  const [activeTab, setActiveTab] = useState<'diplomacy' | 'scenarios' | 'provisions' | 'espionage' | 'simulations'>('diplomacy');
+  // 'diplomacy' | 'scenarios' | 'provisions' | 'espionage' | 'simulations' | 'debates' | 'multiplayer'
+  const [activeTab, setActiveTab] = useState<'diplomacy' | 'scenarios' | 'provisions' | 'espionage' | 'simulations' | 'debates' | 'multiplayer'>('diplomacy');
 
   // --- Active Simulation Modals ---
   const [activeSimulation, setActiveSimulation] = useState<'cavalry' | 'artillery' | 'tycoon' | 'assembly' | null>(null);
@@ -826,6 +831,18 @@ export const WarCouncil: React.FC<{
               className={`px-3 py-2 text-[10px] uppercase tracking-widest font-serif font-black transition-all flex items-center gap-2 border-b-2 rounded-sm cursor-pointer ${activeTab === 'simulations' ? 'border-saffron text-saffron bg-saffron/10' : 'border-transparent text-stone-400 hover:text-stone-200'}`}
             >
               <Flame size={14} className="text-orange-500 animate-pulse" /> Tactical Simulations & Drills
+            </button>
+            <button
+              onClick={() => setActiveTab('debates')}
+              className={`px-3 py-2 text-[10px] uppercase tracking-widest font-serif font-black transition-all flex items-center gap-2 border-b-2 rounded-sm cursor-pointer ${activeTab === 'debates' ? 'border-saffron text-saffron bg-saffron/10' : 'border-transparent text-stone-400 hover:text-stone-200'}`}
+            >
+              <Sparkles size={14} className="text-amber-400 animate-pulse" /> AI War Council
+            </button>
+            <button
+              onClick={() => setActiveTab('multiplayer')}
+              className={`px-3 py-2 text-[10px] uppercase tracking-widest font-serif font-black transition-all flex items-center gap-2 border-b-2 rounded-sm cursor-pointer ${activeTab === 'multiplayer' ? 'border-saffron text-saffron bg-saffron/10' : 'border-transparent text-stone-400 hover:text-stone-200'}`}
+            >
+              <Users size={14} /> Multiplayer Arena
             </button>
           </div>
 
@@ -1334,6 +1351,26 @@ export const WarCouncil: React.FC<{
 
                   </div>
                 </div>
+              )}
+
+              {/* AI DEBATE ROOM (VISUAL NOVEL MODE) */}
+              {activeTab === 'debates' && (
+                <AIDebateRoom 
+                  campaignStage={campaignStage}
+                  treasuryMohurs={treasuryMohurs}
+                  setTreasuryMohurs={setTreasuryMohurs}
+                  morale={morale}
+                  setMorale={setMorale}
+                  provisions={provisions}
+                  setProvisions={setProvisions}
+                />
+              )}
+
+              {/* MULTIPLAYER LOBBY SIMULATOR */}
+              {activeTab === 'multiplayer' && (
+                <MultiplayerLobbySimulator 
+                  onApplyRewards={handleApplySimulatorSuccess}
+                />
               )}
 
             </div>
