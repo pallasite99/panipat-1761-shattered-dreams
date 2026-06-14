@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Portrait placeholder">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#2b1d16"/>
+      <stop offset="100%" stop-color="#0f0a08"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="50%" cy="40%" r="60%">
+      <stop offset="0%" stop-color="#f5c06a" stop-opacity="0.35"/>
+      <stop offset="100%" stop-color="#f5c06a" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="512" height="512" fill="url(#bg)"/>
+  <circle cx="256" cy="190" r="124" fill="url(#glow)"/>
+  <circle cx="256" cy="174" r="74" fill="#d7c1a3"/>
+  <path d="M154 414c18-78 74-118 102-118s84 40 102 118" fill="#6f4b35"/>
+  <path d="M172 176c12-56 52-92 84-92s72 36 84 92c-24-8-48-12-84-12s-60 4-84 12Z" fill="#2a1d14"/>
+  <circle cx="232" cy="172" r="7" fill="#2a1d14"/>
+  <circle cx="280" cy="172" r="7" fill="#2a1d14"/>
+  <path d="M228 201c18 16 38 16 56 0" fill="none" stroke="#2a1d14" stroke-width="8" stroke-linecap="round"/>
+  <circle cx="256" cy="256" r="214" fill="none" stroke="#8b5e3c" stroke-opacity="0.35" stroke-width="6"/>
+</svg>
