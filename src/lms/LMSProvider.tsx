@@ -1,5 +1,5 @@
 // src/lms/LMSProvider.tsx
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { LMSEventBus } from './LMSEventBus';
 import { useLearnerStore } from './LearnerStore';
 

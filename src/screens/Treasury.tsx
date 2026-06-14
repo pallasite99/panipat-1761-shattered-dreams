@@ -37,6 +37,117 @@ export const Treasury: React.FC<{
     const saved = localStorage.getItem('panipat_campaign_treasury');
     return saved ? Number(saved) : 145000;
   });
+
+  // MetaMask Integration States
+  const [walletAddress, setWalletAddress] = useState<string | null>(() => {
+    return localStorage.getItem('panipat_wallet_address') || null;
+  });
+  const [isConnectingWallet, setIsConnectingWallet] = useState<boolean>(false);
+  const [walletError, setWalletError] = useState<string | null>(null);
+  const [claimedWeb3Bonus, setClaimedWeb3Bonus] = useState<boolean>(() => {
+    return localStorage.getItem('panipat_claimed_web3_bonus') === 'true';
+  });
+
+  useEffect(() => {
+    const checkIfWalletIsConnected = async () => {
+      if (typeof window !== 'undefined' && 'ethereum' in window) {
+        try {
+          const ethereum = (window as any).ethereum;
+          if (ethereum) {
+            const accounts = await ethereum.request({ method: 'eth_accounts' });
+            if (accounts && accounts.length > 0) {
+              setWalletAddress(accounts[0]);
+              localStorage.setItem('panipat_wallet_address', accounts[0]);
+            }
+          }
+        } catch (e) {
+          console.error("MetaMask initial check failed:", e);
+        }
+      }
+    };
+    checkIfWalletIsConnected();
+
+    if (typeof window !== 'undefined' && 'ethereum' in window) {
+      const ethereum = (window as any).ethereum;
+      if (ethereum && ethereum.on) {
+        const handleAccountsChanged = (accounts: string[]) => {
+          if (accounts.length > 0) {
+            setWalletAddress(accounts[0]);
+            localStorage.setItem('panipat_wallet_address', accounts[0]);
+          } else {
+            setWalletAddress(null);
+            localStorage.removeItem('panipat_wallet_address');
+          }
+        };
+        ethereum.on('accountsChanged', handleAccountsChanged);
+        return () => {
+          if (ethereum.removeListener) {
+            ethereum.removeListener('accountsChanged', handleAccountsChanged);
+          }
+        };
+      }
+    }
+  }, []);
+
+  const connectWallet = async () => {
+    setIsConnectingWallet(true);
+    setWalletError(null);
+    if (typeof window !== 'undefined' && 'ethereum' in window) {
+      try {
+        const ethereum = (window as any).ethereum;
+        if (!ethereum) {
+          throw new Error("MetaMask provider is not present.");
+        }
+        const accounts = await ethereum.request({ method: 'eth_requestAccounts' });
+        if (accounts && accounts.length > 0) {
+          const addr = accounts[0];
+          setWalletAddress(addr);
+          localStorage.setItem('panipat_wallet_address', addr);
+          
+          if (!claimedWeb3Bonus) {
+            setTreasuryMohurs(prev => prev + 50000);
+            setClaimedWeb3Bonus(true);
+            localStorage.setItem('panipat_claimed_web3_bonus', 'true');
+            setLedger(prev => [
+              { id: Date.now().toString(), type: 'Diplomacy', text: "MetaMask Central Web3 Wallet aligned. Awarded +50k Mohurs!", cost: "+50,000 M", date: "Just now" },
+              ...prev.slice(0, 5)
+            ]);
+            alert("🎉 [METAMASK SOVEREIGN SEALED] Web3 wallet successfully linked! Claimed +50,000 Gold Mohurs into Central Campaign Treasury!");
+          } else {
+            alert("🔌 [METAMASK RECONNECTED] Your sovereign Web3 ledger was successfully restored.");
+          }
+        }
+      } catch (err: any) {
+        console.error("MetaMask connection error:", err);
+        setWalletError(err.message || "Failed to connect to MetaMask. Please check your extension.");
+      } finally {
+        setIsConnectingWallet(false);
+      }
+    } else {
+      setIsConnectingWallet(false);
+      setWalletError("MetaMask extension not found in your browser. Checking sandbox simulation...");
+      // Auto fallback to sandbox
+      const dummyAddr = "0x71C677762dbD553a992d95A7E24300eCb58635ab";
+      setWalletAddress(dummyAddr);
+      localStorage.setItem('panipat_wallet_address', dummyAddr);
+      if (!claimedWeb3Bonus) {
+        setTreasuryMohurs(prev => prev + 50000);
+        setClaimedWeb3Bonus(true);
+        localStorage.setItem('panipat_claimed_web3_bonus', 'true');
+        setLedger(prev => [
+          { id: Date.now().toString(), type: 'Diplomacy', text: "Sandbox Web3 Wallet simulated. Awarded +50k Mohurs!", cost: "+50,000 M", date: "Just now" },
+          ...prev.slice(0, 5)
+        ]);
+        alert("🛡️ [SANDBOX WALLET CONNECTED] Simulated fallback Web3 wallet successfully connected! Claimed your +50,000 Gold Mohurs Bounty.");
+      }
+    }
+  };
+
+  const disconnectWallet = () => {
+    setWalletAddress(null);
+    localStorage.removeItem('panipat_wallet_address');
+    setWalletError(null);
+  };
   
   const [provisions, setProvisions] = useState<number>(() => {
     const saved = localStorage.getItem('panipat_campaign_provisions');
@@ -218,26 +329,91 @@ export const Treasury: React.FC<{
             <motion.div 
               initial={{ opacity: 0, y: -20 }}
               animate={{ opacity: 1, y: 0 }}
-              className="lg:col-span-8 bg-stone-900 border border-stone-800 p-6 flex flex-col sm:flex-row items-col sm:items-center justify-between bronze-bevel shadow-2xl gap-6 text-left"
+              className="lg:col-span-5 bg-stone-900 border border-stone-800 p-5 flex flex-col justify-between bronze-bevel shadow-2xl gap-4 text-left"
             >
-              <div className="flex items-center gap-4 md:gap-8">
-                <div className="w-16 h-16 bg-saffron/10 border border-saffron/30 rounded-full flex items-center justify-center shrink-0">
-                  <Coins size={32} className="text-saffron" />
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 bg-saffron/10 border border-saffron/30 rounded-full flex items-center justify-center shrink-0">
+                  <Coins size={24} className="text-saffron" />
                 </div>
                 <div>
-                  <h2 className="text-[9px] text-stone-500 uppercase font-black tracking-[0.2em]">Imperial Central Treasury</h2>
-                  <div className="flex items-baseline gap-2">
-                    <span className="text-3xl md:text-5xl font-serif text-white font-black">{treasuryMohurs.toLocaleString()}</span>
-                    <span className="text-xs md:text-lg text-saffron font-serif italic">Gold Mohurs</span>
+                  <h2 className="text-[8px] text-stone-500 uppercase font-black tracking-[0.2em] leading-none">Central Campaign Treasury</h2>
+                  <div className="flex items-baseline gap-1.5 mt-1">
+                    <span className="text-2xl md:text-3xl font-serif text-white font-black">{treasuryMohurs.toLocaleString()}</span>
+                    <span className="text-[10px] text-saffron font-serif italic">Gold Mohurs</span>
                   </div>
                 </div>
               </div>
               
-              <div className="flex flex-col items-col sm:items-end justify-center">
-                <div className="text-green-500 font-mono text-xs font-black uppercase flex items-center gap-1.5">
-                  <TrendingUp size={14} /> ACTIVE MERCHANTS
+              <div className="border-t border-stone-800/60 pt-3 flex items-center justify-between">
+                <span className="text-[8px] text-stone-500 uppercase tracking-widest font-bold">Gwalior Sovereign Treasury</span>
+                <div className="text-green-500 font-mono text-[9px] font-black uppercase flex items-center gap-1">
+                  <TrendingUp size={11} /> ACTIVE
                 </div>
-                <span className="text-[9px] text-stone-500 uppercase tracking-widest font-bold mt-1">Gwalior Sovereign Treasury</span>
+              </div>
+            </motion.div>
+
+            {/* MetaMask / Web3 Sovereign Ledger card */}
+            <motion.div 
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.1 }}
+              className="lg:col-span-4 bg-stone-900 border border-stone-800 p-5 flex flex-col justify-between bronze-bevel shadow-2xl gap-3 text-left"
+            >
+              <div className="space-y-1">
+                <h3 className="font-serif text-white uppercase tracking-widest font-black text-xs flex items-center gap-1.5">
+                  <Wallet size={14} className="text-saffron" /> Sovereign Web3 Ledger
+                </h3>
+                <p className="text-[9px] text-stone-400 italic leading-tight">
+                  Connect your decentralized MetaMask web3 ledger to synchronize campaign tokens and secure imperial credits.
+                </p>
+              </div>
+
+              <div className="space-y-1.5">
+                {walletAddress ? (
+                  <div className="flex flex-col gap-1">
+                    <div className="flex items-center justify-between p-1.5 bg-green-950/30 border border-green-900/35 rounded-xs">
+                      <div className="flex items-center gap-1">
+                        <ShieldCheck size={12} className="text-green-400 shrink-0" />
+                        <span className="font-mono text-[9px] text-green-300 font-bold">
+                          {walletAddress.slice(0, 6)}...{walletAddress.slice(-4)}
+                        </span>
+                      </div>
+                      <button 
+                        onClick={disconnectWallet}
+                        className="text-[8px] font-mono uppercase text-stone-500 hover:text-red-400 transition-colors bg-transparent border-0 cursor-pointer"
+                      >
+                        Disconnect
+                      </button>
+                    </div>
+                    <p className="text-[8.5px] text-saffron font-bold animate-pulse">
+                      ✨ Sovereign Seal Active (+50,000 M claimed)
+                    </p>
+                  </div>
+                ) : (
+                  <div className="flex flex-col gap-1.5">
+                    <button 
+                      onClick={connectWallet}
+                      disabled={isConnectingWallet}
+                      className="bg-stone-950 hover:bg-stone-850 hover:text-saffron border border-stone-800 text-stone-300 font-semibold text-[9px] uppercase font-mono tracking-widest py-1.5 transition-all rounded-xs cursor-pointer text-center w-full shadow-inner flex items-center justify-center gap-1"
+                    >
+                      {isConnectingWallet ? (
+                        <>
+                          <RefreshCw size={10} className="animate-spin text-saffron" /> Linking Web3...
+                        </>
+                      ) : (
+                        <>
+                          🦊 Connect MetaMask Wallet
+                        </>
+                      )}
+                    </button>
+                    {walletError && (
+                      <p className="text-[8.5px] text-red-500 leading-tight flex items-start gap-1">
+                        <AlertCircle size={10} className="shrink-0 mt-0.5" />
+                        <span>{walletError}</span>
+                      </p>
+                    )}
+                  </div>
+                )}
               </div>
             </motion.div>
 
@@ -245,19 +421,21 @@ export const Treasury: React.FC<{
             <motion.div 
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
-              className="lg:col-span-4 bg-stone-900 border border-stone-800 p-6 flex flex-col justify-center gap-3 text-left"
+              className="lg:col-span-3 bg-stone-900 border border-stone-800 p-5 flex flex-col justify-between bronze-bevel shadow-2xl gap-3 text-left"
             >
-              <h3 className="font-serif text-white uppercase tracking-widest font-black text-xs flex items-center gap-2">
-                <Landmark size={15} className="text-saffron" /> Dispatch High Embassy
-              </h3>
-              <p className="text-[10px] text-stone-400 italic">
-                Send a central delegation of diplomats with rich gold gifts (25k M) to win regional trust support. Chance to fail if intercepted!
-              </p>
+              <div className="space-y-1">
+                <h3 className="font-serif text-white uppercase tracking-widest font-black text-xs flex items-center gap-1.5">
+                  <Landmark size={14} className="text-saffron" /> Dispatch High Embassy
+                </h3>
+                <p className="text-[9px] text-stone-400 italic leading-tight">
+                  Send high ranking diplomats with rich gold gifts (25k M) to gain regional trust.
+                </p>
+              </div>
               <button 
                 onClick={handleSendAmbassador}
-                className="bg-saffron hover:bg-yellow-600 hover:text-black font-semibold text-[10px] uppercase text-stone-950 font-mono tracking-widest py-2 transition-all border border-yellow-700 rounded-xs cursor-pointer text-center"
+                className="bg-saffron hover:bg-yellow-600 hover:text-black font-semibold text-[9px] uppercase text-stone-950 font-mono tracking-widest py-1.5 transition-all border border-yellow-700 rounded-xs cursor-pointer text-center w-full"
               >
-                💸 DISPATCH EMBASSY (25k Mohurs)
+                💸 DISPATCH EMBASSY (25k)
               </button>
             </motion.div>
           </div>
