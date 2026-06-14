@@ -47,20 +47,20 @@ Embark on a multi-stage strategic campaign across northern India. Advance throug
 Choose your faction and general, each bringing unique starting stats, resources, and passive bonuses:
 
 *   **Maratha Confederacy** (Sigil: 🚩)
-    *   **Sadashivrao Bhau**: Grand Commander. Master of state finance. *(+15% attack damage)*
-    *   **Shamsher Bahadur**: Sword & Cavalry Master. *(+45% melee charge damage)*
-    *   **Queen Parvatibai**: Camp Pillar. Organized food supplies. *(+30% provisions & attrition immunity)*
-    *   **Regent Gopikabai**: Empress of Treasury. *(+40,000 baseline starting Gold Mohurs)*
-    *   **Vishwasrao**: The Young Prince. Unified Peshwadom. *(+20% base army morale)*
-    *   **Ibrahim Khan Gardi**: French-trained Artillery general. *(+40% accuracy on 9-pounder field guns)*
+	*   **Sadashivrao Bhau**: Grand Commander. Master of state finance. *(+15% attack damage)*
+	*   **Shamsher Bahadur**: Sword & Cavalry Master. *(+45% melee charge damage)*
+	*   **Queen Parvatibai**: Camp Pillar. Organized food supplies. *(+30% provisions & attrition immunity)*
+	*   **Regent Gopikabai**: Empress of Treasury. *(+40,000 baseline starting Gold Mohurs)*
+	*   **Vishwasrao**: The Young Prince. Unified Peshwadom. *(+20% base army morale)*
+	*   **Ibrahim Khan Gardi**: French-trained Artillery general. *(+40% accuracy on 9-pounder field guns)*
 
 *   **Durrani Empire** (Sigil: 🇦🇫)
-    *   **Ahmad Shah Durrani**: "The Pearl of Pearls". Afghan Emperor. *(Strategic Genius bonus)*
-    *   **Shah Wali Khan**: Grand Vizier. Master of logistical maneuvers. *(Logistics Expert bonus)*
-    *   **Najib-ud-Daula**: Rohilla chieftain. Secured the eastern riverbanks. *(Diplomatic Edge bonus)*
+	*   **Ahmad Shah Durrani**: "The Pearl of Pearls". Afghan Emperor. *(Strategic Genius bonus)*
+	*   **Shah Wali Khan**: Grand Vizier. Master of logistical maneuvers. *(Logistics Expert bonus)*
+	*   **Najib-ud-Daula**: Rohilla chieftain. Secured the eastern riverbanks. *(Diplomatic Edge bonus)*
 
 ### ⚔️ 3. Battle Canvas & Unit Tactics
-Command active battlefield engagements using the high-fidelity **Battle Canvas**. Draw, reposition, and deploy your troop types (Infantry, Cavalry, and French-discipline Artillery squares) on a real-time grids system while monitoring troop stamina, ammunition, and unit health.
+Command active battlefield engagements using the high-fidelity **Battle Canvas**. Draw, reposition, and deploy your troop types (Infantry, Cavalry, and French-discipline Artillery squares) on a real-time grid system while monitoring troop stamina, ammunition, and unit health.
 
 ### 🎯 4. Military Mini-Games & Simulators
 *   **Artillery Calibration**: Adjust elevation, powder charge, and windage factors using an interactive HTML5 `<canvas>` simulation to calibrate brass cannons and maximize impact against incoming lines.
@@ -70,17 +70,22 @@ Command active battlefield engagements using the high-fidelity **Battle Canvas**
 ### 🏛️ 5. Diplomacy Darbar
 Negotiate with northern powers (such as Najib-ud-Daula of the Rohillas and Shuja-ud-Daula of Awadh) to forge coalitions. Balance Faction Trust and Relations (Neutral, Hostile, Wary, Allied) to shift the balance of power before the final conflict.
 
-### 💰 6. Camp Supply Tycoon (Logistics Engine)
-Manage the state coffers (**Gold Mohurs**), provisions, and caravan supply lines. Recruit reinforcements, pay mercenary fees, and watch out for winter food shortages and attrition that can decimate your camp followers.
+### 💰 6. Camp Supply Tycoon & Sovereign Web3 Ledger
+Manage the state coffers (**Gold Mohurs**), provisions, and caravan supply lines.
+*   **Sovereign Web3 Ledger**: Link your decentralized **MetaMask Wallet** to securely align campaign tokens and secure imperial credits. Connecting a valid decentralized account automatically awards an initial alignment bounty of **+50,000 Gold Mohurs** to the Central Treasury. A local fallback sandbox simulation is integrated if a browser extension is missing.
+*   **Logistics & Caravans**: Recruit reinforcements, pay mercenary fees, and watch out for winter food shortages and attrition that can decimate your camp followers.
 
-### 🧠 7. AI War Council & debates (Visual Novel Mode)
-Launch the **AI War Council** to witness Maratha generals (Sadashivrao Bhau, Malharrao Holkar, Ibrahim Khan Gardi) debate campaign tactics in a visual novel-style layout. Driven by Google Gemini AI with local fallbacks, siding with a general applies instant mechanical adjustments to your camp resources.
+### 🧠 7. AI War Council & Debates (Visual Novel Mode)
+Launch the **AI War Council** to witness Maratha generals (Sadashivrao Bhau, Malharrao Holkar, Ibrahim Khan Gardi) debate campaign tactics in a visual novel-style layout. Siding with a general applies instant mechanical adjustments to your camp resources.
 
-### 🌐 8. Multiplayer Matchmaking Arena
+### 🎓 8. Academy Hub & Student LMS
+Includes a complete interactive **Learning Management System (LMS)** and **Academy Hub** allowing students to study historical timelines, review comprehensive interactive cartography, take quizzes, track academic milestones, and view educational resources with a persistent state engine powered by `Zustand`.
+
+### 🌐 9. Multiplayer Matchmaking Arena
 Open the **Multiplayer Matchmaking** simulator to view active rooms, regions, pings, and chat with local recruits. Enter turn-based card battles deploying unit counters against simulated live opponents to protect your campaign flanks.
 
-### 📰 9. Campaign Tension Ticker
-Keep track of the strategic status via a continuous scrolling newspaper marquee ticker at the top of the campaign map, feeded with real-time historical event logs.
+### 📰 10. Campaign Tension Ticker
+Keep track of the strategic status via a continuous scrolling newspaper marquee ticker at the top of the campaign map, fed with real-time historical event logs.
 
 ---
 
@@ -89,7 +94,7 @@ Keep track of the strategic status via a continuous scrolling newspaper marquee 
 The project has a modular, component-driven architecture:
 
 ```
-panipat_-1761_updated/
+panipat-1761-shattered-dreams/
 ├── public/                      # Static assets and maps
 │   ├── afghan_map.png           # Cartographic Afghan logistics map
 │   ├── historical_map.png       # Cartographic Maratha campaign map
@@ -98,7 +103,7 @@ panipat_-1761_updated/
 │   └── readme_banner.png        # Custom repository header banner
 ├── src/
 │   ├── components/              # Game engine sub-components & mini-games
-│   │   ├── AIDebateRoom.tsx     # Visual novel-style general debates powered by Gemini
+│   │   ├── AIDebateRoom.tsx     # Visual novel-style general debates
 │   │   ├── MultiplayerLobbySimulator.tsx # Simulated multiplayer lobby and deck battles
 │   │   ├── ArtilleryCalibration.tsx # Cannon fire math & calibration mini-game
 │   │   ├── BattleCanvas.tsx     # Real-time deployment & battle renderer
@@ -113,13 +118,20 @@ panipat_-1761_updated/
 │   │   ├── MainMenu.tsx         # Intro, asset loader, faction & commander setup
 │   │   ├── StrategicMap.tsx     # Grand Campaign progression & stage logs
 │   │   ├── TacticalHUD.tsx      # Skirmish configurations & quick battles
-│   │   ├── WarCouncil.tsx       # Multiplayer matchmaking & alliance logs
+│   │   ├── WarCouncil.tsx       # Alignment logs and assembly
 │   │   ├── Logistics.tsx        # In-depth supply management dashboard
-│   │   ├── Treasury.tsx         # Revenue ledgers & gold mohur allocation
+│   │   ├── Treasury.tsx         # Revenue ledgers & gold mohur allocation with Web3 MetaMask controls
 │   │   ├── Encyclopedia.tsx     # History data, biographies, and weapon profiles
 │   │   ├── Timeline.tsx         # Chronological milestones from 1758 to 1761
 │   │   ├── BattleScene.tsx      # Core simulation execution wrapper
+│   │   ├── Cartography.tsx      # Rich historical cartographic visualizer
+│   │   ├── LMS.tsx              # Student Learning Management System core
+│   │   ├── LearningHub.tsx      # Academic tracking deck and milestones
 │   │   └── Victory.tsx          # Win/loss banners and campaign summaries
+│   ├── lms/                     # Academy State & Context Engine
+│   │   ├── LMSProvider.tsx      # Coordinator context provider
+│   │   ├── LMSEventBus.tsx      # Cross-component event messaging
+│   │   └── LearnerStore.ts      # Zustand storage model for progress indicators
 │   ├── utils/                   # General utilities & state databases
 │   │   ├── audioSystem.ts       # Adaptive multi-scene background audio engine
 │   │   └── historyData.ts       # Database for encyclopedia entries and stages
@@ -135,8 +147,8 @@ panipat_-1761_updated/
 ```
 
 ### 🧠 App Navigation and State Flow
-Navigation is coordinated by [App.tsx](file:///c:/Users/salil/Downloads/panipat_-1761_updated/src/App.tsx) using a reactive state router. Screens communicate back and forth using callback handlers (e.g. `onNavigate`, `setCampaignStage`, `onAdvance`).
-*   **Intro & Asset Loading**: Handled inside [MainMenu.tsx](file:///c:/Users/salil/Downloads/panipat_-1761_updated/src/screens/MainMenu.tsx), which guides the user through choosing a Faction and Commander, storing selections in `localStorage` to persist player choices.
+Navigation is coordinated by `src/App.tsx` using a reactive state router. Screens communicate back and forth using callback handlers (e.g. `onNavigate`, `setCampaignStage`, `onAdvance`).
+*   **Intro & Asset Loading**: Handled inside `src/screens/MainMenu.tsx`, which guides the user through choosing a Faction and Commander, storing selections in `localStorage` to persist player choices.
 *   **Campaign State Transitions**: The strategic progress is tracked via `CampaignStage` enum, modifying unit strengths, starting gold, and narrative logs dynamically.
 
 ---
@@ -150,7 +162,7 @@ The app achieves a premium, skeuomorphic "historical manuscript" look using cust
     *   `saffron` (`#FF9933`) for Maratha banners, highlighted buttons, and glowing gold indicators.
     *   `afghan-red` (`#A30000`) for Durrani indicators, banners, and combat alerts.
     *   `stone-950` (`#0c0a09`) for a deep, premium obsidian contrast background.
-*   **Dynamic Audio System**: Powered by the `panipatAudioEngine` in [audioSystem.ts](file:///c:/Users/salil/Downloads/panipat_-1761_updated/src/utils/audioSystem.ts). It monitors screen state transitions and crossfades audio tracks (e.g. shifting to a tense battle theme during Skirmish/Battle mode, a peaceful campaign theme in the Strategic Map, and a cinematic theme in the Main Menu).
+*   **Dynamic Audio System**: Powered by the `panipatAudioEngine` in `src/utils/audioSystem.ts`. It monitors screen state transitions and crossfades audio tracks (e.g. shifting to a tense battle theme during Skirmish/Battle mode, a peaceful campaign theme in the Strategic Map, and a cinematic theme in the Main Menu).
 
 ---
 
