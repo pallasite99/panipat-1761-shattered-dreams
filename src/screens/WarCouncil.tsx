@@ -26,6 +26,7 @@ import {
 } from 'lucide-react';
 import { Screen, Faction } from '../types';
 import { TopBar, SideNav } from '../components/SharedUI';
+import { FallbackImage } from '../components/FallbackImage';
 
 import { CavalryChargeSimulator } from '../components/CavalryChargeSimulator';
 import { ArtilleryCalibration } from '../components/ArtilleryCalibration';
@@ -753,7 +754,7 @@ export const WarCouncil: React.FC<{
       <main className="lg:pl-64 pt-16 flex-1 overflow-y-auto bg-stone-950 relative">
         <div 
           className="absolute inset-0 z-0 opacity-20 bg-cover bg-fixed"
-          style={{ backgroundImage: "url('https://images.unsplash.com/photo-1614728263952-84ea256f9679?q=80&w=1968&auto=format&fit=crop')" }}
+          style={{ backgroundImage: "url('/afghan_map.png')" }}
         />
         <div className="relative z-10 p-4 md:p-8 bg-stone-950/60 backdrop-blur-xs min-h-full flex flex-col font-sans">
           
@@ -927,7 +928,12 @@ export const WarCouncil: React.FC<{
                   <div className="p-5 md:p-6 bg-stone-900/60 border border-stone-800 rounded-sm">
                     <div className="flex items-center gap-4 border-b border-stone-850 pb-4 mb-4">
                       <div className="w-12 h-12 rounded-full border border-saffron overflow-hidden bg-stone-800">
-                        <img referrerPolicy="no-referrer" src={currentScenario.avatar} alt="Speaker" className="w-full h-full object-cover" />
+                        <FallbackImage
+                          src={currentScenario.avatar}
+                          fallbackSrc="/avatar-placeholder.svg"
+                          alt="Speaker"
+                          className="w-full h-full object-cover"
+                        />
                       </div>
                       <div>
                         <span className="text-[9px] text-stone-500 uppercase tracking-widest font-black font-mono">Presenting Dilemma:</span>

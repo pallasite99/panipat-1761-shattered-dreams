@@ -15,6 +15,7 @@ import { Treasury } from './screens/Treasury';
 import { Victory } from './screens/Victory';
 import { BattleScene } from './screens/BattleScene';
 import { Encyclopedia } from './screens/Encyclopedia';
+import { LearningHub } from './screens/LearningHub';
 import { Timeline } from './screens/Timeline';
 import { HelpOverlay, SettingsOverlay } from './components/GlobalOverlays';
 import { FeedbackWidget } from './components/FeedbackWidget';
@@ -96,6 +97,8 @@ export default function App() {
         return <BattleScene onNavigate={handleNavigate} onAdvance={handleAdvanceCampaign} stage={campaignStage} {...commonProps} />;
       case Screen.ENCYCLOPEDIA:
         return <Encyclopedia onNavigate={handleNavigate} isMenuOpen={isMenuOpen} onToggleMenu={() => setIsMenuOpen(true)} onMenuClose={() => setIsMenuOpen(false)} {...commonProps} />;
+      case Screen.LEARNING_HUB:
+        return <LearningHub onNavigate={handleNavigate} isMenuOpen={isMenuOpen} onToggleMenu={() => setIsMenuOpen(true)} onMenuClose={() => setIsMenuOpen(false)} {...commonProps} />;
       case Screen.TIMELINE:
         return (
           <Timeline 
@@ -121,4 +124,3 @@ export default function App() {
     </div>
   );
 }
-

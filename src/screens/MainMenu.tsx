@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Flag, Swords, Users, Settings, ChevronRight, HelpCircle, Book, BookOpen, Scroll, Award } from 'lucide-react';
+import { Flag, Swords, Users, Settings, ChevronRight, HelpCircle, Book, BookOpen, Scroll, Award, GraduationCap } from 'lucide-react';
 import { Screen, CampaignStage, General } from '../types';
 
 const MARATHA_GENERALS: General[] = [
@@ -176,15 +176,9 @@ const StoryScreen = ({ faction, onComplete }: { faction: 'maratha' | 'durrani'; 
         <div className="border-4 border-stone-800 p-3 bg-stone-900 shadow-2xl flex flex-col justify-between">
           <div className="relative overflow-hidden w-full h-[300px] lg:h-full min-h-[300px] border border-stone-800">
             <img 
-              src={faction === 'maratha' ? "historical_map.png" : "afghan_map.png"} 
+              src={faction === 'maratha' ? "/historical_map.png" : "/afghan_map.png"} 
               alt="Historical Map" 
               className="w-full h-full object-cover rounded-sm filter brightness-90 sepia-[20%]" 
-              onError={(e) => {
-                (e.target as HTMLImageElement).src = faction === 'maratha' 
-                  ? 'https://images.unsplash.com/photo-1578301978693-85fa9c0320b9?q=80&w=800&auto=format&fit=crop' 
-                  : 'https://images.unsplash.com/photo-1524661135-423995f22d0b?q=80&w=800&auto=format&fit=crop';
-              }}
-              referrerPolicy="no-referrer"
             />
           </div>
           <div className="mt-4 p-4 bg-stone-950 border border-stone-800 text-stone-400 text-xs italic leading-relaxed text-left rounded-sm font-sans">
@@ -251,6 +245,7 @@ export const MainMenu: React.FC<{
   const menuItems = [
     { id: Screen.STRATEGIC_MAP, label: 'Grand Campaign', icon: Flag },
     { id: Screen.TACTICAL_HUD, label: 'Skirmish', icon: Swords },
+    { id: Screen.LEARNING_HUB, label: 'Learning Hub', icon: GraduationCap },
     { id: Screen.WAR_COUNCIL, label: 'Multiplayer', icon: Users },
   ];
 
@@ -273,7 +268,7 @@ export const MainMenu: React.FC<{
                     className="flex flex-col items-center gap-6 group"
                   >
                       <div className="w-64 h-64 border border-saffron/30 rounded-full flex items-center justify-center p-6 bg-stone-900 group-hover:bg-stone-800 transition-all">
-                        <img src="maratha_faction_logo.png" alt="Maratha Sigil" className="w-full h-full object-contain" />
+                        <img src="/maratha_faction_logo.png" alt="Maratha Sigil" className="w-full h-full object-contain" />
                       </div>
                       <span className="text-saffron font-serif text-3xl uppercase tracking-widest">Maratha Confederacy</span>
                   </motion.button>
@@ -288,7 +283,7 @@ export const MainMenu: React.FC<{
                     className="flex flex-col items-center gap-6 group"
                   >
                       <div className="w-64 h-64 border border-afghan-red/30 rounded-full flex items-center justify-center p-6 bg-stone-900 group-hover:bg-stone-800 transition-all">
-                        <img src="durrani_faction_logo.png" alt="Durrani Sigil" className="w-full h-full object-contain" />
+                        <img src="/durrani_faction_logo.png" alt="Durrani Sigil" className="w-full h-full object-contain" />
                       </div>
                       <span className="text-red-650 font-serif text-3xl uppercase tracking-widest font-bold">Durrani Empire</span>
                   </motion.button>
@@ -339,7 +334,7 @@ export const MainMenu: React.FC<{
       <div className="absolute inset-0 z-0">
         <div 
           className="absolute inset-0 bg-cover bg-center mix-blend-overlay opacity-60"
-          style={{ backgroundImage: "url('https://images.unsplash.com/photo-1543165365-072e2ed12aec?q=80&w=2070&auto=format&fit=crop')" }}
+          style={{ backgroundImage: "url('/historical_map.png')" }}
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-black/80" />
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_100%,rgba(255,153,51,0.15),transparent_70%)]" />

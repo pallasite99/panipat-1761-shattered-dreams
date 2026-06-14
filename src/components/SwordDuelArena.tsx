@@ -7,6 +7,7 @@ interface SwordDuelArenaProps {
   opponentName?: string;
   opponentTitle?: string;
   difficulty?: 'recruit' | 'veteran' | 'peshwa';
+  viewMode?: 'duel' | 'skirmish';
   onClose: (resolvedHealth: number, outcome: 'victory' | 'defeat' | 'retreat') => void;
 }
 
@@ -36,10 +37,12 @@ export const SwordDuelArena: React.FC<SwordDuelArenaProps> = ({
   opponentName = "Jahan Khan",
   opponentTitle = "Grand General of Durrani Vanguard",
   difficulty = "veteran",
+  viewMode = "duel",
   onClose,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [combatState, setCombatState] = useState<'intro' | 'fighting' | 'victory' | 'defeat'>('intro');
+  const isSkirmishView = viewMode === 'skirmish';
 
   // Combat status variables
   const [playerHp, setPlayerHp] = useState(100);
@@ -626,18 +629,18 @@ export const SwordDuelArena: React.FC<SwordDuelArenaProps> = ({
   };
 
   return (
-    <div className="absolute inset-0 z-50 bg-[#070505]/95 backdrop-blur-sm flex flex-col items-center justify-center p-4">
+    <div className={`absolute inset-0 z-50 bg-[#070505]/95 backdrop-blur-sm flex flex-col items-center justify-center ${isSkirmishView ? 'p-0' : 'p-4'}`}>
       
       {/* HEADER BAR */}
-      <div className="w-full max-w-[620px] bg-gradient-to-r from-stone-900 via-amber-950 to-stone-900 border-t-2 border-b-2 border-saffron py-2.5 px-4 flex justify-between items-center mb-3 shadow-xl">
+      <div className={`w-full bg-gradient-to-r from-stone-900 via-amber-950 to-stone-900 border-t-2 border-b-2 border-saffron py-2.5 px-4 flex justify-between items-center shadow-xl ${isSkirmishView ? 'max-w-none mb-0 rounded-none' : 'max-w-[620px] mb-3 rounded-xs'}`}>
         <div className="flex items-center gap-3">
           <Swords size={20} className="text-saffron animate-pulse" />
           <div className="text-left">
             <h4 className="text-[14px] font-serif font-black text-white leading-none uppercase tracking-wide">
-              Close-Combat Talwar Duel Arena
+              {isSkirmishView ? 'First-Person Skirmish Line' : 'Close-Combat Talwar Duel Arena'}
             </h4>
             <span className="text-[8.5px] font-mono text-saffron uppercase tracking-widest leading-none">
-              Ahmad Shah's Elite Vanguard Confrontation
+              {isSkirmishView ? 'Step into the blade line and fight in first person' : "Ahmad Shah's Elite Vanguard Confrontation"}
             </span>
           </div>
         </div>
@@ -654,13 +657,13 @@ export const SwordDuelArena: React.FC<SwordDuelArenaProps> = ({
         )}
       </div>
 
-      <div className="w-full max-w-[620px] grid grid-cols-1 md:grid-cols-12 gap-3 items-stretch">
+      <div className={`w-full grid grid-cols-1 md:grid-cols-12 items-stretch ${isSkirmishView ? 'max-w-none gap-0' : 'max-w-[620px] gap-3'}`}>
         
         {/* ACTION / VISUAL CANVAS AREA */}
-        <div className="md:col-span-8 flex flex-col bg-stone-950 border border-stone-850 p-2 relative rounded-xs shadow-2xl">
+        <div className={`md:col-span-8 flex flex-col bg-stone-950 border border-stone-850 p-2 relative shadow-2xl ${isSkirmishView ? 'rounded-none min-h-[72vh]' : 'rounded-xs'}`}>
           
           {/* STATS BARS HUD OVERLAYS */}
-          <div className="absolute top-4 left-4 right-4 flex justify-between gap-5 z-25 pointer-events-none select-none">
+          <div className={`absolute top-4 left-4 right-4 flex justify-between gap-5 z-25 pointer-events-none select-none ${isSkirmishView ? 'top-5 left-5 right-5' : ''}`}>
             
             {/* Player Side Bar */}
             <div className="flex-1 max-w-[170px] text-left">
@@ -752,8 +755,26 @@ export const SwordDuelArena: React.FC<SwordDuelArenaProps> = ({
             ref={canvasRef}
             width={580}
             height={360}
-            className="w-full aspect-[58/36] bg-[#0c0807] rounded-xs border border-stone-850"
+            className={`w-full bg-[#0c0807] border border-stone-850 ${isSkirmishView ? 'aspect-[16/9] min-h-[62vh] rounded-none' : 'aspect-[58/36] rounded-xs'}`}
           />
+
+          {isSkirmishView && combatState === 'fighting' && (
+            <div className="absolute inset-x-0 bottom-0 z-20 pointer-events-none">
+              <div className="mx-auto max-w-5xl px-4 pb-4">
+                <div className="grid grid-cols-3 gap-2 text-[8px] font-mono uppercase tracking-[0.24em] text-stone-300">
+                  <div className="bg-stone-950/90 border border-stone-800 px-3 py-2 rounded-xs">
+                    Blade stance ready
+                  </div>
+                  <div className="bg-stone-950/90 border border-saffron/30 px-3 py-2 rounded-xs text-saffron text-center">
+                    First-person skirmish active
+                  </div>
+                  <div className="bg-stone-950/90 border border-stone-800 px-3 py-2 rounded-xs text-right">
+                    Move with A/D, parry with space
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* COMBAT STATES LAYERS */}
           {combatState === 'intro' && (

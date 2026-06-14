@@ -952,17 +952,63 @@ export const StrategicMap: React.FC<{
     }
   });
 
-  // Hexagon grid parameters for Civilization VI inspired board
-  const gridColWidth = 144;
-  const gridRowHeight = 168;
-  const gridRowStagger = 84;
-  const gridLeftOffset = 20;
-  const gridTopOffset = 800;
+  // Hexagon grid parameters for a wider, less crowded geographic board
+  const gridColWidth = 176;
+  const gridRowHeight = 194;
+  const gridRowStagger = 97;
+  const gridLeftOffset = 120;
+  const gridTopOffset = 560;
 
   const getTilePosition = (col: number, row: number) => {
     const left = col * gridColWidth + gridLeftOffset;
     const top = row * gridRowHeight + (col % 2 !== 0 ? gridRowStagger : 0) + gridTopOffset;
     return { top: `${top}px`, left: `${left}px` };
+  };
+
+  const mapWidth = 4000;
+  const mapHeight = 4000;
+  const mapBounds = {
+    lonMin: 65,
+    lonMax: 89,
+    latMin: 17.0,
+    latMax: 36.5,
+  };
+
+  const projectGeo = (lat: number, lon: number) => {
+    const left = ((lon - mapBounds.lonMin) / (mapBounds.lonMax - mapBounds.lonMin)) * mapWidth;
+    const top = ((mapBounds.latMax - lat) / (mapBounds.latMax - mapBounds.latMin)) * mapHeight;
+    return { left: `${Math.max(0, Math.min(mapWidth, left))}px`, top: `${Math.max(0, Math.min(mapHeight, top))}px` };
+  };
+
+  const REGION_GEO: Record<string, { lat: number; lon: number }> = {
+    highlands: { lat: 34.56, lon: 69.21 },
+    kandahar_foothill: { lat: 31.61, lon: 65.72 },
+    peshawar: { lat: 34.02, lon: 71.56 },
+    upper_indus: { lat: 35.92, lon: 74.31 },
+    punjab: { lat: 31.52, lon: 74.35 },
+    sutlej: { lat: 30.90, lon: 74.65 },
+    thar: { lat: 26.91, lon: 70.91 },
+    multan: { lat: 30.20, lon: 71.47 },
+    kashmir: { lat: 34.08, lon: 74.80 },
+    rajputana: { lat: 26.91, lon: 75.79 },
+    ajmer: { lat: 26.45, lon: 74.64 },
+    deccan: { lat: 18.52, lon: 73.86 },
+    konkan: { lat: 17.99, lon: 73.01 },
+    gwalior_front: { lat: 26.22, lon: 78.18 },
+    narmada: { lat: 22.74, lon: 78.38 },
+    vidarbha: { lat: 20.68, lon: 78.99 },
+    himachal: { lat: 31.10, lon: 77.17 },
+    kurukshetra: { lat: 29.97, lon: 76.84 },
+    himalaya: { lat: 30.74, lon: 79.07 },
+    bundelkhand: { lat: 25.30, lon: 78.48 },
+    rohilla: { lat: 28.90, lon: 79.50 },
+    doab: { lat: 28.90, lon: 78.10 },
+    mathura: { lat: 27.50, lon: 77.67 },
+    lucknow: { lat: 26.85, lon: 80.95 },
+    bihar: { lat: 25.61, lon: 85.15 },
+    nagpur: { lat: 23.16, lon: 79.95 },
+    bengal: { lat: 23.02, lon: 88.10 },
+    malabar: { lat: 11.27, lon: 75.78 },
   };
 
   // 18th Century Regional Territory Survey representing full hexagonal map of Hindusthan
@@ -1336,7 +1382,7 @@ export const StrategicMap: React.FC<{
   // Dynamic mapping of regionalZones with computed positions
   const regionalZones = regionalZonesRaw.map(z => ({
     ...z,
-    pos: getTilePosition(z.col, z.row)
+    pos: REGION_GEO[z.id] ? projectGeo(REGION_GEO[z.id].lat, REGION_GEO[z.id].lon) : getTilePosition(z.col, z.row)
   }));
 
   const [selectedZone, setSelectedZone] = useState<typeof regionalZones[0] | null>(null);
@@ -1359,24 +1405,52 @@ export const StrategicMap: React.FC<{
 
   // Dynamic milestones depending on active campaign faction (starts from their side of Hindusthan!)
   const milestones = activeFaction === 'maratha' ? [
-    { stage: CampaignStage.NIZAM_CAMPAIGN, name: "Udgir Battle", pos: { top: '3000px', left: '1000px' }, desc: "Decisively defeat the Nizam of Hyderabad at Udgir to seize critical state treasury funds and fortresses." },
-    { stage: CampaignStage.PUNE, name: "Pune Chambers", pos: { top: '2800px', left: '800px' }, desc: "With the Nizam subdued, return to Shaniwar Wada to settle state politics and muster the grand army columns." },
-    { stage: CampaignStage.BURHANPUR, name: "Tapti Defile", pos: { top: '2200px', left: '880px' }, desc: "Muster forces at Burhanpur and clear local hostile garrisons guarding the Tapti River banks." },
-    { stage: CampaignStage.GWALIOR, name: "Gwalior Fort", pos: { top: '1500px', left: '980px' }, desc: "Lobby the great Scindia court and secure agreements with Maharaja Suraj Mal of Bharatpur." },
-    { stage: CampaignStage.DELHI_NEGOTIATIONS, name: "Awadh Talks", pos: { top: '1200px', left: '1020px' }, desc: "Imperial court diplomacy. Persuade the neutral Nawab Shuja-ud-Daula to reject Abdali's invitation." },
-    { stage: CampaignStage.SHINDE_STAND, name: "Barari Stand", pos: { top: '1000px', left: '1050px' }, desc: "Support Dattaji Shinde's heroic defensive stand on the bloody river mud at Barari Ghat." },
-    { stage: CampaignStage.DELHI_BATTLE, name: "Kunjpura Sack", pos: { top: '700px', left: '1080px' }, desc: "Sack the fortified Afghan base at Kunjpura with heavy Gardi artillery to sever Abdali's links." },
-    { stage: CampaignStage.PANIPAT, name: "Panipat Plains", pos: { top: '400px', left: '1050px' }, desc: "The ultimate symmetrical showdown. Extrapolate standard infantry squares under Ibrahim Gardi's barrels." }
+    { stage: CampaignStage.NIZAM_CAMPAIGN, name: "Udgir Battle", geo: { lat: 18.40, lon: 77.12 }, desc: "Decisively defeat the Nizam of Hyderabad at Udgir to seize critical state treasury funds and fortresses." },
+    { stage: CampaignStage.PUNE, name: "Pune Chambers", geo: { lat: 18.52, lon: 73.86 }, desc: "With the Nizam subdued, return to Shaniwar Wada to settle state politics and muster the grand army columns." },
+    { stage: CampaignStage.BURHANPUR, name: "Tapti Defile", geo: { lat: 21.30, lon: 76.23 }, desc: "Muster forces at Burhanpur and clear local hostile garrisons guarding the Tapti River banks." },
+    { stage: CampaignStage.GWALIOR, name: "Gwalior Fort", geo: { lat: 26.22, lon: 78.18 }, desc: "Lobby the great Scindia court and secure agreements with Maharaja Suraj Mal of Bharatpur." },
+    { stage: CampaignStage.DELHI_NEGOTIATIONS, name: "Awadh Talks", geo: { lat: 28.61, lon: 77.21 }, desc: "Imperial court diplomacy. Persuade the neutral Nawab Shuja-ud-Daula to reject Abdali's invitation." },
+    { stage: CampaignStage.SHINDE_STAND, name: "Barari Stand", geo: { lat: 29.38, lon: 76.98 }, desc: "Support Dattaji Shinde's heroic defensive stand on the bloody river mud at Barari Ghat." },
+    { stage: CampaignStage.DELHI_BATTLE, name: "Kunjpura Sack", geo: { lat: 29.94, lon: 77.02 }, desc: "Sack the fortified Afghan base at Kunjpura with heavy Gardi artillery to sever Abdali's links." },
+    { stage: CampaignStage.PANIPAT, name: "Panipat Plains", geo: { lat: 29.39, lon: 76.97 }, desc: "The ultimate symmetrical showdown. Extrapolate standard infantry squares under Ibrahim Gardi's barrels." }
   ] : [
-    { stage: CampaignStage.NIZAM_CAMPAIGN, name: "Kabul Outposts", pos: { top: '2600px', left: '100px' }, desc: "Mobilize the Durrani royal guard from Kabul and subdue rebellious border clans to secure the gateway of the Khyber Pass." },
-    { stage: CampaignStage.PUNE, name: "Kandahar", pos: { top: '2500px', left: '300px' }, desc: "Convene the great Council of Emirs to receive tribal oaths of allegiance before heading east." },
-    { stage: CampaignStage.BURHANPUR, name: "Lahore Siege", pos: { top: '1900px', left: '450px' }, desc: "Execute a rapid cavalry vanguard offensive to capture the strategic city of Lahore." },
-    { stage: CampaignStage.GWALIOR, name: "Rohila Pact", pos: { top: '1500px', left: '725px' }, desc: "Secure the vital alliance of Najib-ud-Daula, the Rohilla Afghan leader." },
-    { stage: CampaignStage.DELHI_NEGOTIATIONS, name: "Awadh Siyar", pos: { top: '1200px', left: '850px' }, desc: "Sway Nawab Shuja-ud-Daula of Awadh to join the Durrani side before the Marathas bribe him." },
-    { stage: CampaignStage.SHINDE_STAND, name: "River Crossing", pos: { top: '900px', left: '980px' }, desc: "Conduct a stealthy midnight river crossing over the Yamuna to trap the scouts." },
-    { stage: CampaignStage.DELHI_BATTLE, name: "Delhi Outposts", pos: { top: '650px', left: '1000px' }, desc: "Slam the defensive garrisons of Delhi, encircling the Maratha host's line of retreat." },
-    { stage: CampaignStage.PANIPAT, name: "Panipat Plains", pos: { top: '400px', left: '1050px' }, desc: "The grand showdown. Unleash spearhead cavalry and camel lines." }
+    { stage: CampaignStage.NIZAM_CAMPAIGN, name: "Kabul Outposts", geo: { lat: 34.56, lon: 69.21 }, desc: "Mobilize the Durrani royal guard from Kabul and subdue rebellious border clans to secure the gateway of the Khyber Pass." },
+    { stage: CampaignStage.PUNE, name: "Kandahar", geo: { lat: 31.61, lon: 65.72 }, desc: "Convene the great Council of Emirs to receive tribal oaths of allegiance before heading east." },
+    { stage: CampaignStage.BURHANPUR, name: "Lahore Siege", geo: { lat: 31.52, lon: 74.35 }, desc: "Execute a rapid cavalry vanguard offensive to capture the strategic city of Lahore." },
+    { stage: CampaignStage.GWALIOR, name: "Rohila Pact", geo: { lat: 28.90, lon: 79.50 }, desc: "Secure the vital alliance of Najib-ud-Daula, the Rohilla Afghan leader." },
+    { stage: CampaignStage.DELHI_NEGOTIATIONS, name: "Awadh Siyar", geo: { lat: 26.85, lon: 80.95 }, desc: "Sway Nawab Shuja-ud-Daula of Awadh to join the Durrani side before the Marathas bribe him." },
+    { stage: CampaignStage.SHINDE_STAND, name: "River Crossing", geo: { lat: 29.05, lon: 77.10 }, desc: "Conduct a stealthy midnight river crossing over the Yamuna to trap the scouts." },
+    { stage: CampaignStage.DELHI_BATTLE, name: "Delhi Outposts", geo: { lat: 28.65, lon: 77.23 }, desc: "Slam the defensive garrisons of Delhi, encircling the Maratha host's line of retreat." },
+    { stage: CampaignStage.PANIPAT, name: "Panipat Plains", geo: { lat: 29.39, lon: 76.97 }, desc: "The grand showdown. Unleash spearhead cavalry and camel lines." }
   ];
+
+  const projectedMilestones = milestones.map((m, index) => ({
+    ...m,
+    pos: projectGeo(m.geo.lat, m.geo.lon),
+    order: index,
+  }));
+
+  const routeLegs = projectedMilestones.slice(1).map((m, index) => {
+    const prev = projectedMilestones[index];
+    const lat1 = milestones[index].geo.lat;
+    const lon1 = milestones[index].geo.lon;
+    const lat2 = m.geo.lat;
+    const lon2 = m.geo.lon;
+    const avgLat = ((lat1 + lat2) / 2) * (Math.PI / 180);
+    const kmPerLon = 111.32 * Math.cos(avgLat);
+    const kmPerLat = 110.57;
+    const distanceKm = Math.round(Math.hypot((lon2 - lon1) * kmPerLon, (lat2 - lat1) * kmPerLat));
+
+    return {
+      from: prev,
+      to: m,
+      distanceKm,
+      mid: {
+        left: `${(parseFloat(prev.pos.left) + parseFloat(m.pos.left)) / 2}px`,
+        top: `${(parseFloat(prev.pos.top) + parseFloat(m.pos.top)) / 2}px`,
+      }
+    };
+  });
 
   const isViewingOpponent = activeFaction !== playingFaction;
   const showSecretOpponentView = isViewingOpponent && !isOpponentScouted;
@@ -1535,6 +1609,22 @@ export const StrategicMap: React.FC<{
                🗺️ Full Details
             </button>
           </div>
+
+          <div className="w-[320px] bg-stone-950/95 border border-[#8B5E3C]/25 rounded-sm shadow-2xl backdrop-blur-md p-3 text-left">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-[8px] font-black uppercase tracking-[0.22em] text-stone-500">Terrain Key</span>
+              <span className="text-[8px] font-mono text-saffron uppercase">Geo Atlas</span>
+            </div>
+            <div className="grid grid-cols-2 gap-2 text-[9px] font-mono">
+              <div className="flex items-center gap-2 text-stone-300"><span className="w-3 h-3 rounded-full bg-[#b45309]/70 border border-[#7c2d12]" />Plains & flood basins</div>
+              <div className="flex items-center gap-2 text-stone-300"><span className="w-3 h-3 rounded-full bg-[#2563eb]/70 border border-[#1d4ed8]" />River corridors</div>
+              <div className="flex items-center gap-2 text-stone-300"><span className="w-3 h-3 rounded-full bg-[#6b7280]/70 border border-stone-700" />Mountain ridges</div>
+              <div className="flex items-center gap-2 text-stone-300"><span className="w-3 h-3 rounded-full bg-[#ca8a04]/70 border border-[#92400e]" />Desert / arid belt</div>
+            </div>
+            <div className="mt-2 pt-2 border-t border-[#8B5E3C]/20 text-[9px] leading-relaxed text-stone-400">
+              Drag the map, then follow the corridor labels and km markers to read the campaign as a route across terrain.
+            </div>
+          </div>
         </div>
 
         {/* Fog of War Enemy Column Blindspot warning overlay */}
@@ -1666,6 +1756,62 @@ export const StrategicMap: React.FC<{
               className={`opacity-70 ${showSecretOpponentView ? 'shadow-none' : (activeFaction === 'maratha' ? 'shadow-[0_0_15px_rgba(37,99,235,0.5)]' : 'shadow-[0_0_15px_rgba(220,38,38,0.5)]')}`}
               filter="url(#ink-bleed)"
             />
+
+            {/* Geographic terrain atlas: mountains, river corridors, plains, and plateau bands */}
+            <g opacity="0.95">
+              <path d="M 0 620 C 180 520, 360 500, 560 560 C 720 610, 860 700, 990 860 C 1090 980, 1210 1080, 1390 1110 L 1390 0 L 0 0 Z" fill="#a16207" fillOpacity="0.06" />
+              <path d="M 0 1260 C 320 1160, 620 1140, 930 1200 C 1180 1248, 1380 1310, 1500 1420 C 1320 1540, 1040 1620, 760 1605 C 420 1585, 170 1500, 0 1420 Z" fill="#2563eb" fillOpacity="0.05" />
+              <path d="M 0 2000 C 260 1860, 560 1830, 860 1900 C 1140 1960, 1440 2090, 1610 2260 C 1520 2490, 1290 2640, 940 2680 C 650 2715, 320 2650, 0 2480 Z" fill="#ca8a04" fillOpacity="0.06" />
+              <path d="M 760 3100 C 1020 2920, 1360 2850, 1700 2890 C 2010 2925, 2230 3040, 2410 3210 C 2260 3410, 2030 3530, 1690 3560 C 1320 3588, 1010 3490, 760 3340 Z" fill="#b45309" fillOpacity="0.05" />
+              <path d="M 300 2900 C 420 2550, 640 2340, 940 2200 C 1090 2130, 1220 1980, 1320 1780 C 1390 1640, 1480 1480, 1600 1340" stroke="#7c2d12" strokeWidth="26" strokeOpacity="0.08" fill="none" />
+              <path d="M 1360 650 C 1480 820, 1520 1020, 1480 1240 C 1450 1400, 1480 1560, 1560 1740" stroke="#2563eb" strokeWidth="22" strokeOpacity="0.08" fill="none" />
+              <path d="M 180 1780 C 460 1700, 710 1600, 930 1440 C 1150 1280, 1290 1120, 1360 900" stroke="#0f766e" strokeWidth="16" strokeOpacity="0.08" fill="none" />
+              <text x="130" y="420" fill="#7c2d12" fontSize="32" fontFamily="serif" fontWeight="bold" letterSpacing="0.25em" opacity="0.22" className="select-none">HINDU KUSH RIDGE</text>
+              <text x="360" y="1380" fill="#1d4ed8" fontSize="28" fontFamily="serif" fontWeight="bold" letterSpacing="0.2em" opacity="0.20" className="select-none">PUNJAB WATERWAYS</text>
+              <text x="1050" y="2140" fill="#a16207" fontSize="30" fontFamily="serif" fontWeight="bold" letterSpacing="0.22em" opacity="0.18" className="select-none">INDO-GANGETIC PLAIN</text>
+              <text x="1180" y="3180" fill="#92400e" fontSize="30" fontFamily="serif" fontWeight="bold" letterSpacing="0.22em" opacity="0.20" className="select-none">DECCAN BASALT</text>
+            </g>
+
+            {/* Route distance labels derived from projected historical coordinates */}
+            {routeLegs.map((leg, index) => (
+              <g key={`${leg.from.stage}-${leg.to.stage}`}>
+                <path
+                  d={`M ${parseFloat(leg.from.pos.left)} ${parseFloat(leg.from.pos.top)} L ${parseFloat(leg.to.pos.left)} ${parseFloat(leg.to.pos.top)}`}
+                  stroke={activeFaction === 'maratha' ? '#9a3412' : '#166534'}
+                  strokeWidth="1.25"
+                  strokeDasharray="8 12"
+                  opacity="0.22"
+                  fill="none"
+                />
+                <text
+                  x={leg.mid.left}
+                  y={leg.mid.top}
+                  fill="#6b4f2c"
+                  fontSize="18"
+                  fontFamily="monospace"
+                  fontWeight="700"
+                  opacity="0.5"
+                  className="select-none"
+                >
+                  {leg.distanceKm} km
+                </text>
+              </g>
+            ))}
+
+            {/* Map scale and north arrow */}
+            <g opacity="0.8">
+              <path d="M 3520 3550 L 3520 3690" stroke="#1f2937" strokeWidth="8" strokeLinecap="round" />
+              <path d="M 3520 3550 L 3495 3605 L 3545 3605 Z" fill="#1f2937" />
+              <text x="3505" y="3530" fill="#1f2937" fontSize="24" fontFamily="serif" fontWeight="700">N</text>
+              <rect x="2900" y="3660" width="520" height="18" fill="rgba(0,0,0,0.08)" stroke="#8b5e3c" strokeWidth="2" />
+              <rect x="2900" y="3660" width="130" height="18" fill="#8b5e3c" opacity="0.8" />
+              <rect x="3030" y="3660" width="130" height="18" fill="#d97706" opacity="0.8" />
+              <rect x="3160" y="3660" width="130" height="18" fill="#8b5e3c" opacity="0.8" />
+              <rect x="3290" y="3660" width="130" height="18" fill="#d97706" opacity="0.8" />
+              <text x="2900" y="3700" fill="#4b3b2a" fontSize="20" fontFamily="monospace" fontWeight="700">0</text>
+              <text x="3110" y="3700" fill="#4b3b2a" fontSize="20" fontFamily="monospace" fontWeight="700">250 km</text>
+              <text x="3390" y="3700" fill="#4b3b2a" fontSize="20" fontFamily="monospace" fontWeight="700">500 km</text>
+            </g>
           </svg>
 
           {/* Interactive Geographic Landmarks representing Hindusthan diversity */}
@@ -1830,7 +1976,7 @@ export const StrategicMap: React.FC<{
 
           {/* Milestones - Historical Counters Style */}
           <div className="absolute inset-0 z-20">
-            {milestones.map((m, idx) => {
+            {projectedMilestones.map((m, idx) => {
               const isCompleted = idx < currentStageIndex;
               const isCurrent = idx === currentStageIndex;
               const isLocked = idx > currentStageIndex;
@@ -2160,11 +2306,11 @@ export const StrategicMap: React.FC<{
                   <History size={20} className="text-[#8B5E3C]" />
                 </div>
                 
-                <div className="space-y-4">
-                  <p className="text-[11px] text-[#2D241E] leading-relaxed font-body font-bold italic opacity-80">
-                    Hostilities are imminent at <span className="text-[#8B0000] underline">{milestones[currentStageIndex].name}</span>. 
-                    {activeFaction === 'maratha' ? 
-                      "The Afghan cavalry forces patrol the northern banks. Time is against us. Push forward to Delhi." :
+              <div className="space-y-4">
+                <p className="text-[11px] text-[#2D241E] leading-relaxed font-body font-bold italic opacity-80">
+                  Hostilities are imminent at <span className="text-[#8B0000] underline">{milestones[currentStageIndex].name}</span>. 
+                  {activeFaction === 'maratha' ? 
+                    "The Afghan cavalry forces patrol the northern banks. Time is against us. Push forward to Delhi." :
                       "The Maratha defensive heavy division digs fortifications ahead. Order the vanguard cavalry to mount scouts."
                     }
                   </p>
@@ -2174,15 +2320,18 @@ export const StrategicMap: React.FC<{
                       <span className="text-[9px] text-[#2D241E] font-black uppercase opacity-60 tracking-widest">
                         {activeFaction === 'maratha' ? "Confederacy Cohesion" : "Coalition Alliance Trust"}
                       </span>
-                      <span className="text-[9px] font-black text-[#8B5E3C]">STABLE</span>
-                    </div>
-                    <div className="h-4 w-full bg-stone-950/5 flex p-0.5 gap-0.5">
-                       {[...Array(10)].map((_, i) => (
-                         <div key={i} className={`h-full flex-1 ${i < 7 ? (activeFaction === 'maratha' ? 'bg-saffron' : 'bg-emerald-600') : 'bg-transparent'}`} />
-                       ))}
-                    </div>
+                    <span className="text-[9px] font-black text-[#8B5E3C]">STABLE</span>
+                  </div>
+                  <div className="h-4 w-full bg-stone-950/5 flex p-0.5 gap-0.5">
+                     {[...Array(10)].map((_, i) => (
+                       <div key={i} className={`h-full flex-1 ${i < 7 ? (activeFaction === 'maratha' ? 'bg-saffron' : 'bg-emerald-600') : 'bg-transparent'}`} />
+                     ))}
+                  </div>
+                  <div className="pt-1 text-[9px] uppercase tracking-[0.22em] text-stone-500 font-black">
+                    Route span: {routeLegs.reduce((sum, leg) => sum + leg.distanceKm, 0).toLocaleString()} km
                   </div>
                 </div>
+              </div>
               </div>
               {/* Decorative ink stains */}
               <div className="absolute -top-4 -left-4 w-12 h-12 bg-black/5 rounded-full blur-xl" />
@@ -3122,4 +3271,3 @@ export const StrategicMap: React.FC<{
       </div>
     );
   };
-

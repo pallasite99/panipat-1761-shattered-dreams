@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { Screen } from '../types';
 import { TopBar, SideNav } from '../components/SharedUI';
+import { FallbackImage } from '../components/FallbackImage';
 
 const TOPICS = [
   {
@@ -433,7 +434,12 @@ export const Encyclopedia: React.FC<{
                     <div className="relative group overflow-hidden border-2 border-[#8B5E3C] shadow-2xl transform -rotate-1">
                       <div className="w-full h-80 md:h-[500px] bg-stone-850 flex items-center justify-center relative">
                          <span className="text-9xl font-serif text-stone-700 opacity-20">{selectedTopic.title.charAt(0)}</span>
-                         <img referrerPolicy="no-referrer" src={selectedTopic.image} alt={selectedTopic.title} className="absolute inset-0 w-full h-full object-cover mix-blend-multiply opacity-85" />
+                         <FallbackImage
+                           src={selectedTopic.image}
+                           fallbackSrc="/historical_map.png"
+                           alt={selectedTopic.title}
+                           className="absolute inset-0 w-full h-full object-cover mix-blend-multiply opacity-85"
+                         />
                       </div>
                       {/* Caption Overlay */}
                       <div className="absolute bottom-4 left-6 bg-stone-950 text-white text-[9px] font-black tracking-widest px-4 py-1 uppercase scale-x-[-1] origin-left rotate-1">

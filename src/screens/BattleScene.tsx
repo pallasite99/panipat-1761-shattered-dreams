@@ -421,6 +421,105 @@ const WEATHER_CONFIGS = {
   fog: { name: "Winter Cold Fog", visibilityMod: -60, accuracyMod: -25, desc: "Thick frosted haze shields troop lines (-25% acc).", color: "text-[#cbd5e1]" },
 };
 
+type BattlePrahar = {
+  key: string;
+  name: string;
+  subtitle: string;
+  timeOfDay: 'dawn' | 'noon' | 'dusk' | 'midnight';
+  weather: 'clear' | 'rain' | 'dust_storm' | 'fog';
+  visibilityHint: string;
+  combatHint: string;
+};
+
+const BATTLE_PRAHARS: BattlePrahar[] = [
+  {
+    key: 'arunodaya',
+    name: 'Arunodaya Prahar',
+    subtitle: 'First light seeps through the smoke.',
+    timeOfDay: 'dawn',
+    weather: 'fog',
+    visibilityHint: 'Low-contrast silhouettes; ambushes are easier to hide.',
+    combatHint: 'Skirmishers and scouts gain the initiative in the haze.'
+  },
+  {
+    key: 'pratah',
+    name: 'Pratah Prahar',
+    subtitle: 'Brightening morning with clear sight-lines.',
+    timeOfDay: 'dawn',
+    weather: 'clear',
+    visibilityHint: 'Long sight-lines return and volleys become cleaner.',
+    combatHint: 'Ideal window for cavalry probes and coordinated charges.'
+  },
+  {
+    key: 'sangava',
+    name: 'Sangava Prahar',
+    subtitle: 'The sun rises hard over the field.',
+    timeOfDay: 'noon',
+    weather: 'clear',
+    visibilityHint: 'Open terrain is fully readable from edge to edge.',
+    combatHint: 'Frontline swordfights become direct and punishing.'
+  },
+  {
+    key: 'madhyahna',
+    name: 'Madhyahna Prahar',
+    subtitle: 'Heat shimmers across the field and dust lifts.',
+    timeOfDay: 'noon',
+    weather: 'dust_storm',
+    visibilityHint: 'Glare and sand shorten effective engagement range.',
+    combatHint: 'Charge timing matters more than raw numbers.'
+  },
+  {
+    key: 'aparahna',
+    name: 'Aparahna Prahar',
+    subtitle: 'Late-day pressure builds before the light turns.',
+    timeOfDay: 'noon',
+    weather: 'clear',
+    visibilityHint: 'Strong visibility with tired formations exposed.',
+    combatHint: 'This is the best moment for a decisive breach.'
+  },
+  {
+    key: 'sayam',
+    name: 'Sayam Prahar',
+    subtitle: 'Evening rain slicks the ground.',
+    timeOfDay: 'dusk',
+    weather: 'rain',
+    visibilityHint: 'Wet ground slows footwork and weapon recovery.',
+    combatHint: 'Sword parries and short bursts become safer than long pushes.'
+  },
+  {
+    key: 'pradosh',
+    name: 'Pradosh Prahar',
+    subtitle: 'Twilight folds the battlefield into shadow.',
+    timeOfDay: 'dusk',
+    weather: 'fog',
+    visibilityHint: 'Enemy movement vanishes in the lowering light.',
+    combatHint: 'Close-quarters duels become the main way to read the field.'
+  },
+  {
+    key: 'nisitha',
+    name: 'Nisitha Prahar',
+    subtitle: 'Night command and candlelit steel.',
+    timeOfDay: 'midnight',
+    weather: 'fog',
+    visibilityHint: 'Only the nearest enemies stay visible at all.',
+    combatHint: 'Ambushes, torchlight, and last-second counters dominate.'
+  },
+];
+
+const PRAHAR_CYCLE_SECONDS = 6;
+
+const getPraharForBattle = (stageIndex: number, battleTimeLeft: number, phase: 'choosing_drop' | 'dropping' | 'clash' | 'resolution' | 'defeat') => {
+  const baseIndex = Math.max(0, stageIndex - 1) % BATTLE_PRAHARS.length;
+  if (phase !== 'clash') {
+    return { ...BATTLE_PRAHARS[baseIndex], index: baseIndex };
+  }
+
+  const elapsedSeconds = Math.max(0, 45 - battleTimeLeft);
+  const cycleOffset = Math.floor(elapsedSeconds / PRAHAR_CYCLE_SECONDS);
+  const index = (baseIndex + cycleOffset) % BATTLE_PRAHARS.length;
+  return { ...BATTLE_PRAHARS[index], index };
+};
+
 export interface HistoricalBrief {
   title: string;
   location: string;
@@ -720,6 +819,7 @@ export const BattleScene: React.FC<BattleProps> = ({ onNavigate, onAdvance, stag
   // Weather and Music synthesizers variables
   const [timeOfDay, setTimeOfDay] = useState<'dawn' | 'noon' | 'dusk' | 'midnight'>('noon');
   const [weather, setWeather] = useState<'clear' | 'rain' | 'dust_storm' | 'fog'>('clear');
+  const lastPraharRef = useRef<string>('');
   const [isMusicPlaying, setIsMusicPlaying] = useState(false);
   const [musicVolume, setMusicVolume] = useState(0.35);
   const audioSynthRef = useRef<FactionAudioSynth | null>(null);
@@ -749,18 +849,12 @@ export const BattleScene: React.FC<BattleProps> = ({ onNavigate, onAdvance, stag
 
   // Helper to transition to the next stage of the battle
   const handleNextStage = () => {
+    const nextStageIndex = currentStageIndex + 1;
+    const nextPrahar = getPraharForBattle(nextStageIndex, 45, 'choosing_drop');
+
     setCurrentStageIndex(prev => prev + 1);
     setMarathaMorale(100);
     setDurraniMorale(100 * stageDifficulty * difficultyMult);
-    
-    // Atmospheric environmental change per stage
-    const times: ('dawn' | 'noon' | 'dusk' | 'midnight')[] = ['dawn', 'noon', 'dusk', 'midnight'];
-    const weathers: ('clear' | 'rain' | 'dust_storm' | 'fog')[] = ['clear', 'rain', 'dust_storm', 'fog'];
-    const nextTime = times[(currentStageIndex) % times.length];
-    const nextWeather = weathers[(currentStageIndex) % weathers.length];
-    
-    setTimeOfDay(nextTime);
-    setWeather(nextWeather);
     setBattlePhase('choosing_drop');
     setShowStageResultModal(false);
 
@@ -774,7 +868,7 @@ export const BattleScene: React.FC<BattleProps> = ({ onNavigate, onAdvance, stag
     setEnemiesSummonedCount(0);
 
     setLog(prev => [
-      `🔄 [NEXT STAGE PREPPED] Initiating Stage ${currentStageIndex + 1} of 3! Changing weather to ${nextWeather.toUpperCase()} at ${nextTime.toUpperCase()}!`,
+      `🔄 [NEXT STAGE PREPPED] Initiating Stage ${nextStageIndex} of 3! The battlefield enters ${nextPrahar.name.toUpperCase()} with ${nextPrahar.weather.toUpperCase()} skies.`,
       "Choose a new dropsite coordinates to deploy units and resume the fight!",
       ...prev.slice(0, 3)
     ]);
@@ -816,6 +910,22 @@ export const BattleScene: React.FC<BattleProps> = ({ onNavigate, onAdvance, stag
 
   const currentVisibility = Math.max(10, TIME_OF_DAY_CONFIGS[timeOfDay].visibility + WEATHER_CONFIGS[weather].visibilityMod);
   const currentAccuracy = Math.max(15, TIME_OF_DAY_CONFIGS[timeOfDay].accuracy + WEATHER_CONFIGS[weather].accuracyMod);
+  const currentPrahar = getPraharForBattle(currentStageIndex, battleTimeLeft, battlePhase);
+
+  useEffect(() => {
+    setTimeOfDay(currentPrahar.timeOfDay);
+    setWeather(currentPrahar.weather);
+
+    if (currentPrahar.key !== lastPraharRef.current) {
+      if (lastPraharRef.current && battlePhase === 'clash') {
+        setLog(prev => [
+          `🕯️ PRAHAR SHIFT: ${currentPrahar.name} now governs the battlefield. ${currentPrahar.combatHint}`,
+          ...prev.slice(0, 4)
+        ]);
+      }
+      lastPraharRef.current = currentPrahar.key;
+    }
+  }, [currentPrahar.key, currentPrahar.timeOfDay, currentPrahar.weather, currentPrahar.name, currentPrahar.combatHint, battlePhase]);
 
   // Difficulty multiplier
   const stageDifficulty = {
@@ -879,6 +989,7 @@ export const BattleScene: React.FC<BattleProps> = ({ onNavigate, onAdvance, stag
     name: string;
     title: string;
     difficulty: 'recruit' | 'veteran' | 'peshwa';
+    viewMode?: 'duel' | 'skirmish';
   } | null>(null);
 
   const handleCloseDuelArena = (resolvedHealth: number, outcome: 'victory' | 'defeat' | 'retreat') => {
@@ -1710,7 +1821,7 @@ export const BattleScene: React.FC<BattleProps> = ({ onNavigate, onAdvance, stag
               </div>
             )}
 
-            <BattleCanvas 
+              <BattleCanvas 
               phase={battlePhase === 'choosing_drop' || battlePhase === 'dropping' ? 'initial' : 'clash'} 
               clashAction={clashAction} 
               enemyAction={enemyAction} 
@@ -1720,6 +1831,7 @@ export const BattleScene: React.FC<BattleProps> = ({ onNavigate, onAdvance, stag
               onCommanderShout={handleCommanderShout}
               timeOfDay={timeOfDay}
               weather={weather}
+              battlePrahar={currentPrahar.name}
               stage={stage}
               fortWallIntegrity={fortWallIntegrity}
               spawnAllyTrigger={spawnAllyTrigger}
@@ -1793,6 +1905,7 @@ export const BattleScene: React.FC<BattleProps> = ({ onNavigate, onAdvance, stag
                   opponentName={activeDuelOpponent.name}
                   opponentTitle={activeDuelOpponent.title}
                   difficulty={activeDuelOpponent.difficulty}
+                  viewMode={activeDuelOpponent.viewMode}
                   onClose={handleCloseDuelArena}
                 />
               )}
@@ -1969,8 +2082,77 @@ export const BattleScene: React.FC<BattleProps> = ({ onNavigate, onAdvance, stag
 
             </div>
 
+            <div id="prahar-status-card" className="mb-4 bg-[#121315] border border-stone-800 p-3.5 rounded-sm text-left shadow-lg space-y-3">
+              <div className="flex justify-between items-center border-b border-stone-900 pb-2">
+                <h4 className="text-[9.5px] font-mono font-black text-saffron uppercase tracking-widest flex items-center gap-1.5">
+                  <Compass className="h-3 w-3 animate-spin text-saffron" style={{ animationDuration: '6s' }} />
+                  BATTLE PRAHAR CHRONICLE
+                </h4>
+                <span className="text-[8px] font-mono font-bold bg-stone-900 px-1.5 py-0.5 rounded-xs text-stone-400">
+                  AUTO-CYCLING
+                </span>
+              </div>
+
+              <div className="bg-stone-950 border border-[#8B5E3C]/25 rounded-xs p-3 space-y-2.5">
+                <div className="flex justify-between gap-3">
+                  <div>
+                    <div className="text-[8px] font-mono font-black text-stone-500 uppercase tracking-widest block">
+                      CURRENT PRAHAR
+                    </div>
+                    <div className="text-sm font-serif font-black text-white mt-1 leading-none">
+                      {currentPrahar.name}
+                    </div>
+                    <div className="text-[10px] text-stone-400 italic mt-1.5 leading-snug">
+                      {currentPrahar.subtitle}
+                    </div>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <span className="inline-flex px-1.5 py-0.5 text-[8px] font-mono font-black uppercase tracking-wider rounded-xs bg-saffron/10 text-saffron border border-saffron/20">
+                      {currentPrahar.index + 1}/8
+                    </span>
+                    <div className={`text-[10px] font-mono font-bold mt-2 ${TIME_OF_DAY_CONFIGS[timeOfDay].color}`}>
+                      {TIME_OF_DAY_CONFIGS[timeOfDay].name}
+                    </div>
+                    <div className={`text-[10px] font-mono font-bold mt-0.5 ${WEATHER_CONFIGS[weather].color}`}>
+                      {WEATHER_CONFIGS[weather].name}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="h-1.5 bg-stone-900 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-gradient-to-r from-saffron via-amber-400 to-orange-600"
+                    style={{ width: `${((currentPrahar.index + 1) / BATTLE_PRAHARS.length) * 100}%` }}
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-2 text-[9px] font-mono">
+                  <div className="bg-stone-900/80 border border-stone-800 rounded-xs p-2">
+                    <span className="text-stone-500 uppercase tracking-widest block">Visibility</span>
+                    <span className="text-white font-black block mt-0.5">{currentVisibility}%</span>
+                  </div>
+                  <div className="bg-stone-900/80 border border-stone-800 rounded-xs p-2">
+                    <span className="text-stone-500 uppercase tracking-widest block">Accuracy</span>
+                    <span className="text-[#ea580c] font-black block mt-0.5">{currentAccuracy}%</span>
+                  </div>
+                </div>
+
+                <p className="text-[9.5px] text-stone-300 leading-tight font-sans italic bg-stone-900/60 p-2 border border-stone-900 rounded-xs">
+                  <span className="text-saffron font-bold">Field cue:</span> {currentPrahar.visibilityHint}
+                </p>
+
+                <button
+                  type="button"
+                  onClick={triggerWeatherTacticCountermeasure}
+                  className="w-full py-2 bg-[#ea580c] hover:bg-orange-500 text-stone-950 font-mono text-[9px] font-black uppercase tracking-widest rounded-xs transition-colors cursor-pointer text-center flex items-center justify-center gap-1.5 shadow-md active:scale-[0.98]"
+                >
+                  ⚔️ EXECUTE COUNTERMEASURE
+                </button>
+              </div>
+            </div>
+
             {/* AMBIENCE, WEATHER & MILITARY SYNTH CONTROLS */}
-            <div id="weather-and-music-council" className="bg-[#121315] border border-stone-800 p-3.5 rounded-sm text-left shadow-lg space-y-3.5 my-4">
+            <div id="weather-and-music-council" className="hidden bg-[#121315] border border-stone-800 p-3.5 rounded-sm text-left shadow-lg space-y-3.5 my-4">
               <div className="flex justify-between items-center border-b border-stone-900 pb-2">
                 <h4 className="text-[9.5px] font-mono font-black text-saffron uppercase tracking-widest flex items-center gap-1.5">
                   <Compass className="h-3 w-3 animate-spin text-saffron" style={{ animationDuration: '6s' }} />
@@ -2147,13 +2329,17 @@ export const BattleScene: React.FC<BattleProps> = ({ onNavigate, onAdvance, stag
                     setActiveDuelOpponent({
                       name: "Jahan Khan",
                       title: "Grand General of Durrani Vanguard",
-                      difficulty: battleDifficulty
+                      difficulty: battleDifficulty,
+                      viewMode: 'skirmish'
                     });
                   }}
                   className="w-full mt-3 py-2 bg-gradient-to-r from-saffron to-[#9a3412] hover:from-[#f59e0b] hover:to-[#b45308] disabled:opacity-40 text-stone-950 font-mono text-[9px] font-black uppercase tracking-wider border border-[#fed7aa] rounded-xs cursor-pointer flex items-center justify-center gap-1.5 shadow-md transition-all active:scale-[0.98]"
                 >
-                  ⚔️ INITIATE CLOSE-COMBAT TALWAR DUEL
+                  ⚔️ ENTER FIRST-PERSON SKIRMISH
                 </button>
+                <p className="mt-2 text-[9px] text-stone-400 font-sans leading-snug">
+                  Fight from the blade-line view: closer camera, tighter reaction windows, and a skirmish HUD instead of the standard duel card.
+                </p>
               </div>
 
               <div id="tactics-bulletin-actions" className="grid grid-cols-2 gap-2">
