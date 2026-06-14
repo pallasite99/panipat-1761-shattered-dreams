@@ -66,7 +66,6 @@ interface BattleCanvasProps {
   onCommanderShout?: (speaker: string, role: string, avatar: string, text: string, faction: 'maratha' | 'durrani') => void;
   timeOfDay?: 'dawn' | 'noon' | 'dusk' | 'midnight';
   weather?: 'clear' | 'rain' | 'dust_storm' | 'fog';
-  battlePrahar?: string;
   stage?: string;
   fortWallIntegrity?: number;
   spawnAllyTrigger?: number;
@@ -85,7 +84,6 @@ export const BattleCanvas: React.FC<BattleCanvasProps> = ({
   onCommanderShout,
   timeOfDay = 'noon',
   weather = 'clear',
-  battlePrahar,
   stage,
   fortWallIntegrity = 100,
   spawnAllyTrigger = 0,
@@ -624,9 +622,6 @@ export const BattleCanvas: React.FC<BattleCanvasProps> = ({
 
       // 8.5. Draw Dynamic Weather & Time of Day atmospheric overlays (Midnight shadows, Rain, Dust storm, Fog)
       drawAtmosphericOverlay(ctx, canvas, time);
-      if (battlePrahar) {
-        drawPraharBanner(ctx, canvas, battlePrahar);
-      }
 
       // 9. Draw the combat sword & artillery crosshair
       drawMedievalReticle(ctx, canvas);
@@ -3162,30 +3157,6 @@ export const BattleCanvas: React.FC<BattleCanvasProps> = ({
         ctx.fill();
       }
     }
-  };
-
-  const drawPraharBanner = (ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement, label: string) => {
-    ctx.save();
-    ctx.globalAlpha = 0.9;
-    ctx.fillStyle = 'rgba(15, 12, 11, 0.72)';
-    ctx.strokeStyle = 'rgba(245, 158, 11, 0.35)';
-    ctx.lineWidth = 1;
-    const x = 18;
-    const y = 18;
-    const w = Math.min(canvas.width * 0.42, 250);
-    const h = 42;
-    ctx.beginPath();
-    ctx.roundRect(x, y, w, h, 8);
-    ctx.fill();
-    ctx.stroke();
-    ctx.fillStyle = '#fbbf24';
-    ctx.font = 'bold 12px serif';
-    ctx.textBaseline = 'middle';
-    ctx.fillText('PRAHAR', x + 12, y + 15);
-    ctx.fillStyle = '#f8fafc';
-    ctx.font = 'bold 13px serif';
-    ctx.fillText(label, x + 12, y + 28);
-    ctx.restore();
   };
 
   // Draw 1st Person Armaments (The heavy brass cannon & the curved Talwar sword blade)

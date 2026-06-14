@@ -1,13 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Shield, Swords, AlertTriangle, Zap, LogOut, Award, RefreshCw } from 'lucide-react';
-import { panipatAudioEngine } from '../utils/audioSystem';
 
 interface SwordDuelArenaProps {
   opponentName?: string;
   opponentTitle?: string;
   difficulty?: 'recruit' | 'veteran' | 'peshwa';
-  viewMode?: 'duel' | 'skirmish';
   onClose: (resolvedHealth: number, outcome: 'victory' | 'defeat' | 'retreat') => void;
 }
 
@@ -37,12 +35,10 @@ export const SwordDuelArena: React.FC<SwordDuelArenaProps> = ({
   opponentName = "Jahan Khan",
   opponentTitle = "Grand General of Durrani Vanguard",
   difficulty = "veteran",
-  viewMode = "duel",
   onClose,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [combatState, setCombatState] = useState<'intro' | 'fighting' | 'victory' | 'defeat'>('intro');
-  const isSkirmishView = viewMode === 'skirmish';
 
   // Combat status variables
   const [playerHp, setPlayerHp] = useState(100);
@@ -133,43 +129,6 @@ export const SwordDuelArena: React.FC<SwordDuelArenaProps> = ({
         ctx.lineTo(canvas.width / 2 + (i - canvas.width / 2) * 1.5, canvas.height);
       }
       ctx.stroke();
-      
-      // Draw flashing telegraph arrow overlays directly on the canvas
-      if (enemyTelegraph && combatState === 'fighting') {
-        ctx.save();
-        ctx.strokeStyle = `rgba(239, 68, 68, ${0.4 + Math.sin(Date.now() * 0.015) * 0.35})`;
-        ctx.lineWidth = 4;
-        ctx.shadowColor = '#ef4444';
-        ctx.shadowBlur = 12;
-        ctx.beginPath();
-        if (enemyTelegraph.direction === 'left') {
-          // Pointing left-to-right down
-          ctx.moveTo(80, 160);
-          ctx.lineTo(210, 240);
-          ctx.moveTo(210, 240);
-          ctx.lineTo(175, 240);
-          ctx.moveTo(210, 240);
-          ctx.lineTo(200, 205);
-        } else if (enemyTelegraph.direction === 'right') {
-          // Pointing right-to-left down
-          ctx.moveTo(500, 160);
-          ctx.lineTo(370, 240);
-          ctx.moveTo(370, 240);
-          ctx.lineTo(405, 240);
-          ctx.moveTo(370, 240);
-          ctx.lineTo(380, 205);
-        } else {
-          // Overhead pointing straight down
-          ctx.moveTo(290, 75);
-          ctx.lineTo(290, 185);
-          ctx.moveTo(290, 185);
-          ctx.lineTo(275, 160);
-          ctx.moveTo(290, 185);
-          ctx.lineTo(305, 160);
-        }
-        ctx.stroke();
-        ctx.restore();
-      }
 
       // Screen shake offset calculation
       if (screenShakeRef.current > 0) {
@@ -355,13 +314,10 @@ export const SwordDuelArena: React.FC<SwordDuelArenaProps> = ({
       const directions: StrikeDirection[] = ['left', 'right', 'overhead'];
       const randomDirection = directions[Math.floor(Math.random() * directions.length)];
       
-      // Difficulty defines reaction window time - tightened for reflex play
-      let windowMs = 2000;
-      if (difficulty === 'recruit') windowMs = 3000;
-      if (difficulty === 'peshwa') windowMs = 950;
-
-      // Play warning snare ruffles to alert the player's reflexes
-      panipatAudioEngine.playSnare();
+      // Difficulty defines reaction window time
+      let windowMs = 2800;
+      if (difficulty === 'recruit') windowMs = 3800;
+      if (difficulty === 'peshwa') windowMs = 1950;
 
       setEnemyTelegraph({
         direction: randomDirection,
@@ -441,9 +397,6 @@ export const SwordDuelArena: React.FC<SwordDuelArenaProps> = ({
       }
       return remaining;
     });
-
-    // Play heavy Nagada thump for taking damage
-    panipatAudioEngine.playNagada();
 
     spawnDuelSparks(240, 240, '#f87171'); // red blood sparks
     floatingTextsRef.current.push({
@@ -563,10 +516,6 @@ export const SwordDuelArena: React.FC<SwordDuelArenaProps> = ({
         }
 
         if (perfectParry) {
-          // Play clash + extra dramatic high-pitched effects on critical riposte
-          panipatAudioEngine.playClash();
-          panipatAudioEngine.playSnare();
-          
           // Glorious counter shockwave! Posture break the enemy instantly & restore player posture!
           setEnemyPosture(prev => Math.max(0, prev - 45));
           setPlayerPosture(prev => Math.min(100, prev + 25));
@@ -587,9 +536,6 @@ export const SwordDuelArena: React.FC<SwordDuelArenaProps> = ({
 
           addCombatLog(`⚡ PERFECT PARRY! You deflect the commander's heavy iron blade and riposte! (-20 HP, Posture Broken!)`);
         } else {
-          // Play steel block clash sound
-          panipatAudioEngine.playClash();
-          
           // Standard block deflect
           setPlayerPosture(p => Math.min(100, p + 10));
           setEnemyPosture(p => Math.max(0, p - 15));
@@ -610,7 +556,6 @@ export const SwordDuelArena: React.FC<SwordDuelArenaProps> = ({
         setEnemyTelegraph(null);
       } else {
         // Punish wild blind parrying
-        panipatAudioEngine.playSnare();
         setPlayerPosture(p => Math.max(0, p - 10));
         addCombatLog(`⚠️ You swung into a defensive parry stance blindly, losing critical guard focus!`);
       }
@@ -622,25 +567,22 @@ export const SwordDuelArena: React.FC<SwordDuelArenaProps> = ({
   };
 
   const handleConcludeDuel = () => {
-    if (combatState === 'victory') {
-      localStorage.setItem('achieve_duel', 'true');
-    }
     onClose(playerHp, combatState === 'victory' ? 'victory' : 'defeat');
   };
 
   return (
-    <div className={`absolute inset-0 z-50 bg-[#070505]/95 backdrop-blur-sm flex flex-col items-center justify-center ${isSkirmishView ? 'p-0' : 'p-4'}`}>
+    <div className="absolute inset-0 z-50 bg-[#070505]/95 backdrop-blur-sm flex flex-col items-center justify-center p-4">
       
       {/* HEADER BAR */}
-      <div className={`w-full bg-gradient-to-r from-stone-900 via-amber-950 to-stone-900 border-t-2 border-b-2 border-saffron py-2.5 px-4 flex justify-between items-center shadow-xl ${isSkirmishView ? 'max-w-none mb-0 rounded-none' : 'max-w-[620px] mb-3 rounded-xs'}`}>
+      <div className="w-full max-w-[620px] bg-gradient-to-r from-stone-900 via-amber-950 to-stone-900 border-t-2 border-b-2 border-saffron py-2.5 px-4 flex justify-between items-center mb-3 shadow-xl">
         <div className="flex items-center gap-3">
           <Swords size={20} className="text-saffron animate-pulse" />
           <div className="text-left">
             <h4 className="text-[14px] font-serif font-black text-white leading-none uppercase tracking-wide">
-              {isSkirmishView ? 'First-Person Skirmish Line' : 'Close-Combat Talwar Duel Arena'}
+              Close-Combat Talwar Duel Arena
             </h4>
             <span className="text-[8.5px] font-mono text-saffron uppercase tracking-widest leading-none">
-              {isSkirmishView ? 'Step into the blade line and fight in first person' : "Ahmad Shah's Elite Vanguard Confrontation"}
+              Ahmad Shah's Elite Vanguard Confrontation
             </span>
           </div>
         </div>
@@ -657,13 +599,13 @@ export const SwordDuelArena: React.FC<SwordDuelArenaProps> = ({
         )}
       </div>
 
-      <div className={`w-full grid grid-cols-1 md:grid-cols-12 items-stretch ${isSkirmishView ? 'max-w-none gap-0' : 'max-w-[620px] gap-3'}`}>
+      <div className="w-full max-w-[620px] grid grid-cols-1 md:grid-cols-12 gap-3 items-stretch">
         
         {/* ACTION / VISUAL CANVAS AREA */}
-        <div className={`md:col-span-8 flex flex-col bg-stone-950 border border-stone-850 p-2 relative shadow-2xl ${isSkirmishView ? 'rounded-none min-h-[72vh]' : 'rounded-xs'}`}>
+        <div className="md:col-span-8 flex flex-col bg-stone-950 border border-stone-850 p-2 relative rounded-xs shadow-2xl">
           
           {/* STATS BARS HUD OVERLAYS */}
-          <div className={`absolute top-4 left-4 right-4 flex justify-between gap-5 z-25 pointer-events-none select-none ${isSkirmishView ? 'top-5 left-5 right-5' : ''}`}>
+          <div className="absolute top-4 left-4 right-4 flex justify-between gap-5 z-25 pointer-events-none select-none">
             
             {/* Player Side Bar */}
             <div className="flex-1 max-w-[170px] text-left">
@@ -755,26 +697,8 @@ export const SwordDuelArena: React.FC<SwordDuelArenaProps> = ({
             ref={canvasRef}
             width={580}
             height={360}
-            className={`w-full bg-[#0c0807] border border-stone-850 ${isSkirmishView ? 'aspect-[16/9] min-h-[62vh] rounded-none' : 'aspect-[58/36] rounded-xs'}`}
+            className="w-full aspect-[58/36] bg-[#0c0807] rounded-xs border border-stone-850"
           />
-
-          {isSkirmishView && combatState === 'fighting' && (
-            <div className="absolute inset-x-0 bottom-0 z-20 pointer-events-none">
-              <div className="mx-auto max-w-5xl px-4 pb-4">
-                <div className="grid grid-cols-3 gap-2 text-[8px] font-mono uppercase tracking-[0.24em] text-stone-300">
-                  <div className="bg-stone-950/90 border border-stone-800 px-3 py-2 rounded-xs">
-                    Blade stance ready
-                  </div>
-                  <div className="bg-stone-950/90 border border-saffron/30 px-3 py-2 rounded-xs text-saffron text-center">
-                    First-person skirmish active
-                  </div>
-                  <div className="bg-stone-950/90 border border-stone-800 px-3 py-2 rounded-xs text-right">
-                    Move with A/D, parry with space
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
 
           {/* COMBAT STATES LAYERS */}
           {combatState === 'intro' && (

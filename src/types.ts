@@ -14,8 +14,9 @@ export enum Screen {
   VICTORY = 'VICTORY',
   BATTLE = 'BATTLE',
   ENCYCLOPEDIA = 'ENCYCLOPEDIA',
-  LEARNING_HUB = 'LEARNING_HUB',
   TIMELINE = 'TIMELINE',
+  LMS = 'LMS',
+  CARTOGRAPHY = 'CARTOGRAPHY',
 }
 
 export enum CampaignStage {

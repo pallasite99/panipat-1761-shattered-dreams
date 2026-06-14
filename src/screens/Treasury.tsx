@@ -27,6 +27,11 @@ export const Treasury: React.FC<{
   onHelp?: () => void;
   onSettings?: () => void;
 }> = ({ onNavigate, isMenuOpen, onToggleMenu, onMenuClose, onHelp, onSettings }) => {
+  React.useEffect(() => {
+    const savedStage = localStorage.getItem('panipat_campaign_stage') || 'nizam_campaign';
+    localStorage.setItem(`cleared_treasury_${savedStage}`, 'true');
+  }, []);
+
   // Sync core stats with localStorage
   const [treasuryMohurs, setTreasuryMohurs] = useState<number>(() => {
     const saved = localStorage.getItem('panipat_campaign_treasury');

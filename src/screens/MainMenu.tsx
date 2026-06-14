@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Flag, Swords, Users, Settings, ChevronRight, HelpCircle, Book, BookOpen, Scroll, Award, GraduationCap } from 'lucide-react';
+import { Flag, Swords, Users, Settings, ChevronRight, HelpCircle, Book, BookOpen, Scroll, GraduationCap, Compass } from 'lucide-react';
 import { Screen, CampaignStage, General } from '../types';
 
 const MARATHA_GENERALS: General[] = [
@@ -179,6 +179,12 @@ const StoryScreen = ({ faction, onComplete }: { faction: 'maratha' | 'durrani'; 
               src={faction === 'maratha' ? "/historical_map.png" : "/afghan_map.png"} 
               alt="Historical Map" 
               className="w-full h-full object-cover rounded-sm filter brightness-90 sepia-[20%]" 
+              onError={(e) => {
+                (e.target as HTMLImageElement).src = faction === 'maratha' 
+                  ? 'https://images.unsplash.com/photo-1578301978693-85fa9c0320b9?q=80&w=800&auto=format&fit=crop' 
+                  : 'https://images.unsplash.com/photo-1524661135-423995f22d0b?q=80&w=800&auto=format&fit=crop';
+              }}
+              referrerPolicy="no-referrer"
             />
           </div>
           <div className="mt-4 p-4 bg-stone-950 border border-stone-800 text-stone-400 text-xs italic leading-relaxed text-left rounded-sm font-sans">
@@ -239,13 +245,12 @@ export const MainMenu: React.FC<{
   const [devMode, setDevMode] = useState(false);
   const [faction, setFaction] = useState<'maratha' | 'durrani' | null>(null);
   const [general, setGeneral] = useState<General | null>(null);
-  const [showHallOfRecords, setShowHallOfRecords] = useState(false);
-  const [recordsTab, setRecordsTab] = useState<'leaderboard' | 'achievements'>('leaderboard');
 
   const menuItems = [
     { id: Screen.STRATEGIC_MAP, label: 'Grand Campaign', icon: Flag },
     { id: Screen.TACTICAL_HUD, label: 'Skirmish', icon: Swords },
-    { id: Screen.LEARNING_HUB, label: 'Learning Hub', icon: GraduationCap },
+    { id: Screen.LMS, label: 'Grand Academy', icon: GraduationCap },
+    { id: Screen.CARTOGRAPHY, label: 'Imperial Cartography', icon: Compass },
     { id: Screen.WAR_COUNCIL, label: 'Multiplayer', icon: Users },
   ];
 
@@ -334,7 +339,7 @@ export const MainMenu: React.FC<{
       <div className="absolute inset-0 z-0">
         <div 
           className="absolute inset-0 bg-cover bg-center mix-blend-overlay opacity-60"
-          style={{ backgroundImage: "url('/historical_map.png')" }}
+          style={{ backgroundImage: "url('https://images.unsplash.com/photo-1543165365-072e2ed12aec?q=80&w=2070&auto=format&fit=crop')" }}
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-black/80" />
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_100%,rgba(255,153,51,0.15),transparent_70%)]" />
@@ -400,118 +405,12 @@ export const MainMenu: React.FC<{
       <footer className="fixed bottom-0 w-full z-50 flex justify-between items-center px-10 py-4 bg-stone-900/95 border-t border-stone-800">
         <button 
              onClick={() => onNavigate(Screen.ENCYCLOPEDIA)}
-             className="flex items-center gap-2 text-stone-500 hover:text-saffron transition-all cursor-pointer"
+             className="flex items-center gap-2 text-stone-500 hover:text-saffron transition-all"
         >
             <Book size={20} />
             <span className="uppercase text-xs font-bold tracking-widest">Encyclopedia</span>
         </button>
-
-        <button 
-             onClick={() => setShowHallOfRecords(true)}
-             className="flex items-center gap-2 text-stone-500 hover:text-saffron transition-all cursor-pointer"
-        >
-            <Award size={20} />
-            <span className="uppercase text-xs font-bold tracking-widest">Hall of Records</span>
-        </button>
       </footer>
-
-      {showHallOfRecords && (
-        <div className="fixed inset-0 z-[250] bg-black/90 backdrop-blur-md flex items-center justify-center p-4">
-          <div className="w-full max-w-2xl bg-[#120c09] border-4 border-saffron p-6 shadow-2xl relative text-left rounded-sm font-sans text-stone-200">
-            {/* Double Border Accent */}
-            <div className="absolute inset-1.5 border border-[#8B5E3C]/30 rounded-xs pointer-events-none" />
-            
-            <div className="relative z-10">
-              <h3 className="font-serif text-2xl font-black text-saffron uppercase tracking-widest text-center border-b border-[#8B5E3C]/30 pb-3">
-                🏆 Hall of Records 🏆
-              </h3>
-              
-              <div className="flex gap-4 my-5 justify-center">
-                <button
-                  onClick={() => setRecordsTab('leaderboard')}
-                  className={`px-4 py-2 font-mono text-xs uppercase font-bold tracking-wider rounded-xs border cursor-pointer ${recordsTab === 'leaderboard' ? 'bg-saffron text-stone-950 border-saffron' : 'border-stone-700 text-stone-400 hover:text-stone-200'}`}
-                >
-                  Global Leaderboard
-                </button>
-                <button
-                  onClick={() => setRecordsTab('achievements')}
-                  className={`px-4 py-2 font-mono text-xs uppercase font-bold tracking-wider rounded-xs border cursor-pointer ${recordsTab === 'achievements' ? 'bg-saffron text-stone-950 border-saffron' : 'border-stone-700 text-stone-400 hover:text-stone-200'}`}
-                >
-                  Campaign Achievements
-                </button>
-              </div>
-
-              {recordsTab === 'leaderboard' ? (
-                <div className="bg-stone-950 p-4 border border-stone-850 rounded-sm">
-                  <span className="text-[10px] font-mono font-bold text-stone-500 uppercase tracking-wider block mb-3">
-                    ★ Top Historical Commanders Scoreboard ★
-                  </span>
-                  <div className="space-y-2 max-h-[260px] overflow-y-auto pr-1">
-                    {[
-                      { rank: 1, name: "Sadashivrao Bhau (Maratha)", score: 285000, desc: "Saffron Sovereignty" },
-                      { rank: 2, name: "Ahmad Shah Durrani (Durrani)", score: 264000, desc: "Kabul Conquest" },
-                      { rank: 3, name: "Ibrahim Khan Gardi (Maratha)", score: 215000, desc: "French Gun Battery" },
-                      { rank: 4, name: "Najib-ud-Daula (Durrani)", score: 198000, desc: "Rohilkhand Compact" },
-                      { rank: 5, name: "Shamsher Bahadur (Maratha)", score: 172000, desc: "Heroic Swordsman" }
-                    ].map(entry => (
-                      <div key={entry.rank} className="flex justify-between items-center p-2 border-b border-stone-900 text-xs">
-                        <div className="flex items-center gap-3">
-                          <span className="font-mono font-bold text-saffron">#{entry.rank}</span>
-                          <span className="font-serif font-black">{entry.name}</span>
-                        </div>
-                        <div className="flex items-center gap-4">
-                          <span className="text-stone-500 italic text-[10px]">{entry.desc}</span>
-                          <span className="font-mono text-emerald-400 font-bold">{entry.score.toLocaleString()} PTS</span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ) : (
-                <div className="bg-stone-950 p-4 border border-stone-850 rounded-sm">
-                  <span className="text-[10px] font-mono font-bold text-stone-500 uppercase tracking-wider block mb-3">
-                    ★ Unlockable Campaign Milestones ★
-                  </span>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    {[
-                      { id: 'achieve_artillery', name: "Master Artillerist", desc: "Successfully hit a direct shot during the French Artillery calibration.", icon: "🔥" },
-                      { id: 'achieve_duel', name: "Grand General", desc: "Vanquished an enemy commander in a timing-based reflex sword duel.", icon: "⚔️" },
-                      { id: 'achieve_coalition', name: "Grand Coalition Maker", desc: "Swayed Awadh's Nawab to join the campaign alliance.", icon: "📜" },
-                      { id: 'achieve_treasury', name: "Treasury Tycoon", desc: "Accumulated more than 200,000 Gold Mohurs in war funds.", icon: "🪙" }
-                    ].map(ach => {
-                      const unlocked = localStorage.getItem(ach.id) === 'true';
-                      return (
-                        <div key={ach.id} className={`p-3 border rounded-sm flex items-start gap-3 transition-colors ${unlocked ? 'border-saffron/40 bg-saffron/5' : 'border-stone-900 bg-stone-950/60 opacity-50'}`}>
-                          <span className="text-2xl">{unlocked ? ach.icon : "🔒"}</span>
-                          <div className="text-left">
-                            <h5 className={`font-serif font-bold text-xs uppercase ${unlocked ? 'text-saffron' : 'text-stone-400'}`}>
-                              {ach.name}
-                            </h5>
-                            <p className="text-[10px] text-stone-500 mt-1 leading-snug">{ach.desc}</p>
-                            <span className="text-[8px] font-mono font-black tracking-widest block mt-2 text-emerald-500">
-                              {unlocked ? "UNLOCKED ✓" : "LOCKED"}
-                            </span>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-              
-              <div className="mt-6 flex justify-center">
-                <button
-                  type="button"
-                  onClick={() => setShowHallOfRecords(false)}
-                  className="px-6 py-2 bg-saffron hover:bg-yellow-500 text-stone-950 font-serif font-black text-xs uppercase tracking-widest rounded-sm cursor-pointer transition-colors shadow-lg"
-                >
-                  Close Records
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

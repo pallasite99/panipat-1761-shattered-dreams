@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import { motion } from 'motion/react';
 import { BookOpen, Trophy, Scroll, Star, History, Flag, ArrowLeft, ChevronRight, Shield } from 'lucide-react';
 import { Screen } from '../types';
@@ -10,20 +10,6 @@ export const Victory: React.FC<{
   onToggleMenu: () => void;
   onMenuClose: () => void;
 }> = ({ onNavigate, isMenuOpen, onToggleMenu, onMenuClose }) => {
-  useEffect(() => {
-    const finalGold = Number(localStorage.getItem('panipat_campaign_treasury') || 0);
-    const finalMorale = Number(localStorage.getItem('panipat_campaign_morale') || 0);
-    const totalScore = finalGold + finalMorale * 1000;
-    
-    const currentHigh = Number(localStorage.getItem('panipat_high_score') || 0);
-    if (totalScore > currentHigh) {
-      localStorage.setItem('panipat_high_score', totalScore.toString());
-    }
-
-    if (finalGold > 200000) {
-      localStorage.setItem('achieve_treasury', 'true');
-    }
-  }, []);
   const archives = [
     { title: 'The Seige of Kunjpura', date: 'Oct 17, 1760', result: 'Decisive Victory', stars: 3 },
     { title: 'Skirmish at Yamuna', date: 'Dec 05, 1760', result: 'Tactical Draw', stars: 2 },

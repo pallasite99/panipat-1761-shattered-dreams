@@ -20,7 +20,6 @@ import {
 } from 'lucide-react';
 import { Screen } from '../types';
 import { TopBar, SideNav } from '../components/SharedUI';
-import { FallbackImage } from '../components/FallbackImage';
 
 interface HistoricalUnit {
   id: string;
@@ -100,6 +99,11 @@ export const Logistics: React.FC<{
   onHelp?: () => void;
   onSettings?: () => void;
 }> = ({ onNavigate, isMenuOpen, onToggleMenu, onMenuClose, onHelp, onSettings }) => {
+  React.useEffect(() => {
+    const savedStage = localStorage.getItem('panipat_campaign_stage') || 'nizam_campaign';
+    localStorage.setItem(`cleared_logistics_${savedStage}`, 'true');
+  }, []);
+
   // Sync core economic stats with localStorage
   const [treasuryMohurs, setTreasuryMohurs] = useState<number>(() => {
     const saved = localStorage.getItem('panipat_campaign_treasury');
@@ -238,7 +242,7 @@ export const Logistics: React.FC<{
       <main className="lg:pl-64 pt-16 h-[calc(100vh-4rem)] overflow-y-auto bg-stone-950 custom-scrollbar relative">
         <div 
           className="absolute inset-0 opacity-15 pointer-events-none bg-cover bg-fixed"
-          style={{ backgroundImage: "url('/historical_map.png')" }}
+          style={{ backgroundImage: "url('https://images.unsplash.com/photo-1549673967-893bd5798485?q=80&w=1500&auto=format&fit=crop')" }}
         />
         
         <div className="p-4 md:p-12 space-y-8 relative z-10">
@@ -334,12 +338,7 @@ export const Logistics: React.FC<{
                             {/* Avatar placeholder / layout icon representing historical combatant */}
                             <div className="w-16 h-16 shrink-0 border border-stone-800 rounded-sm overflow-hidden relative bg-stone-950">
                               <span className="absolute inset-0 bg-gradient-to-t from-stone-950 to-transparent z-10" />
-                              <FallbackImage
-                                src={unit.avatar}
-                                fallbackSrc="/avatar-placeholder.svg"
-                                alt={unit.name}
-                                className="w-full h-full object-cover opacity-60"
-                              />
+                              <img src={unit.avatar} alt={unit.name} className="w-full h-full object-cover opacity-60" />
                               <div className="absolute bottom-1 left-1.5 z-25 text-[8px] font-mono text-saffron uppercase font-black">
                                 {unit.type}
                               </div>

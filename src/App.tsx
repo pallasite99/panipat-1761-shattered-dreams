@@ -15,13 +15,12 @@ import { Treasury } from './screens/Treasury';
 import { Victory } from './screens/Victory';
 import { BattleScene } from './screens/BattleScene';
 import { Encyclopedia } from './screens/Encyclopedia';
-import { LearningHub } from './screens/LearningHub';
 import { Timeline } from './screens/Timeline';
-import { WarChestDashboard } from './screens/WarChestDashboard';
+import { LMS } from './screens/LMS';
+import { Cartography } from './screens/Cartography';
 import { HelpOverlay, SettingsOverlay } from './components/GlobalOverlays';
 import { FeedbackWidget } from './components/FeedbackWidget';
 import { panipatAudioEngine } from './utils/audioSystem';
-import { LMSProvider } from './lms/LMSProvider';
 
 export default function App() {
   const [currentScreen, setCurrentScreen] = useState<Screen>(Screen.MAIN_MENU);
@@ -30,7 +29,10 @@ export default function App() {
   const [audioStarted, setAudioStarted] = useState(false);
   const [isHelpOpen, setIsHelpOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  const [learnerId, setLearnerId] = useState<string | null>(null);
+
+  React.useEffect(() => {
+    localStorage.setItem('panipat_campaign_stage', campaignStage);
+  }, [campaignStage]);
 
   React.useEffect(() => {
     if (currentScreen === Screen.BATTLE) {
@@ -52,7 +54,7 @@ export default function App() {
   const handleNavigate = (screen: Screen) => {
     startAudio();
     setCurrentScreen(screen);
-    setIsMenuOpen(false);
+    setIsMenuOpen(false); // Close menu on navigation
   };
 
   const handleAdvanceCampaign = () => {
@@ -74,11 +76,11 @@ export default function App() {
         return <MainMenu onNavigate={handleNavigate} setCampaignStage={setCampaignStage} {...commonProps} />;
       case Screen.STRATEGIC_MAP:
         return (
-          <StrategicMap
-            onNavigate={handleNavigate}
-            isMenuOpen={isMenuOpen}
-            onToggleMenu={() => setIsMenuOpen(true)}
-            onMenuClose={() => setIsMenuOpen(false)}
+          <StrategicMap 
+            onNavigate={handleNavigate} 
+            isMenuOpen={isMenuOpen} 
+            onToggleMenu={() => setIsMenuOpen(true)} 
+            onMenuClose={() => setIsMenuOpen(false)} 
             campaignStage={campaignStage}
             onAdvance={handleAdvanceCampaign}
             {...commonProps}
@@ -87,7 +89,7 @@ export default function App() {
       case Screen.TACTICAL_HUD:
         return <TacticalHUD onNavigate={handleNavigate} isMenuOpen={isMenuOpen} onToggleMenu={() => setIsMenuOpen(true)} onMenuClose={() => setIsMenuOpen(false)} {...commonProps} />;
       case Screen.WAR_COUNCIL:
-        return <WarCouncil campaignStage={campaignStage} onNavigate={handleNavigate} isMenuOpen={isMenuOpen} onToggleMenu={() => setIsMenuOpen(true)} onMenuClose={() => setIsMenuOpen(false)} {...commonProps} />;
+        return <WarCouncil onNavigate={handleNavigate} isMenuOpen={isMenuOpen} onToggleMenu={() => setIsMenuOpen(true)} onMenuClose={() => setIsMenuOpen(false)} {...commonProps} />;
       case Screen.LOGISTICS:
         return <Logistics onNavigate={handleNavigate} isMenuOpen={isMenuOpen} onToggleMenu={() => setIsMenuOpen(true)} onMenuClose={() => setIsMenuOpen(false)} {...commonProps} />;
       case Screen.COMMANDER_DEV:
@@ -100,34 +102,33 @@ export default function App() {
         return <BattleScene onNavigate={handleNavigate} onAdvance={handleAdvanceCampaign} stage={campaignStage} {...commonProps} />;
       case Screen.ENCYCLOPEDIA:
         return <Encyclopedia onNavigate={handleNavigate} isMenuOpen={isMenuOpen} onToggleMenu={() => setIsMenuOpen(true)} onMenuClose={() => setIsMenuOpen(false)} {...commonProps} />;
-      case Screen.LEARNING_HUB:
-        return <LearningHub onNavigate={handleNavigate} isMenuOpen={isMenuOpen} onToggleMenu={() => setIsMenuOpen(true)} onMenuClose={() => setIsMenuOpen(false)} {...commonProps} />;
       case Screen.TIMELINE:
         return (
-          <Timeline
-            onNavigate={handleNavigate}
-            isMenuOpen={isMenuOpen}
-            onToggleMenu={() => setIsMenuOpen(true)}
-            onMenuClose={() => setIsMenuOpen(false)}
+          <Timeline 
+            onNavigate={handleNavigate} 
+            isMenuOpen={isMenuOpen} 
+            onToggleMenu={() => setIsMenuOpen(true)} 
+            onMenuClose={() => setIsMenuOpen(false)} 
             campaignStage={campaignStage}
             {...commonProps}
           />
         );
-      case Screen.WAR_CHEST:
-        return <WarChestDashboard onNavigate={handleNavigate} learnerId={learnerId} />;
+      case Screen.LMS:
+        return <LMS onNavigate={handleNavigate} {...commonProps} />;
+      case Screen.CARTOGRAPHY:
+        return <Cartography onNavigate={handleNavigate} {...commonProps} />;
       default:
         return <MainMenu onNavigate={handleNavigate} {...commonProps} />;
     }
   };
 
   return (
-    <LMSProvider learnerId={learnerId} setLearnerId={setLearnerId}>
-      <div className="h-screen w-screen bg-stone-950 overflow-hidden text-stone-200 antialiased font-sans">
-        {renderScreen()}
-        <HelpOverlay isOpen={isHelpOpen} onClose={() => setIsHelpOpen(false)} />
-        <SettingsOverlay isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
-        <FeedbackWidget currentScreen={currentScreen} />
-      </div>
-    </LMSProvider>
+    <div className="h-screen w-screen bg-stone-950 overflow-hidden text-stone-200 antialiased font-sans">
+      {renderScreen()}
+      <HelpOverlay isOpen={isHelpOpen} onClose={() => setIsHelpOpen(false)} />
+      <SettingsOverlay isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
+      <FeedbackWidget currentScreen={currentScreen} />
+    </div>
   );
 }
+

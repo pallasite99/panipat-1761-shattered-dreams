@@ -8,7 +8,6 @@ import {
   Swords, 
   Users, 
   BookOpen, 
-  GraduationCap,
   ChevronRight, 
   TrendingUp, 
   Book, 
@@ -27,10 +26,11 @@ import {
   LogOut,
   Package,
   Menu,
-  X
+  X,
+  GraduationCap,
+  Compass
 } from 'lucide-react';
 import { Screen } from '../types';
-import { FallbackImage } from './FallbackImage';
 
 // --- Shared Shell Components ---
 
@@ -63,12 +63,6 @@ export const TopBar: React.FC<{
           Morale
         </button>
         <button 
-          onClick={() => onNavigate(Screen.LEARNING_HUB)}
-          className={`transition-all duration-300 ${screen === Screen.LEARNING_HUB ? 'text-saffron border-b-2 border-saffron pb-1' : 'text-stone-400 hover:text-saffron'}`}
-        >
-          Learning
-        </button>
-        <button 
           onClick={() => onNavigate(Screen.LOGISTICS)}
           className={`transition-all duration-300 ${screen === Screen.LOGISTICS ? 'text-saffron border-b-2 border-saffron pb-1' : 'text-stone-400 hover:text-saffron'}`}
         >
@@ -99,11 +93,13 @@ export const TopBar: React.FC<{
       </div>
       {screen === Screen.MAIN_MENU && (
         <div className="w-10 h-10 rounded-full border-2 border-saffron/50 overflow-hidden bg-stone-800 shadow-lg">
-          <FallbackImage
-            alt="Avatar"
-            src="https://lh3.googleusercontent.com/aida-public/AB6AXuDCD4T3dZu2Z5dvjfYWCbffa1xGEvO8vBFLxkM1VXbQDJ3X64PEE64Xma8_R7dn1FDsL0curLiq5Tdv2gcH9eEQjzY8JUCn2ReXEBGXrEnaY-QqMJKHcXvgNdQl4trAELS-WroH-I0-xaUpFsDX70sz13ITsnTh1v2pcLNTU4QKx11ay2LM6bGqLoQRQ83y7Vz1x7gKUzNbYUbm_c8z18qJaIrbdY7OgbYi0Oh-lrThKAy47pLCCa0XS24g5t81wy85OWkzLHSRWq8T"
-            fallbackSrc="/avatar-placeholder.svg"
+          <img 
+            alt="Avatar" 
+            src="https://lh3.googleusercontent.com/aida-public/AB6AXuDCD4T3dZu2Z5dvjfYWCbffa1xGEvO8vBFLxkM1VXbQDJ3X64PEE64Xma8_R7dn1FDsL0curLiq5Tdv2gcH9eEQjzY8JUCn2ReXEBGXrEnaY-QqMJKHcXvgNdQl4trAELS-WroH-I0-xaUpFsDX70sz13ITsnTh1v2pcLNTU4QKx11ay2LM6bGqLoQRQ83y7Vz1x7gKUzNbYUbm_c8z18qJaIrbdY7OgbYi0Oh-lrThKAy47pLCCa0XS24g5t81wy85OWkzLHSRWq8T" 
             className="w-full h-full object-cover"
+            onError={(e) => {
+              (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1597405232148-732386992d9f?q=80&w=2070&auto=format&fit=crop';
+            }}
           />
         </div>
       )}
@@ -154,7 +150,8 @@ export const SideNav: React.FC<{
     { id: Screen.WAR_COUNCIL, label: 'Council & Diplomacy', icon: Gavel },
     { id: Screen.TIMELINE, label: 'Historical Timeline', icon: History },
     { id: Screen.ENCYCLOPEDIA, label: 'Encyclopedia', icon: BookOpen },
-    { id: Screen.LEARNING_HUB, label: 'Learning Hub', icon: GraduationCap },
+    { id: Screen.LMS, label: 'Grand Academy', icon: GraduationCap },
+    { id: Screen.CARTOGRAPHY, label: 'Imperial Cartography', icon: Compass },
     { id: Screen.LOGISTICS, label: 'Supply Lines', icon: Package },
     { id: Screen.TREASURY, label: 'Imperial Mint', icon: RefreshCw },
     { id: Screen.VICTORY, label: 'Military Archives', icon: Archive },
@@ -184,11 +181,13 @@ export const SideNav: React.FC<{
         <div className="px-6 py-6 border-b border-stone-800/20">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-full border-2 border-saffron overflow-hidden bg-stone-800 shrink-0">
-               <FallbackImage
+               <img 
                 alt="Seal"
                 src="https://lh3.googleusercontent.com/aida-public/AB6AXuBoqmUxg9GV6TRqt6Dke37hlud-01WKE35WNXtghjTRUOWIaMlpcmg9678BhULAuy3wodVHZpsH_WKzmcGt5s5cAaeIkH3pY0QBfCXYbCBgMFfNQJavfqRFE7qD1-NTm0QfNEO5nAD4lKgIJOHembUIu615q6n6wZO3A5UQ_JymbOM_opijgs1jb-7J2bXdGb4Mgs0bCg8Ey7ygPTcOQDsdZdcJo1IBOnK3xpOgCzQs6tDevIejtfVIZiBu4XXRDgwvQjI3Ob3TNN-J"
-                fallbackSrc="/avatar-placeholder.svg"
                 className="w-full h-full object-cover"
+                onError={(e) => {
+                  (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1597405232148-732386992d9f?q=80&w=2070&auto=format&fit=crop';
+                }}
                />
             </div>
             <div>

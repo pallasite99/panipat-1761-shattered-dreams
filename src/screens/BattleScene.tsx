@@ -421,105 +421,6 @@ const WEATHER_CONFIGS = {
   fog: { name: "Winter Cold Fog", visibilityMod: -60, accuracyMod: -25, desc: "Thick frosted haze shields troop lines (-25% acc).", color: "text-[#cbd5e1]" },
 };
 
-type BattlePrahar = {
-  key: string;
-  name: string;
-  subtitle: string;
-  timeOfDay: 'dawn' | 'noon' | 'dusk' | 'midnight';
-  weather: 'clear' | 'rain' | 'dust_storm' | 'fog';
-  visibilityHint: string;
-  combatHint: string;
-};
-
-const BATTLE_PRAHARS: BattlePrahar[] = [
-  {
-    key: 'arunodaya',
-    name: 'Arunodaya Prahar',
-    subtitle: 'First light seeps through the smoke.',
-    timeOfDay: 'dawn',
-    weather: 'fog',
-    visibilityHint: 'Low-contrast silhouettes; ambushes are easier to hide.',
-    combatHint: 'Skirmishers and scouts gain the initiative in the haze.'
-  },
-  {
-    key: 'pratah',
-    name: 'Pratah Prahar',
-    subtitle: 'Brightening morning with clear sight-lines.',
-    timeOfDay: 'dawn',
-    weather: 'clear',
-    visibilityHint: 'Long sight-lines return and volleys become cleaner.',
-    combatHint: 'Ideal window for cavalry probes and coordinated charges.'
-  },
-  {
-    key: 'sangava',
-    name: 'Sangava Prahar',
-    subtitle: 'The sun rises hard over the field.',
-    timeOfDay: 'noon',
-    weather: 'clear',
-    visibilityHint: 'Open terrain is fully readable from edge to edge.',
-    combatHint: 'Frontline swordfights become direct and punishing.'
-  },
-  {
-    key: 'madhyahna',
-    name: 'Madhyahna Prahar',
-    subtitle: 'Heat shimmers across the field and dust lifts.',
-    timeOfDay: 'noon',
-    weather: 'dust_storm',
-    visibilityHint: 'Glare and sand shorten effective engagement range.',
-    combatHint: 'Charge timing matters more than raw numbers.'
-  },
-  {
-    key: 'aparahna',
-    name: 'Aparahna Prahar',
-    subtitle: 'Late-day pressure builds before the light turns.',
-    timeOfDay: 'noon',
-    weather: 'clear',
-    visibilityHint: 'Strong visibility with tired formations exposed.',
-    combatHint: 'This is the best moment for a decisive breach.'
-  },
-  {
-    key: 'sayam',
-    name: 'Sayam Prahar',
-    subtitle: 'Evening rain slicks the ground.',
-    timeOfDay: 'dusk',
-    weather: 'rain',
-    visibilityHint: 'Wet ground slows footwork and weapon recovery.',
-    combatHint: 'Sword parries and short bursts become safer than long pushes.'
-  },
-  {
-    key: 'pradosh',
-    name: 'Pradosh Prahar',
-    subtitle: 'Twilight folds the battlefield into shadow.',
-    timeOfDay: 'dusk',
-    weather: 'fog',
-    visibilityHint: 'Enemy movement vanishes in the lowering light.',
-    combatHint: 'Close-quarters duels become the main way to read the field.'
-  },
-  {
-    key: 'nisitha',
-    name: 'Nisitha Prahar',
-    subtitle: 'Night command and candlelit steel.',
-    timeOfDay: 'midnight',
-    weather: 'fog',
-    visibilityHint: 'Only the nearest enemies stay visible at all.',
-    combatHint: 'Ambushes, torchlight, and last-second counters dominate.'
-  },
-];
-
-const PRAHAR_CYCLE_SECONDS = 6;
-
-const getPraharForBattle = (stageIndex: number, battleTimeLeft: number, phase: 'choosing_drop' | 'dropping' | 'clash' | 'resolution' | 'defeat') => {
-  const baseIndex = Math.max(0, stageIndex - 1) % BATTLE_PRAHARS.length;
-  if (phase !== 'clash') {
-    return { ...BATTLE_PRAHARS[baseIndex], index: baseIndex };
-  }
-
-  const elapsedSeconds = Math.max(0, 45 - battleTimeLeft);
-  const cycleOffset = Math.floor(elapsedSeconds / PRAHAR_CYCLE_SECONDS);
-  const index = (baseIndex + cycleOffset) % BATTLE_PRAHARS.length;
-  return { ...BATTLE_PRAHARS[index], index };
-};
-
 export interface HistoricalBrief {
   title: string;
   location: string;
@@ -819,7 +720,6 @@ export const BattleScene: React.FC<BattleProps> = ({ onNavigate, onAdvance, stag
   // Weather and Music synthesizers variables
   const [timeOfDay, setTimeOfDay] = useState<'dawn' | 'noon' | 'dusk' | 'midnight'>('noon');
   const [weather, setWeather] = useState<'clear' | 'rain' | 'dust_storm' | 'fog'>('clear');
-  const lastPraharRef = useRef<string>('');
   const [isMusicPlaying, setIsMusicPlaying] = useState(false);
   const [musicVolume, setMusicVolume] = useState(0.35);
   const audioSynthRef = useRef<FactionAudioSynth | null>(null);
@@ -830,6 +730,8 @@ export const BattleScene: React.FC<BattleProps> = ({ onNavigate, onAdvance, stag
   const [showStageResultModal, setShowStageResultModal] = useState<boolean>(false);
   const [showBreachDialogueModal, setShowBreachDialogueModal] = useState<boolean>(false);
   const [gardiDebateStep, setGardiDebateStep] = useState<number>(0);
+  const [stageStrategicDecisionCompleted, setStageStrategicDecisionCompleted] = useState<boolean>(false);
+  const [selectedDilemmaOption, setSelectedDilemmaOption] = useState<string | null>(null);
 
   // Timed battles & Spawning state variables
   const [battleTimeLeft, setBattleTimeLeft] = useState(45);
@@ -844,19 +746,28 @@ export const BattleScene: React.FC<BattleProps> = ({ onNavigate, onAdvance, stag
   const [stageSwordStrikes, setStageSwordStrikes] = useState(0);
   const [stageSpecialsUsed, setStageSpecialsUsed] = useState(0);
   const [stageDuelsAttempted, setStageDuelsAttempted] = useState(0);
+  const [stageDuelsWon, setStageDuelsWon] = useState(0);
   const [alliesSummonedCount, setAlliesSummonedCount] = useState(0);
   const [enemiesSummonedCount, setEnemiesSummonedCount] = useState(0);
 
   // Helper to transition to the next stage of the battle
   const handleNextStage = () => {
-    const nextStageIndex = currentStageIndex + 1;
-    const nextPrahar = getPraharForBattle(nextStageIndex, 45, 'choosing_drop');
-
     setCurrentStageIndex(prev => prev + 1);
     setMarathaMorale(100);
     setDurraniMorale(100 * stageDifficulty * difficultyMult);
+    
+    // Atmospheric environmental change per stage
+    const times: ('dawn' | 'noon' | 'dusk' | 'midnight')[] = ['dawn', 'noon', 'dusk', 'midnight'];
+    const weathers: ('clear' | 'rain' | 'dust_storm' | 'fog')[] = ['clear', 'rain', 'dust_storm', 'fog'];
+    const nextTime = times[(currentStageIndex) % times.length];
+    const nextWeather = weathers[(currentStageIndex) % weathers.length];
+    
+    setTimeOfDay(nextTime);
+    setWeather(nextWeather);
     setBattlePhase('choosing_drop');
     setShowStageResultModal(false);
+    setStageStrategicDecisionCompleted(false);
+    setSelectedDilemmaOption(null);
 
     setBattleTimeLeft(45);
     setStagePlayerCasualties(0);
@@ -864,11 +775,12 @@ export const BattleScene: React.FC<BattleProps> = ({ onNavigate, onAdvance, stag
     setStageSwordStrikes(0);
     setStageSpecialsUsed(0);
     setStageDuelsAttempted(0);
+    setStageDuelsWon(0);
     setAlliesSummonedCount(0);
     setEnemiesSummonedCount(0);
 
     setLog(prev => [
-      `🔄 [NEXT STAGE PREPPED] Initiating Stage ${nextStageIndex} of 3! The battlefield enters ${nextPrahar.name.toUpperCase()} with ${nextPrahar.weather.toUpperCase()} skies.`,
+      `🔄 [NEXT STAGE PREPPED] Initiating Stage ${currentStageIndex + 1} of 3! Changing weather to ${nextWeather.toUpperCase()} at ${nextTime.toUpperCase()}!`,
       "Choose a new dropsite coordinates to deploy units and resume the fight!",
       ...prev.slice(0, 3)
     ]);
@@ -910,22 +822,6 @@ export const BattleScene: React.FC<BattleProps> = ({ onNavigate, onAdvance, stag
 
   const currentVisibility = Math.max(10, TIME_OF_DAY_CONFIGS[timeOfDay].visibility + WEATHER_CONFIGS[weather].visibilityMod);
   const currentAccuracy = Math.max(15, TIME_OF_DAY_CONFIGS[timeOfDay].accuracy + WEATHER_CONFIGS[weather].accuracyMod);
-  const currentPrahar = getPraharForBattle(currentStageIndex, battleTimeLeft, battlePhase);
-
-  useEffect(() => {
-    setTimeOfDay(currentPrahar.timeOfDay);
-    setWeather(currentPrahar.weather);
-
-    if (currentPrahar.key !== lastPraharRef.current) {
-      if (lastPraharRef.current && battlePhase === 'clash') {
-        setLog(prev => [
-          `🕯️ PRAHAR SHIFT: ${currentPrahar.name} now governs the battlefield. ${currentPrahar.combatHint}`,
-          ...prev.slice(0, 4)
-        ]);
-      }
-      lastPraharRef.current = currentPrahar.key;
-    }
-  }, [currentPrahar.key, currentPrahar.timeOfDay, currentPrahar.weather, currentPrahar.name, currentPrahar.combatHint, battlePhase]);
 
   // Difficulty multiplier
   const stageDifficulty = {
@@ -989,20 +885,21 @@ export const BattleScene: React.FC<BattleProps> = ({ onNavigate, onAdvance, stag
     name: string;
     title: string;
     difficulty: 'recruit' | 'veteran' | 'peshwa';
-    viewMode?: 'duel' | 'skirmish';
   } | null>(null);
 
   const handleCloseDuelArena = (resolvedHealth: number, outcome: 'victory' | 'defeat' | 'retreat') => {
     setActiveDuelOpponent(null);
     
     if (outcome === 'victory') {
+      setStageDuelsWon(prev => prev + 1);
       setMarathaMorale(prev => Math.min(100, prev + 35));
+      setDurraniMorale(0); // Slaying the chief instantly collapses enemy morale!
       const currentGold = Number(localStorage.getItem('panipat_campaign_treasury') || '145000');
       const updatedGold = currentGold + 10000;
       localStorage.setItem('panipat_campaign_treasury', String(updatedGold));
 
       setLog(prev => [
-        `⭐ DUEL GLORIOUS VICTORY! Vanquished the high Sardar under high-noon glare! Recieved +10,000 Grand gold Mohurs and rallied frontline forces!`,
+        `⭐ DUEL GLORIOUS VICTORY! Vanquished the high Sardar under high-noon glare! Recieved +10,000 Grand gold Mohurs and rallied frontline forces! Slaying their commander collapses enemy morale to 0%!`,
         ...prev.slice(0, 4)
       ]);
       setBattleProgress(p => Math.min(100, p + 25));
@@ -1085,8 +982,42 @@ export const BattleScene: React.FC<BattleProps> = ({ onNavigate, onAdvance, stag
       // Balance Durrani passive attrition symmetrically based on active difficulty scaling
       const durraniLoss = ((Math.random() * (isPanipat ? 1.05 : 0.8) * (1.1 / difficultyMult)) * stageDifficulty) * speedFactor;
 
-      setMarathaMorale(prev => Math.max(0, prev - marathaLoss));
-      setDurraniMorale(prev => Math.max(0, prev - durraniLoss));
+      // Calculate active Prahar elapsed time for dynamic game modifiers
+      const elapsed = 45 - battleTimeLeft;
+      let praharMoraleDrift = 0;
+      let praharMultiplierMaratha = 1.0;
+      let praharMultiplierDurrani = 1.0;
+
+      if (elapsed <= 9) {
+        // Prathama Prahar (Dawn Rise): Morale grows naturally in fresh sunlight
+        praharMoraleDrift = 0.45;
+      } else if (elapsed > 9 && elapsed <= 18) {
+        // Dvitiya Prahar (Noon Blaze): Dry barrels boost firearms reload, higher fire hazard
+        praharMultiplierMaratha = 1.15;
+      } else if (elapsed > 18 && elapsed <= 27) {
+        // Tritiya Prahar (Afternoon Heat): Fatigue sets in slowing defense
+        praharMultiplierMaratha = 1.25;
+      } else if (elapsed > 27 && elapsed <= 36) {
+        // Chaturtha Prahar (Crimson Dusk): Amber glare, critical sword strike boosts
+        praharMultiplierDurrani = 1.35;
+      } else if (elapsed > 36) {
+        // Sandhya Prahar (Nightfall Stand): Smoke & shadows reduce hit impact
+        praharMultiplierMaratha = 0.9;
+      }
+
+      const rawMarathaLoss = marathaLoss * praharMultiplierMaratha - praharMoraleDrift;
+      const rawDurraniLoss = durraniLoss * praharMultiplierDurrani;
+
+      setMarathaMorale(prev => Math.max(0, Math.min(100, prev - rawMarathaLoss)));
+      
+      setDurraniMorale(prev => {
+        const next = Math.max(0, prev - rawDurraniLoss);
+        if (next <= 0 && stageDuelsWon === 0 && activeFaction === 'maratha') {
+          // Compulsory talwar duel is required! Display notice
+          return 1; // Keep pegged at 1 until they win the close combat duel
+        }
+        return next;
+      });
 
       // 2. Accumulate simulated casualties realistically per tick (Detailed casualties feature)
       const pCas = Math.floor(marathaLoss * 46 + Math.random() * 15);
@@ -1169,6 +1100,9 @@ export const BattleScene: React.FC<BattleProps> = ({ onNavigate, onAdvance, stag
         if (isSiege && fortWallIntegrity > 0) {
           // The battle is never-ending even if strength is 0, until walls break!
           stageWinner = null;
+        } else if (stageDuelsWon === 0) {
+          // Block round victory if the player hasn't completed their compulsory sword duel
+          stageWinner = null;
         } else {
           stageWinner = 'player';
         }
@@ -1200,7 +1134,22 @@ export const BattleScene: React.FC<BattleProps> = ({ onNavigate, onAdvance, stag
       
       setLog(prev => [logMsg, ...prev.slice(0, 4)]);
     }
-  }, [marathaMorale, durraniMorale, battlePhase, stageDifficulty, stage, fortWallIntegrity, activeFaction, currentStageIndex, stageOutcomes, showStageResultModal]);
+  }, [marathaMorale, durraniMorale, battlePhase, stageDifficulty, stage, fortWallIntegrity, activeFaction, currentStageIndex, stageOutcomes, showStageResultModal, stageDuelsWon]);
+
+  // Synchronize timeOfDay and Prahar logic with the remaining battle time
+  useEffect(() => {
+    if (battlePhase !== 'clash' || showStageResultModal) return;
+    const elapsed = 45 - battleTimeLeft;
+    if (elapsed <= 9) {
+      if (timeOfDay !== 'dawn') setTimeOfDay('dawn');
+    } else if (elapsed <= 27) {
+      if (timeOfDay !== 'noon') setTimeOfDay('noon');
+    } else if (elapsed <= 36) {
+      if (timeOfDay !== 'dusk') setTimeOfDay('dusk');
+    } else {
+      if (timeOfDay !== 'midnight') setTimeOfDay('midnight');
+    }
+  }, [battleTimeLeft, battlePhase, showStageResultModal, timeOfDay]);
 
   // Handle active drop action
   const triggerDropLaunch = (hotspot: string) => {
@@ -1639,89 +1588,195 @@ export const BattleScene: React.FC<BattleProps> = ({ onNavigate, onAdvance, stag
         )}
       </AnimatePresence>
 
-      {/* RENDER PHASE 1: CHOOSE AIR DROP COORDS (Like PUBG Drop Plan) */}
+      {/* RENDER PHASE 1: CHOOSE AIR DROP COORDS (Like PUBG Drop Plan) OR PRE-STAGE DILEMMA */}
       <AnimatePresence>
         {!showBriefing && battlePhase === 'choosing_drop' && (
           <motion.div 
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="absolute inset-0 z-50 bg-[#120a06]/98 flex flex-col items-center justify-center p-6 text-center"
+            className="absolute inset-0 z-50 bg-[#120a06]/98 flex items-center justify-center p-4 md:p-6 text-center"
           >
             <div className="absolute inset-0 parchment opacity-20 pointer-events-none" />
-            <div className="max-w-4xl bg-[#1e140f] border-4 border-[#8B5E3C] p-8 shadow-2xl rounded-sm relative">
-              <div className="absolute inset-1 border border-[#8B5E3C]/40 rounded-xs pointer-events-none" />
-              
-              <div className="flex justify-center mb-2">
-                <span className="px-3 py-1 bg-saffron text-stone-950 font-black text-[10px] tracking-widest uppercase rounded-xs">
-                  SQUAD SHUTTLE MAP OVERVIEW
-                </span>
-              </div>
-              
-              <h2 className="text-4xl text-white font-serif font-black uppercase tracking-wide">
-                LANDING BOUNDS SECTOR SELECT
-              </h2>
-              <p className="text-stone-300 text-xs italic mt-2 max-w-xl mx-auto">
-                "By military order, select your landing zone on the 18th-century Hindusthan frontier lines. Choose wisely; different sectors yield distinct strategic cover bonuses and loot quantities."
-              </p>
+            
+            {!stageStrategicDecisionCompleted ? (
+              /* THE WAR COUNCIL DECISIVE STAGE DISPATCH */
+              <div className="max-w-xl w-full bg-[#1b120c] border-4 border-[#ca8a04] p-6 md:p-8 shadow-2xl rounded-sm relative">
+                <div className="absolute inset-1 border border-[#ca8a04]/30 rounded-xs pointer-events-none" />
+                
+                <div className="text-center mb-3">
+                  <span className="px-3 py-1 bg-[#ca8a04] text-stone-950 font-black text-[10px] tracking-widest uppercase rounded-xs">
+                    WAR COUNCIL CAMPAIGN - STAGE {currentStageIndex} DECISION
+                  </span>
+                </div>
+                
+                <h2 className="text-2xl md:text-3xl text-white font-serif font-black uppercase tracking-wide">
+                  {currentStageIndex === 1 ? "I. Frontline Outpost Tactics" :
+                   currentStageIndex === 2 ? "II. The Colossus Collision" :
+                   "III. The Sovereign Climax"}
+                </h2>
+                
+                <p className="text-stone-300 text-xs italic mt-3 leading-relaxed max-w-sm mx-auto text-center border-b border-[#ca8a04]/15 pb-4">
+                  {currentStageIndex === 1 ? (
+                    `"Sovereign, our vanguard divisions are organizing on the marshes, but the Afghan light columns have secured the strategic dunes. Dictate our frontline coordinates immediately:"`
+                  ) : currentStageIndex === 2 ? (
+                    `"We are colliding on the sand lines! Ahmad Shah has ordered a massive Pashtun cavalry lance charge straight at our right flank. Sovereign, state your defensive response:"`
+                  ) : (
+                    `"The final clash is upon us! Both armaments are exhausted, and the commander squads are entering the fray. Deploy your ultimate tactical speech:"`
+                  )}
+                </p>
 
-              {/* Grid map for drops */}
-              <div id="drop-hotspot-grid" className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-8">
-                {[
-                  {
-                    id: 'trenches',
-                    name: "Yamuna Canal Trenches",
-                    risk: "LOW RISK",
-                    loot: "TIER 1 LOOT x1.1",
-                    color: "text-emerald-400 border-emerald-900/45",
-                    desc: "Rich soil bank protection. Safer descent with enhanced cover but restricted weapon loot drops.",
-                    bonus: "🛡️ Defense: +35%"
-                  },
-                  {
-                    id: 'encampment',
-                    name: "Panipat Royal Barracks",
-                    risk: "EXTREME RISK",
-                    loot: "TIER 3 LOOT x2.0",
-                    color: "text-red-500 border-red-900/60 animate-pulse",
-                    desc: "Highly populated. Hot dropping into main armor depots. High early engagement guarantees epic weapons.",
-                    bonus: "🎯 Sniper Gear Guaranteed"
-                  },
-                  {
-                    id: 'temple',
-                    name: "Sutlej Defile Ruins",
-                    risk: "MEDIUM RISK",
-                    loot: "TIER 2 LOOT x1.5",
-                    color: "text-amber-400 border-amber-900/50",
-                    desc: "High altitude stone pillars providing incredible vertical shooting profiles over the valley.",
-                    bonus: "⚡ Flanking Buffs"
-                  }
-                ].map(spot => (
-                  <button
-                    key={spot.id}
-                    id={`hotspot-${spot.id}`}
-                    onClick={() => triggerDropLaunch(spot.name)}
-                    className="flex flex-col text-left p-4 bg-stone-950/80 border-2 hover:border-saffron rounded-xs transition-all transform hover:-translate-y-1 cursor-pointer focus:outline-none"
-                  >
-                    <span className={`text-[10px] font-black tracking-widest uppercase ${spot.color}`}>
-                      {spot.risk} • {spot.loot}
-                    </span>
-                    <h4 className="text-white text-md font-serif font-bold mt-1 uppercase">
-                      {spot.name}
-                    </h4>
-                    <p className="text-[11px] text-stone-400 mt-2 leading-relaxed">
-                      {spot.desc}
-                    </p>
-                    <div className="mt-4 pt-2 border-t border-stone-900 text-[10px] font-mono text-saffron uppercase">
-                      {spot.bonus}
-                    </div>
-                  </button>
-                ))}
+                <div className="mt-5 space-y-4 text-left">
+                  {[
+                    {
+                      id: "opt1",
+                      title: currentStageIndex === 1 ? "🚩 Rear Hardened Artillery Emplacements" :
+                             currentStageIndex === 2 ? "🛡️ Form Rigid Spear Squares" :
+                             "👑 Royal Inspirational Frontline Speech",
+                      desc: currentStageIndex === 1 ? "Position Gardi French guns on high stable mounds." :
+                            currentStageIndex === 2 ? "Lock shields and long spears into a human brick structure." :
+                            "Ride personally along the lines raising the Bhagwa saffron banner.",
+                      bonus: currentStageIndex === 1 ? "🎁 Gained +1 Powder Bomb & Ibrahim Gardi damage boosts!" :
+                             currentStageIndex === 2 ? "🛡️ Upgraded chainmail coats to Grade 3 Steel & gained +15 starting morale!" :
+                             "💖 Instantly restores your starting Morale back to 100%!",
+                      apply: () => {
+                        if (currentStageIndex === 1) {
+                          setFragBombs(prev => prev + 1);
+                          setLog(prev => ["💣 [TACTICAL BUFF] Deployed rear cannons! Gained +1 Powder Bomb.", ...prev.slice(0, 3)]);
+                        } else if (currentStageIndex === 2) {
+                          setArmorTier(3);
+                          setMarathaMorale(100);
+                          setLog(prev => ["🛡️ [TACTICAL BUFF] Locked Spear Squares! Upgraded armor to Grade 3 Steel & fully restored soldier morale.", ...prev.slice(0, 3)]);
+                        } else {
+                          setMarathaMorale(100);
+                          setLog(prev => ["👑 [TACTICAL BUFF] Executed Royal Speeches! Total command morale restored to 100%.", ...prev.slice(0, 3)]);
+                        }
+                      }
+                    },
+                    {
+                      id: "opt2",
+                      title: currentStageIndex === 1 ? "🏹 Scout Swarm Ambush Patrols" :
+                             currentStageIndex === 2 ? "⚡ Decoy Feigned Withdrawal" :
+                             "💀 Double-Wing Flanking Encirclement",
+                      desc: currentStageIndex === 1 ? "Deploy swift Mawala scouts into tall swamp grass." :
+                            currentStageIndex === 2 ? "Execute a staging withdrawal to lure them into a crossfire." :
+                            "Unleash a devastating horse maneuver to pierce their center.",
+                      bonus: currentStageIndex === 1 ? "👁️ Afghan starting commander morale reduced by -15!" :
+                             currentStageIndex === 2 ? "⚡ Refilled Adrenaline Syringes (+2 injections free)!" :
+                             "💀 Automatically deals -30 starting damage to Afghan morale!",
+                      apply: () => {
+                        if (currentStageIndex === 1) {
+                          setDurraniMorale(prev => Math.max(10, prev - 15));
+                          setLog(prev => ["⚔️ [TACTICAL BUFF] Ordered Scout Ambush! Afghan starting squad morale reduced by 15.", ...prev.slice(0, 3)]);
+                        } else if (currentStageIndex === 2) {
+                          setAdrenalineSyringes(prev => prev + 2);
+                          setLog(prev => ["⚡ [TACTICAL BUFF] Ordered Feigned Withdrawal! Gained +2 free Adrenaline injections.", ...prev.slice(0, 3)]);
+                        } else {
+                          setDurraniMorale(prev => Math.max(10, prev - 30));
+                          setLog(prev => ["💀 [TACTICAL BUFF] Cavalry pincers sweep executed! Dealt -30 starts points damage onto Afghan morale.", ...prev.slice(0, 3)]);
+                        }
+                      }
+                    }
+                  ].map((opt) => (
+                    <button
+                      key={opt.id}
+                      id={`stage-dilemma-${opt.id}`}
+                      onClick={() => {
+                        setSelectedDilemmaOption(opt.id);
+                        opt.apply();
+                        setStageStrategicDecisionCompleted(true);
+                      }}
+                      className="w-full text-left p-4 bg-stone-950/85 hover:bg-[#201309] border hover:border-[#ca8a04] transition-all rounded-xs flex flex-col cursor-pointer outline-none"
+                    >
+                      <h4 className="text-[#ca8a04] font-serif font-bold text-xs uppercase">
+                        {opt.title}
+                      </h4>
+                      <p className="text-[10px] text-stone-350 font-sans mt-1">
+                        {opt.desc}
+                      </p>
+                      <p className="text-[10.5px] text-emerald-400 font-mono font-bold mt-2 border-t border-stone-900 pt-1.5 leading-none">
+                        PROMISED BUFF: {opt.bonus}
+                      </p>
+                    </button>
+                  ))}
+                </div>
               </div>
+            ) : (
+              /* THE ORIGINAL LANDING HOTSPOT SPECIFICATION SELECTOR */
+              <div className="max-w-4xl bg-[#1e140f] border-4 border-[#8B5E3C] p-8 shadow-2xl rounded-sm relative">
+                <div className="absolute inset-1 border border-[#8B5E3C]/40 rounded-xs pointer-events-none" />
+                
+                <div className="flex justify-center mb-2">
+                  <span className="px-3 py-1 bg-saffron text-stone-950 font-black text-[10px] tracking-widest uppercase rounded-xs">
+                    SQUAD SHUTTLE MAP OVERVIEW
+                  </span>
+                </div>
+                
+                <h2 className="text-4xl text-white font-serif font-black uppercase tracking-wide">
+                  LANDING BOUNDS SECTOR SELECT
+                </h2>
+                <p className="text-stone-300 text-xs italic mt-2 max-w-xl mx-auto">
+                  "By military order, select your landing zone on the 18th-century Hindusthan frontier lines. Choose wisely; different sectors yield distinct strategic cover bonuses and loot quantities."
+                </p>
 
-              <div className="mt-8 text-[10px] text-stone-500 font-mono uppercase tracking-widest text-center">
-                Awaiting squad coordination... Choose zone to fly!
+                {/* Grid map for drops */}
+                <div id="drop-hotspot-grid" className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-8">
+                  {[
+                    {
+                      id: 'trenches',
+                      name: "Yamuna Canal Trenches",
+                      risk: "LOW RISK",
+                      loot: "TIER 1 LOOT x1.1",
+                      color: "text-emerald-400 border-emerald-900/45",
+                      desc: "Rich soil bank protection. Safer descent with enhanced cover but restricted weapon loot drops.",
+                      bonus: "🛡️ Defense: +35%"
+                    },
+                    {
+                      id: 'encampment',
+                      name: "Panipat Royal Barracks",
+                      risk: "EXTREME RISK",
+                      loot: "TIER 3 LOOT x2.0",
+                      color: "text-red-500 border-red-900/60 animate-pulse",
+                      desc: "Highly populated. Hot dropping into main armor depots. High early engagement guarantees epic weapons.",
+                      bonus: "🎯 Sniper Gear Guaranteed"
+                    },
+                    {
+                      id: 'temple',
+                      name: "Sutlej Defile Ruins",
+                      risk: "MEDIUM RISK",
+                      loot: "TIER 2 LOOT x1.5",
+                      color: "text-amber-400 border-amber-900/50",
+                      desc: "High altitude stone pillars providing incredible vertical shooting profiles over the valley.",
+                      bonus: "⚡ Flanking Buffs"
+                    }
+                  ].map(spot => (
+                    <button
+                      key={spot.id}
+                      id={`hotspot-${spot.id}`}
+                      onClick={() => triggerDropLaunch(spot.name)}
+                      className="flex flex-col text-left p-4 bg-stone-950/80 border-2 hover:border-saffron rounded-xs transition-all transform hover:-translate-y-1 cursor-pointer focus:outline-none"
+                    >
+                      <span className={`text-[10px] font-black tracking-widest uppercase ${spot.color}`}>
+                        {spot.risk} • {spot.loot}
+                      </span>
+                      <h4 className="text-white text-md font-serif font-bold mt-1 uppercase">
+                        {spot.name}
+                      </h4>
+                      <p className="text-[11px] text-stone-400 mt-2 leading-relaxed">
+                        {spot.desc}
+                      </p>
+                      <div className="mt-4 pt-2 border-t border-stone-900 text-[10px] font-mono text-saffron uppercase">
+                        {spot.bonus}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+
+                <div className="mt-8 text-[10px] text-stone-500 font-mono uppercase tracking-widest text-center">
+                  Awaiting squad coordination... Choose zone to fly!
+                </div>
               </div>
-            </div>
+            )}
           </motion.div>
         )}
       </AnimatePresence>
@@ -1810,18 +1865,73 @@ export const BattleScene: React.FC<BattleProps> = ({ onNavigate, onAdvance, stag
 
           <div className="flex-1 w-full bg-black relative">
             {battlePhase === 'clash' && (
-              <div id="battle-timer-hud" className="absolute top-4 left-1/2 -translate-x-1/2 z-[45] bg-stone-950/95 border border-[#8B5E3C]/60 px-5 py-2 font-mono text-center rounded-xs shadow-2xl flex items-center justify-center gap-2.5 min-w-[160px]">
-                <span className="animate-pulse text-amber-500 text-xs">⌛</span>
-                <div className="text-left leading-none">
-                  <span className="text-[7.5px] text-stone-500 block font-bold uppercase tracking-widest leading-none">ROUND TIMER</span>
-                  <span className={`text-[13px] font-black tracking-wider leading-none block mt-0.5 ${battleTimeLeft <= 10 ? 'text-red-500 animate-pulse font-extrabold' : 'text-amber-400'}`}>
-                    {battleTimeLeft} SECONDS
-                  </span>
+              <div id="battle-timer-hud" className="absolute top-4 left-1/2 -translate-x-1/2 z-[45] bg-stone-950/98 border-2 border-saffron/85 p-3.5 font-mono text-center rounded-sm shadow-2xl flex flex-col items-center justify-center min-w-[280px] gap-2.5">
+                <div className="flex items-center gap-2">
+                  <span className="animate-pulse text-saffron text-sm">⌛</span>
+                  <div className="text-left leading-none">
+                    <span className="text-[7px] text-stone-550 block font-black uppercase tracking-widest leading-none">ROUND TIMER</span>
+                    <span className={`text-[13px] font-black tracking-wider leading-none block mt-0.5 ${battleTimeLeft <= 10 ? 'text-red-550 animate-pulse font-extrabold' : 'text-saffron-300'}`}>
+                      {battleTimeLeft} SECONDS REMAINING
+                    </span>
+                  </div>
+                </div>
+                
+                {/* Dynamic Prahar Indicator */}
+                <div className="w-full border-t border-stone-850 pt-2 flex flex-col items-center">
+                  {(() => {
+                    const elapsed = 45 - battleTimeLeft;
+                    let praharName = "Prathama Prahar (प्रथम प्रहर)";
+                    let praharTime = "Dawn Rise • 06:00 - 09:00";
+                    let praharDesc = "Morale grows naturally in fresh sunlight (+0.5/sec)";
+                    let praharColor = "text-yellow-450";
+                    let indicatorBg = "bg-yellow-500";
+
+                    if (elapsed > 9 && elapsed <= 18) {
+                      praharName = "Dvitiya Prahar (द्वितीय प्रहर)";
+                      praharTime = "Mid-Noon Blaze • 09:00 - 12:00";
+                      praharDesc = "Gunpowder dry! Reload rate boosted, fire hazard increased";
+                      praharColor = "text-orange-400";
+                      indicatorBg = "bg-orange-500";
+                    } else if (elapsed > 18 && elapsed <= 27) {
+                      praharName = "Tritiya Prahar (तृतीय प्रहर)";
+                      praharTime = "Afternoon Heat • 12:00 - 15:00";
+                      praharDesc = "Sweat & exhaustion block defense rate speed";
+                      praharColor = "text-amber-500";
+                      indicatorBg = "bg-amber-550";
+                    } else if (elapsed > 27 && elapsed <= 36) {
+                      praharName = "Chaturtha Prahar (चतुर्थ प्रहर)";
+                      praharTime = "Crimson Dusk • 15:00 - 18:00";
+                      praharDesc = "Amber glare! Target critical sword lunge damage +50%";
+                      praharColor = "text-red-400 animate-pulse";
+                      indicatorBg = "bg-red-500";
+                    } else if (elapsed > 36) {
+                      praharName = "Sandhya Prahar (संध्या प्रहर)";
+                      praharTime = "Nightfall Stand • 18:00 - 21:00";
+                      praharDesc = "Torches active! High confusion, sword play dominates";
+                      praharColor = "text-purple-400";
+                      indicatorBg = "bg-purple-650";
+                    }
+
+                    return (
+                      <div className="text-center">
+                        <span className={`text-[9.5px] font-black uppercase tracking-widest ${praharColor} block`}>
+                          {praharName}
+                        </span>
+                        <div className="flex items-center justify-center gap-1.5 mt-0.5">
+                          <span className={`h-1.5 w-1.5 rounded-full ${indicatorBg} inline-block animate-ping`} />
+                          <span className="text-[8px] text-stone-500 uppercase tracking-widest font-black">{praharTime}</span>
+                        </div>
+                        <p className="text-[7.5px] italic text-emerald-400 font-sans tracking-wide mt-1.5 leading-snug">
+                          {praharDesc}
+                        </p>
+                      </div>
+                    );
+                  })()}
                 </div>
               </div>
             )}
 
-              <BattleCanvas 
+            <BattleCanvas 
               phase={battlePhase === 'choosing_drop' || battlePhase === 'dropping' ? 'initial' : 'clash'} 
               clashAction={clashAction} 
               enemyAction={enemyAction} 
@@ -1831,7 +1941,6 @@ export const BattleScene: React.FC<BattleProps> = ({ onNavigate, onAdvance, stag
               onCommanderShout={handleCommanderShout}
               timeOfDay={timeOfDay}
               weather={weather}
-              battlePrahar={currentPrahar.name}
               stage={stage}
               fortWallIntegrity={fortWallIntegrity}
               spawnAllyTrigger={spawnAllyTrigger}
@@ -1905,7 +2014,6 @@ export const BattleScene: React.FC<BattleProps> = ({ onNavigate, onAdvance, stag
                   opponentName={activeDuelOpponent.name}
                   opponentTitle={activeDuelOpponent.title}
                   difficulty={activeDuelOpponent.difficulty}
-                  viewMode={activeDuelOpponent.viewMode}
                   onClose={handleCloseDuelArena}
                 />
               )}
@@ -2082,77 +2190,8 @@ export const BattleScene: React.FC<BattleProps> = ({ onNavigate, onAdvance, stag
 
             </div>
 
-            <div id="prahar-status-card" className="mb-4 bg-[#121315] border border-stone-800 p-3.5 rounded-sm text-left shadow-lg space-y-3">
-              <div className="flex justify-between items-center border-b border-stone-900 pb-2">
-                <h4 className="text-[9.5px] font-mono font-black text-saffron uppercase tracking-widest flex items-center gap-1.5">
-                  <Compass className="h-3 w-3 animate-spin text-saffron" style={{ animationDuration: '6s' }} />
-                  BATTLE PRAHAR CHRONICLE
-                </h4>
-                <span className="text-[8px] font-mono font-bold bg-stone-900 px-1.5 py-0.5 rounded-xs text-stone-400">
-                  AUTO-CYCLING
-                </span>
-              </div>
-
-              <div className="bg-stone-950 border border-[#8B5E3C]/25 rounded-xs p-3 space-y-2.5">
-                <div className="flex justify-between gap-3">
-                  <div>
-                    <div className="text-[8px] font-mono font-black text-stone-500 uppercase tracking-widest block">
-                      CURRENT PRAHAR
-                    </div>
-                    <div className="text-sm font-serif font-black text-white mt-1 leading-none">
-                      {currentPrahar.name}
-                    </div>
-                    <div className="text-[10px] text-stone-400 italic mt-1.5 leading-snug">
-                      {currentPrahar.subtitle}
-                    </div>
-                  </div>
-                  <div className="text-right shrink-0">
-                    <span className="inline-flex px-1.5 py-0.5 text-[8px] font-mono font-black uppercase tracking-wider rounded-xs bg-saffron/10 text-saffron border border-saffron/20">
-                      {currentPrahar.index + 1}/8
-                    </span>
-                    <div className={`text-[10px] font-mono font-bold mt-2 ${TIME_OF_DAY_CONFIGS[timeOfDay].color}`}>
-                      {TIME_OF_DAY_CONFIGS[timeOfDay].name}
-                    </div>
-                    <div className={`text-[10px] font-mono font-bold mt-0.5 ${WEATHER_CONFIGS[weather].color}`}>
-                      {WEATHER_CONFIGS[weather].name}
-                    </div>
-                  </div>
-                </div>
-
-                <div className="h-1.5 bg-stone-900 rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-gradient-to-r from-saffron via-amber-400 to-orange-600"
-                    style={{ width: `${((currentPrahar.index + 1) / BATTLE_PRAHARS.length) * 100}%` }}
-                  />
-                </div>
-
-                <div className="grid grid-cols-2 gap-2 text-[9px] font-mono">
-                  <div className="bg-stone-900/80 border border-stone-800 rounded-xs p-2">
-                    <span className="text-stone-500 uppercase tracking-widest block">Visibility</span>
-                    <span className="text-white font-black block mt-0.5">{currentVisibility}%</span>
-                  </div>
-                  <div className="bg-stone-900/80 border border-stone-800 rounded-xs p-2">
-                    <span className="text-stone-500 uppercase tracking-widest block">Accuracy</span>
-                    <span className="text-[#ea580c] font-black block mt-0.5">{currentAccuracy}%</span>
-                  </div>
-                </div>
-
-                <p className="text-[9.5px] text-stone-300 leading-tight font-sans italic bg-stone-900/60 p-2 border border-stone-900 rounded-xs">
-                  <span className="text-saffron font-bold">Field cue:</span> {currentPrahar.visibilityHint}
-                </p>
-
-                <button
-                  type="button"
-                  onClick={triggerWeatherTacticCountermeasure}
-                  className="w-full py-2 bg-[#ea580c] hover:bg-orange-500 text-stone-950 font-mono text-[9px] font-black uppercase tracking-widest rounded-xs transition-colors cursor-pointer text-center flex items-center justify-center gap-1.5 shadow-md active:scale-[0.98]"
-                >
-                  ⚔️ EXECUTE COUNTERMEASURE
-                </button>
-              </div>
-            </div>
-
             {/* AMBIENCE, WEATHER & MILITARY SYNTH CONTROLS */}
-            <div id="weather-and-music-council" className="hidden bg-[#121315] border border-stone-800 p-3.5 rounded-sm text-left shadow-lg space-y-3.5 my-4">
+            <div id="weather-and-music-council" className="bg-[#121315] border border-stone-800 p-3.5 rounded-sm text-left shadow-lg space-y-3.5 my-4">
               <div className="flex justify-between items-center border-b border-stone-900 pb-2">
                 <h4 className="text-[9.5px] font-mono font-black text-saffron uppercase tracking-widest flex items-center gap-1.5">
                   <Compass className="h-3 w-3 animate-spin text-saffron" style={{ animationDuration: '6s' }} />
@@ -2303,7 +2342,7 @@ export const BattleScene: React.FC<BattleProps> = ({ onNavigate, onAdvance, stag
               </div>
 
               {/* DUEL CHALLENGE CARD OVERLAY */}
-              <div id="duel-challenge-teaser" className="p-3.5 rounded-xs border-2 border-saffron bg-[#261304] text-left shadow-lg mb-4">
+              <div id="duel-challenge-teaser" className={`p-3.5 rounded-xs border-2 text-left shadow-lg mb-4 ${stageDuelsWon > 0 ? 'border-emerald-500 bg-[#0d2215]' : 'border-saffron bg-[#261304]'}`}>
                 <div className="flex justify-between items-start">
                   <div>
                     <h4 className="text-[8.5px] font-mono font-black text-saffron uppercase tracking-widest flex items-center gap-1.5">
@@ -2311,35 +2350,41 @@ export const BattleScene: React.FC<BattleProps> = ({ onNavigate, onAdvance, stag
                         <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-orange-400 opacity-75"></span>
                         <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-saffron"></span>
                       </span>
-                      WAR COUNCIL SPECIAL ASSAULT
+                      {stageDuelsWon > 0 ? "★ COMPULSORY TALWAR DUEL: CLEARED" : "⭐ COMPULSORY TALWAR DUEL: REQUIRED"}
                     </h4>
                     <h5 className="text-[13px] font-serif font-black text-white leading-tight uppercase mt-1">
-                      CHALLENGE DURRANI SARDAR TO FEUD
+                      CHALLENGE DURRANI SARDAR JAHAN KHAN
                     </h5>
                     <p className="text-[10.5px] text-stone-300 mt-1 leading-snug font-sans">
-                      Enter the close-quarters dust rings! Active real-time directional sword dueling with parrying, ripostes, and +10,000 Gold Treasury rewards.
+                      {stageDuelsWon > 0 ? (
+                        <span className="text-emerald-450 font-bold">✓ Valor proven! You have defeated General Jahan Khan in close combat, satisfying the compulsory battle requirement.</span>
+                      ) : (
+                        <span className="text-amber-300 font-medium">⚠️ COMPULSORY BATTLE STEP: You MUST initiate and WIN this close-quarters sword duel to shatter enemy morale and secure stage victory!</span>
+                      )}
                     </p>
                   </div>
                 </div>
-                <button
-                  type="button"
-                  disabled={battlePhase !== 'clash' || showStageResultModal}
-                  onClick={() => {
-                    setStageDuelsAttempted(prev => prev + 1);
-                    setActiveDuelOpponent({
-                      name: "Jahan Khan",
-                      title: "Grand General of Durrani Vanguard",
-                      difficulty: battleDifficulty,
-                      viewMode: 'skirmish'
-                    });
-                  }}
-                  className="w-full mt-3 py-2 bg-gradient-to-r from-saffron to-[#9a3412] hover:from-[#f59e0b] hover:to-[#b45308] disabled:opacity-40 text-stone-950 font-mono text-[9px] font-black uppercase tracking-wider border border-[#fed7aa] rounded-xs cursor-pointer flex items-center justify-center gap-1.5 shadow-md transition-all active:scale-[0.98]"
-                >
-                  ⚔️ ENTER FIRST-PERSON SKIRMISH
-                </button>
-                <p className="mt-2 text-[9px] text-stone-400 font-sans leading-snug">
-                  Fight from the blade-line view: closer camera, tighter reaction windows, and a skirmish HUD instead of the standard duel card.
-                </p>
+                {stageDuelsWon === 0 ? (
+                  <button
+                    type="button"
+                    disabled={battlePhase !== 'clash' || showStageResultModal}
+                    onClick={() => {
+                      setStageDuelsAttempted(prev => prev + 1);
+                      setActiveDuelOpponent({
+                        name: "Jahan Khan",
+                        title: "Grand General of Durrani Vanguard",
+                        difficulty: battleDifficulty
+                      });
+                    }}
+                    className="w-full mt-3 py-2 bg-gradient-to-r from-saffron to-[#9a3412] hover:from-[#f59e0b] hover:to-[#b45308] disabled:opacity-40 text-stone-950 font-mono text-[9px] font-black uppercase tracking-wider border border-[#fed7aa] rounded-xs cursor-pointer flex items-center justify-center gap-1.5 shadow-md transition-all active:scale-[0.98]"
+                  >
+                    ⚔️ INITIATE COMPULSORY SECTOR DUEL
+                  </button>
+                ) : (
+                  <div className="w-full mt-3 py-1.5 bg-emerald-950 border border-emerald-500/30 text-emerald-400 text-center font-mono text-[9px] uppercase tracking-wider rounded-xs">
+                    ✓ COMPULSORY SWORD DUEL COMPLETED SUCCESSFULLY
+                  </div>
+                )}
               </div>
 
               <div id="tactics-bulletin-actions" className="grid grid-cols-2 gap-2">
@@ -2581,6 +2626,23 @@ export const BattleScene: React.FC<BattleProps> = ({ onNavigate, onAdvance, stag
                   <div className="font-mono">
                     <span className="text-stone-500 block text-[8px] uppercase">SWORD MASTERY</span>
                     <span className="text-white font-serif font-black uppercase">{equippedScope}</span>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 col-span-2 mt-2 pt-2 border-t border-stone-850/60">
+                  <Compass size={12} className="text-amber-400 animate-spin-slow shrink-0" />
+                  <div className="font-mono">
+                    <span className="text-stone-500 block text-[8px] uppercase">ACTIVE MILITARY FORMATION</span>
+                    <span className="text-saffron font-serif font-black uppercase text-[10px]">
+                      {(() => {
+                        const form = localStorage.getItem('panipat_campaign_formation') || 'gardi_square';
+                        if (form === 'gardi_square') return 'Gardi French Square (+35% Def)';
+                        if (form === 'ganimi_kava') return 'Ganimi Kava Crescent (+30% Crit)';
+                        if (form === 'royal_spear') return 'Royal Spearhead Column (+40% Atk)';
+                        if (form === 'zamburak_redoubt') return 'Zamburak Swivel Battery (+30% Acc)';
+                        return 'Standard Column Array';
+                      })()}
+                    </span>
                   </div>
                 </div>
               </div>
