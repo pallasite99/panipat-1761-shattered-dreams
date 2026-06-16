@@ -179,6 +179,24 @@ export const HISTORICAL_PROFILES: { [id: string]: HistoricalProfile } = {
       'Exemplified strict administrative discipline, demanding regular military status reports.',
       'Sustained crucial back-channel diplomatic ties with Southern vassal kingdoms.'
     ]
+  },
+  raghoba: {
+    id: 'raghoba',
+    name: 'Raghunathrao (Raghoba)',
+    title: 'The Great Northern Conqueror & Peshwa Commander',
+    faction: 'maratha',
+    bannerColor: 'bg-gradient-to-b from-[#b33600] to-[#591b00]',
+    bannerAccent: 'border-orange-500',
+    emblem: '🐎',
+    birthDeath: '1734 – 1783',
+    bannerSymbolDesc: 'The Flying Cavalry Banner: representing rapid troop rushes, frontier conquest, and ambitious expansion across Punjab.',
+    detailedHistory: 
+      'Raghunathrao, widely known as Raghoba, was the dynamic and ambitious younger brother of Peshwa Balaji Baji Rao. Between 1757 and 1758, he spearheaded the spectacular Maratha expansion into Northern India. His forces famously captured Lahore, drove Ahmad Shah Abdali\'s son Timur Shah out of Punjab, and planted the saffron flag of the Chhatrapati on the banks of the Indus at Attock and Peshawar. However, his northern expeditions generated immense debts for the Pune court, leading the Peshwa to pass command of the 1760 campaign to Sadashivrao Bhau. Highly influential and deeply proud of his northern conquests, his strategic vision represents the peak of Maratha military expansion.',
+    achievements: [
+      'Conquered Lahore and drove out the Afghan governor Timur Shah.',
+      'Planted the Maratha sovereign saffron standard at Peshawar and Attock.',
+      'Constructed key northern alliances that later supported the empire.'
+    ]
   }
 };
 

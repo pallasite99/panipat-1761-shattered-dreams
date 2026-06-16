@@ -2,6 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { BattleCanvas } from '../components/BattleCanvas';
 import { SwordDuelArena } from '../components/SwordDuelArena';
+import { GardiSurrenderVisual } from '../components/GardiSurrenderVisual';
+import { BattlePreludeVideo } from '../components/BattlePreludeVideo';
 import { 
   Swords, 
   ShieldAlert, 
@@ -684,6 +686,7 @@ export const BattleScene: React.FC<BattleProps> = ({ onNavigate, onAdvance, stag
   // For historically accurate Fort Siege mechanics
   const [fortWallIntegrity, setFortWallIntegrity] = useState(100);
   const [showBriefing, setShowBriefing] = useState(true);
+  const [showPreludeVideo, setShowPreludeVideo] = useState(false);
 
   // Pre-battle Prelude & Council Cutscene states
   const [preludeStage, setPreludeStage] = useState<'generals_grouping' | 'briefing_details'>('generals_grouping');
@@ -694,6 +697,7 @@ export const BattleScene: React.FC<BattleProps> = ({ onNavigate, onAdvance, stag
   useEffect(() => {
     setFortWallIntegrity(100);
     setShowBriefing(true);
+    setShowPreludeVideo(false);
     setPreludeStage('generals_grouping');
     setCurrentDialogueIndex(0);
     setSelectedStrategyPlan(null);
@@ -914,6 +918,7 @@ export const BattleScene: React.FC<BattleProps> = ({ onNavigate, onAdvance, stag
     const isShamsher = localStorage.getItem('panipat_campaign_general') === 'shamsher';
     const isParvatibai = localStorage.getItem('panipat_campaign_general') === 'parvatibai';
     const isGopikabai = localStorage.getItem('panipat_campaign_general') === 'gopikabai';
+    const isRaghoba = localStorage.getItem('panipat_campaign_general') === 'raghoba';
     if (isShamsher) {
       return [
         "⚔️ SHAMSHER BAHADUR is on the battlefield! Cavalry guards are fully energized!",
@@ -932,6 +937,13 @@ export const BattleScene: React.FC<BattleProps> = ({ onNavigate, onAdvance, stag
       return [
         "👑 REGENT GOPIKABAI'S SOVEREIGN TRUST is active! Pune Shaniwar Wada gold guards your rear lines!",
         "💬 'Our royal treasury is sworn to your steel. Command with iron absolute authority!'",
+        "Awaiting coordinates... Select landing zone!"
+      ];
+    }
+    if (isRaghoba) {
+      return [
+        "🐎 RAGHUNATHRAO (RAGHOBA) is leading the frontier vanguard! High-speed cavalry maneuvers active!",
+        "💬 'We have carried Chhatrapati's saffron banner all the way to Peshawar. Abdali's forces shall not stop us!'",
         "Awaiting coordinates... Select landing zone!"
       ];
     }
@@ -1757,6 +1769,24 @@ export const BattleScene: React.FC<BattleProps> = ({ onNavigate, onAdvance, stag
     <div id="battle-scene-wrapper" className={`relative h-screen w-screen bg-[#070404] text-stone-200 overflow-hidden font-sans ${showShake ? 'battle-shake' : ''}`}>
       <TopBar screen={Screen.BATTLE} onNavigate={onNavigate} onHelp={onHelp} onSettings={onSettings} onShowBattleLog={onShowBattleLog} />
 
+      {/* CINEMATIC BATTLE PRELUDE VIDEO ANIMATION */}
+      <AnimatePresence>
+        {showPreludeVideo && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="absolute inset-0 z-50 bg-black/95 flex items-center justify-center p-4 md:p-6 overflow-hidden"
+          >
+            <BattlePreludeVideo 
+              stage={stage} 
+              faction={activeFaction} 
+              onComplete={() => setShowPreludeVideo(false)} 
+            />
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* HISTORICAL PRE-BATTLE PRELUDE & PARCHMENT BRIEFING */}
       <AnimatePresence>
         {showBriefing && (() => {
@@ -2146,6 +2176,7 @@ export const BattleScene: React.FC<BattleProps> = ({ onNavigate, onAdvance, stag
                       id="accept-briefing-btn"
                       onClick={() => {
                         setShowBriefing(false);
+                        setShowPreludeVideo(true);
                       }}
                       className="w-full px-6 py-3.5 bg-[#4c1d12] hover:bg-[#3b120c] text-[#f4ebe1] hover:text-white font-serif font-bold uppercase tracking-widest text-xs rounded shadow-lg transition-transform hover:scale-[1.02] active:scale-[0.98] border border-[#ffedd5]/20 flex items-center justify-center gap-2 cursor-pointer"
                     >
@@ -2673,6 +2704,28 @@ export const BattleScene: React.FC<BattleProps> = ({ onNavigate, onAdvance, stag
             </div>
           )}
 
+          {/* Raghunathrao (Raghoba) Portrait Hero Card if Active */}
+          {localStorage.getItem('panipat_campaign_general') === 'raghoba' && (
+            <div className="mb-4 p-4 bg-gradient-to-r from-orange-950/70 to-stone-900/80 border-2 border-amber-500/45 rounded-xs text-left shadow-lg">
+              <div className="flex gap-3.5 items-center">
+                <div className="w-12 h-12 rounded-sm border border-amber-500 bg-amber-950 flex items-center justify-center font-serif text-white font-black text-xl shadow-inner select-none shrink-0">
+                  RR
+                </div>
+                <div>
+                  <h4 className="text-amber-400 font-serif font-black text-sm uppercase tracking-wider flex items-center gap-1.5 leading-none">
+                    👑 RAGHUNATHRAO (RAGHOBA)
+                  </h4>
+                  <span className="text-[9px] text-amber-500 font-mono tracking-widest uppercase font-bold block mt-1">
+                    Playable Hero • Frontier Conqueror
+                  </span>
+                </div>
+              </div>
+              <p className="text-[11px] text-stone-300 mt-2.5 leading-relaxed border-t border-stone-800/80 pt-2.5">
+                The master of the rapid northern expansions! Having planted the saffron standard at Peshawar, your cavalry divisions mobilize with <span className="text-amber-400 font-bold">+30% movement speed</span> & you can deploy <span className="text-amber-400 font-bold">5x Heavy Spear Riders</span> to overrun Afghan flank shields!
+              </p>
+            </div>
+          )}
+
           {/* STAGE MATCH SERIES BEST-OF-THREE HUD */}
           <div id="battle-series-scoreboard" className="mb-4 p-4 bg-stone-900/90 border border-stone-800 rounded-xs space-y-3.5 text-left shadow-lg">
             <div className="flex justify-between items-center border-b border-stone-800 pb-2">
@@ -3168,10 +3221,14 @@ export const BattleScene: React.FC<BattleProps> = ({ onNavigate, onAdvance, stag
                 const campaignGen = localStorage.getItem('panipat_campaign_general') || 'sadashiv';
                 const generalDetails = {
                   sadashiv: { bonusName: "Imperial Peshwa Command", unit: "Peshwa Guard Cav", desc: "Balanced stats + heavy iron shields", count: 3 },
+                  bhau: { bonusName: "Imperial Peshwa Command", unit: "Peshwa Guard Cav", desc: "Balanced stats + heavy iron shields", count: 3 },
+                  raghoba: { bonusName: "Frontier Cavalry Blitz", unit: "Heavy Spear Rider", desc: "High-speed veteran cavalry with long spears", count: 5 },
                   shamsher: { bonusName: "Shamsher's Cavalry Mobilization", unit: "Heavy Spear Rider", desc: "Elite speed + high critical slashing", count: 4 },
                   parvatibai: { bonusName: "Queen's Sacred Devotion", unit: "Shielded Mawala Guard", desc: "Huge HP + absorb 50% passive *sacred* damage", count: 4 },
                   gopikabai: { bonusName: "Pune Shaniwar Wada Treasury", unit: "Gardi Mercenary", desc: "Fires flintlock carbines at distance", count: 4 },
-                }[campaignGen as 'sadashiv'|'shamsher'|'parvatibai'|'gopikabai'] || { bonusName: "Imperial Peshwa Command", unit: "Peshwa Guard Cav", desc: "Balanced stats + heavy iron shields", count: 3 };
+                  vishwas: { bonusName: "Crown Prince Reserve Guard", unit: "Peshwa Guard Cav", desc: "Highest morale & strong armor", count: 4 },
+                  gardi: { bonusName: "Gardi Artillery Battery", unit: "Gardi Infantry", desc: "Infantry trained to load guns and shoot rifles", count: 5 },
+                }[campaignGen as 'sadashiv'|'bhau'|'raghoba'|'shamsher'|'parvatibai'|'gopikabai'|'vishwas'|'gardi'] || { bonusName: "Imperial Peshwa Command", unit: "Peshwa Guard Cav", desc: "Balanced stats + heavy iron shields", count: 3 };
 
                 const handleSpawnGeneralCohort = () => {
                   if (battlePhase !== 'clash' || showStageResultModal) return;
@@ -3443,82 +3500,90 @@ export const BattleScene: React.FC<BattleProps> = ({ onNavigate, onAdvance, stag
                 </div>
 
                 {/* Main Speakers Arena */}
-                <div className="space-y-5">
-                  <div className={`p-5 rounded-xs border transition-all duration-300 min-h-[170px] flex flex-col justify-between ${
-                    gardiDebateStep === 0 ? 'bg-[#141210] border-stone-850' :
-                    gardiDebateStep === 1 ? 'bg-[#0f1d2a] border-sky-950/40' :
-                    gardiDebateStep === 2 ? 'bg-[#291313] border-red-950/40' :
-                    'bg-[#211610] border-amber-950/40'
-                  }`}>
-                    <div>
-                      {/* Identity Row */}
-                      <div className="flex items-center gap-3.5 mb-3.5">
-                        <div className={`w-12 h-12 rounded-full flex items-center justify-center text-2xl shadow-inner border ${
-                          gardiDebateStep === 0 ? 'bg-stone-900 border-stone-800' :
-                          gardiDebateStep === 1 ? 'bg-sky-950 border-sky-850 text-sky-400' :
-                          gardiDebateStep === 2 ? 'bg-red-950 border-red-850 text-red-500' :
-                          'bg-amber-950 border-orange-900 text-saffron'
-                        }`}>
-                          {gardiDebateStep === 0 ? "📜" :
-                           gardiDebateStep === 1 ? "💂‍♂️" :
-                           gardiDebateStep === 2 ? "🐎" : "🚩"}
-                        </div>
+                <div className="grid grid-cols-1 md:grid-cols-12 gap-5 items-stretch">
+                  {/* Left Column: Visual Depiction of Surrender Ceremony */}
+                  <div className="md:col-span-5 col-span-1 flex flex-col justify-center">
+                    <GardiSurrenderVisual step={gardiDebateStep} />
+                  </div>
 
-                        <div>
-                          <span className={`text-[12px] font-mono uppercase tracking-[0.15em] block font-black ${
-                            gardiDebateStep === 0 ? 'text-stone-400' :
-                            gardiDebateStep === 1 ? 'text-sky-400' :
-                            gardiDebateStep === 2 ? 'text-red-400' : 'text-saffron'
+                  {/* Right Column: Dialogue and Insights */}
+                  <div className="md:col-span-7 col-span-1 flex flex-col gap-4 justify-between">
+                    <div className={`p-5 rounded-xs border transition-all duration-300 flex-1 flex flex-col justify-between ${
+                      gardiDebateStep === 0 ? 'bg-[#141210] border-stone-850' :
+                      gardiDebateStep === 1 ? 'bg-[#0f1d2a] border-sky-950/40' :
+                      gardiDebateStep === 2 ? 'bg-[#291313] border-red-950/40' :
+                      'bg-[#211610] border-amber-950/40'
+                    }`}>
+                      <div>
+                        {/* Identity Row */}
+                        <div className="flex items-center gap-3.5 mb-3.5">
+                          <div className={`w-12 h-12 rounded-full flex items-center justify-center text-2xl shadow-inner border ${
+                            gardiDebateStep === 0 ? 'bg-stone-900 border-stone-800' :
+                            gardiDebateStep === 1 ? 'bg-sky-950 border-sky-850 text-sky-400' :
+                            gardiDebateStep === 2 ? 'bg-red-950 border-red-850 text-red-500' :
+                            'bg-amber-950 border-orange-900 text-saffron'
                           }`}>
-                            {gardiDebateStep === 0 ? "COUNCIL CHRONICLE" :
-                             gardiDebateStep === 1 ? "IBRAHIM KHAN GARDI" :
-                             gardiDebateStep === 2 ? "SUBEHDAR MALHAR RAO HOLKAR" : "SADASHIVRAO BHAU"}
-                          </span>
-                          <span className="text-[10px] text-stone-500 font-mono block">
-                            {gardiDebateStep === 0 ? "Scene Setup: Camp-site outside Udgir Citadel" :
-                             gardiDebateStep === 1 ? "Artillery Commander (Formerly in Nizam's pay)" :
-                             gardiDebateStep === 2 ? "Veteran Cavalry Chief of the Holkar Clan" : "Generalissimo of the Southern Maratha Expediton"}
-                          </span>
-                        </div>
-                      </div>
+                            {gardiDebateStep === 0 ? "📜" :
+                             gardiDebateStep === 1 ? "💂‍♂️" :
+                             gardiDebateStep === 2 ? "🐎" : "🚩"}
+                          </div>
 
-                      {/* Speaking dialogue */}
-                      <p className="text-stone-200 text-xs md:text-[13px] leading-relaxed italic font-serif">
+                          <div>
+                            <span className={`text-[12px] font-mono uppercase tracking-[0.15em] block font-black ${
+                              gardiDebateStep === 0 ? 'text-stone-400' :
+                              gardiDebateStep === 1 ? 'text-sky-400' :
+                              gardiDebateStep === 2 ? 'text-red-400' : 'text-saffron'
+                            }`}>
+                              {gardiDebateStep === 0 ? "COUNCIL CHRONICLE" :
+                               gardiDebateStep === 1 ? "IBRAHIM KHAN GARDI" :
+                               gardiDebateStep === 2 ? "SUBEHDAR MALHAR RAO HOLKAR" : "SADASHIVRAO BHAU"}
+                            </span>
+                            <span className="text-[10px] text-stone-500 font-mono block">
+                              {gardiDebateStep === 0 ? "Scene Setup: Camp-site outside Udgir Citadel" :
+                               gardiDebateStep === 1 ? "Artillery Commander (Formerly in Nizam's pay)" :
+                               gardiDebateStep === 2 ? "Veteran Cavalry Chief of the Holkar Clan" : "Generalissimo of the Southern Maratha Expediton"}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Speaking dialogue */}
+                        <p className="text-stone-200 text-xs md:text-[13px] leading-relaxed italic font-serif">
+                          {gardiDebateStep === 0 && (
+                            "Under the smoking, gunpowder-scarred basalt ramparts of Udgir Fort, the forces of the Deccan Nizam lie decisively broken. Cut off from ammunition reserves and deserted by his generals, Ibrahim Khan Gardi — the legendary artillery commander trained in modern Western infantry lines by French general Marquis de Bussy — refuses to retreat. Armed with a parchment of truce, he strides proudly into Sadashivrao Bhau's commander pavilion, kneeling to offer his French officer's rapier in surrender..."
+                          )}
+                          {gardiDebateStep === 1 && (
+                            "« Sadashivrao Bhau, my French-disciplined Gardi artillerymen and bayonet squads stood firm until Salabat Jung hoisted the surrender banner. I yield my sword but not my pride. If the Peshwas choose to pay my men regularly and grant us safe, exclusive corridors of fire on the battlefield — without interference from your speed cavalry horsemen — our heavy brass nine-pounder guns will pulverize the path of Delhi of all Afghan rebels. My cannons do not distinguish by religion, only by the absolute rules of military discipline. »"
+                          )}
+                          {gardiDebateStep === 2 && (
+                            "« Do not swallow this treasonous poison, Bhau! It is light, lightning cavalry strikes — our trusted 'Ganimi Kava' — that conquered Hindusthan from Pune to the Indus! These foreign foot-soldiers march slowly, require thousands of ammunition carts, and will trap us in rigid dirt trenches like ducks. If the swift Afghan riders surround our camp, these sluggish blocks will block our retreat. Why drain Pune's gold on high mercenary pay, when our own horsemen bleed for crumbs? Disarm them! »"
+                          )}
+                          {gardiDebateStep === 3 && (
+                            "« Malharrao, the times of simple horse skirmishes are drawing to a close! Ahmad Shah Durrani brings heavy camel-mounted swivel guns and disciplined Rohilla musketeers who will pierce your horse lines before you even raise a spear. To defeat a modern Afghan coalition, we must command modern European artillery! Ibrahim Khan's heavy-caliber nine-pounder shells are the deadliest weapon in Hindusthan. General, I accept your sword and allegiance. I commission you as our Grand Chief of Artillery! Your disciplined vanguard squares shall lead us North! »"
+                          )}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Historical Significance Box */}
+                    <div className="bg-[#100b08] border border-[#8B5E3C]/15 p-4 rounded-xs">
+                      <span className="text-[8px] font-mono text-[#A57850] block uppercase tracking-[0.2em] mb-1">
+                        Historical Accuracy Insight
+                      </span>
+                      <p className="text-stone-400 text-[10.5px] leading-relaxed font-sans">
                         {gardiDebateStep === 0 && (
-                          "Under the smoking, gunpowder-scarred basalt ramparts of Udgir Fort, the forces of the Deccan Nizam lie decisively broken. Cut off from ammunition reserves and deserted by his generals, Ibrahim Khan Gardi — the legendary artillery commander trained in modern Western infantry lines by French general Marquis de Bussy — refuses to retreat. Armed with a parchment of truce, he strides proudly into Sadashivrao Bhau's commander pavilion, kneeling to offer his French officer's rapier in surrender..."
+                          "Following the Battle of Udgir in early 1760, Ibrahim Khan Gardi surrendered his elite units to the Maratha Empire. His decision to join the Peshwa's forces drastically altered the tactical doctrine of the Maratha vanguard."
                         )}
                         {gardiDebateStep === 1 && (
-                          "« Sadashivrao Bhau, my French-disciplined Gardi artillerymen and bayonet squads stood firm until Salabat Jung hoisted the surrender banner. I yield my sword but not my pride. If the Peshwas choose to pay my men regularly and grant us safe, exclusive corridors of fire on the battlefield — without interference from your speed cavalry horsemen — our heavy brass nine-pounder guns will pulverize the path of Delhi of all Afghan rebels. My cannons do not distinguish by religion, only by the absolute rules of military discipline. »"
+                          "Historically, Gardi demanded immense financial autonomy and independent battlefield control. He insisted on fighting in cohesive 'French infantry squares' flanked by his personal heavy brass cannons."
                         )}
                         {gardiDebateStep === 2 && (
-                          "« Do not swallow this treasonous poison, Bhau! It is light, lightning cavalry strikes — our trusted 'Ganimi Kava' — that conquered Hindusthan from Pune to the Indus! These foreign foot-soldiers march slowly, require thousands of ammunition carts, and will trap us in rigid dirt trenches like ducks. If the swift Afghan riders surround our camp, these sluggish blocks will block our retreat. Why drain Pune's gold on high mercenary pay, when our own horsemen bleed for crumbs? Disarm them! »"
+                          "Malhar Rao Holkar's warning was heavily prophetic. At Panipat, the Marathas were eventually cornered and trapped in a static, defense-starved perimeter — exactly how Holkar feared they would be under slow infantry reliance."
                         )}
                         {gardiDebateStep === 3 && (
-                          "« Malharrao, the times of simple horse skirmishes are drawing to a close! Ahmad Shah Durrani brings heavy camel-mounted swivel guns and disciplined Rohilla musketeers who will pierce your horse lines before you even raise a spear. To defeat a modern Afghan coalition, we must command modern European artillery! Ibrahim Khan's heavy-caliber nine-pounder shells are the deadliest weapon in Hindusthan. General, I accept your sword and allegiance. I commission you as our Grand Chief of Artillery! Your disciplined vanguard squares shall lead us North! »"
+                          "Sadashivrao Bhau's choice to modernize won him early victories and breached Delhi's gates, but his high-tier funding of Gardi's mercenaries caused severe division and jealousy among the traditional Deccani cavalry generals."
                         )}
                       </p>
                     </div>
-                  </div>
-
-                  {/* Historical Significance Box */}
-                  <div className="bg-[#100b08] border border-[#8B5E3C]/15 p-4 rounded-xs">
-                    <span className="text-[8px] font-mono text-[#A57850] block uppercase tracking-[0.2em] mb-1">
-                      Historical Accuracy Insight
-                    </span>
-                    <p className="text-stone-400 text-[10.5px] leading-relaxed font-sans">
-                      {gardiDebateStep === 0 && (
-                        "Following the Battle of Udgir in early 1760, Ibrahim Khan Gardi surrendered his elite units to the Maratha Empire. His decision to join the Peshwa's forces drastically altered the tactical doctrine of the Maratha vanguard."
-                      )}
-                      {gardiDebateStep === 1 && (
-                        "Historically, Gardi demanded immense financial autonomy and independent battlefield control. He insisted on fighting in cohesive 'French infantry squares' flanked by his personal heavy brass cannons."
-                      )}
-                      {gardiDebateStep === 2 && (
-                        "Malhar Rao Holkar's warning was heavily prophetic. At Panipat, the Marathas were eventually cornered and trapped in a static, defense-starved perimeter — exactly how Holkar feared they would be under slow infantry reliance."
-                      )}
-                      {gardiDebateStep === 3 && (
-                        "Sadashivrao Bhau's choice to modernize won him early victories and breached Delhi's gates, but his high-tier funding of Gardi's mercenaries caused severe division and jealousy among the traditional Deccani cavalry generals."
-                      )}
-                    </p>
                   </div>
                 </div>
 

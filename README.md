@@ -93,6 +93,13 @@ Open the **Multiplayer Matchmaking** simulator to view active rooms, regions, pi
 ### 📰 11. Campaign Tension Ticker
 Keep track of the strategic status via a continuous scrolling newspaper marquee ticker at the top of the campaign map, fed with real-time historical event logs.
 
+### 🏆 12. Udgir Siege Victory & Shaniwar Wada Celebrations Visualizer
+Following the decisive victory over the Nizam of Hyderabad at the Siege of Udgir, experience the celebratory atmosphere at the Shaniwar Wada palace in Pune:
+*   **Interactive Sky & Rockets**: Click the night sky above the basalt stone walls of Delhi Gate to trigger multi-colored victory rocket firework bursts.
+*   **Grand Dhol-Tasha Drums**: Beat the ceremonial Nagada drums to send visual shockwaves across the palace court and increase the crowd's celebration fever levels.
+*   **Victory Procession**: Witness the caparisoned imperial elephant marching proudly through the wooden spiked palace doors carrying the golden howdah and standard bearer.
+*   **Royal Saffron Splendor**: View standard-bearer flags flapping in the wind, rising saffron dust clouds, and golden Mohurs showering into the centralized treasury from the war's 6,000,000 rupee tribute.
+
 ---
 
 ## 📂 Codebase Architecture & Directory Structure
@@ -117,6 +124,7 @@ panipat-1761-shattered-dreams/
 │   │   ├── CavalryChargeSimulator.tsx # Cavalry charge calculations & simulator
 │   │   ├── DiplomacyDarbar.tsx  # Interactive diplomatic darbar interface
 │   │   ├── SwordDuelArena.tsx   # Commander sword combat simulator
+│   │   ├── PuneCelebrationVisual.tsx # Shaniwar Wada victory celebration visualizer
 │   │   ├── GlobalOverlays.tsx   # Help manuals & setting configuration screens
 │   │   ├── SharedUI.tsx         # Skeuomorphic parchment controls
 │   │   └── FeedbackWidget.tsx   # Inline user feedback module

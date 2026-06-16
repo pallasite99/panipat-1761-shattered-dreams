@@ -61,7 +61,7 @@ interface BattleCanvasProps {
   clashAction: 'none' | 'charge' | 'defend' | 'artillery' | 'feint' | 'flank' | 'adrenaline' | 'bomb' | 'loot' | null;
   enemyAction: 'none' | 'zamburak' | 'charge' | null;
   activeFaction: 'maratha' | 'durrani';
-  onEnemyHit: (dmg: number, label: string) => void;
+  onEnemyHit: (dmg: number, label: string, isAutonomous?: boolean) => void;
   onLootSuccess: () => void;
   onCommanderShout?: (speaker: string, role: string, avatar: string, text: string, faction: 'maratha' | 'durrani') => void;
   timeOfDay?: 'dawn' | 'noon' | 'dusk' | 'midnight';
@@ -124,6 +124,7 @@ export const BattleCanvas: React.FC<BattleCanvasProps> = ({
   const isShamsherSelected = localStorage.getItem('panipat_campaign_general') === 'shamsher';
   const isParvatibaiSelected = localStorage.getItem('panipat_campaign_general') === 'parvatibai';
   const isGopikabaiSelected = localStorage.getItem('panipat_campaign_general') === 'gopikabai';
+  const isRaghobaSelected = localStorage.getItem('panipat_campaign_general') === 'raghoba';
 
   // Gameplay lists tracked across animation frames
   const slashesRef = useRef<SwordSlashEffect[]>([]);
@@ -132,6 +133,7 @@ export const BattleCanvas: React.FC<BattleCanvasProps> = ({
   const textsRef = useRef<FloatingCombatText[]>([]);
   const bulletTracersRef = useRef<BulletTracer[]>([]);
   const shakeRef = useRef<number>(0);
+  const lastProcessedClashRef = useRef<string | null>(null);
   
   // Airdrop Parachute Box (Medieval Cargo supply tied to a historical crest)
   const airdropCrateRef = useRef({
@@ -155,11 +157,17 @@ export const BattleCanvas: React.FC<BattleCanvasProps> = ({
     y: number; 
     z: number; 
     hp: number; 
+    maxHp?: number;
     vx: number; 
     type: string;
     shieldActive: boolean;
     shootCooldown?: number;
     targetAllyId?: number | null;
+    isCommander?: boolean;
+    commanderName?: string;
+    commanderRole?: string;
+    commanderMount?: string;
+    commanderColor?: string;
   }[]>([]);
 
   // Allied soldiers clashing with Afghan forces
@@ -169,13 +177,83 @@ export const BattleCanvas: React.FC<BattleCanvasProps> = ({
     y: number;
     z: number;
     hp: number;
+    maxHp?: number;
     vx: number;
     type: string;
     boboffset: number;
     slashTimer: number;
     targetEnemyId: number | null;
     shootCooldown?: number;
+    isCommander?: boolean;
+    commanderName?: string;
+    commanderRole?: string;
+    commanderMount?: string;
+    commanderColor?: string;
   }[]>([]);
+
+  const getAlliedCommanderInfo = () => {
+    if (activeFaction === 'maratha') {
+      if (stage === 'SHINDE_STAND') {
+        return { name: "Dattaji Shinde", role: "Scindia General", mount: "horse", color: "#ea580c" };
+      }
+      if (stage === 'GWALIOR') {
+        return { name: "Mahadji Shinde", role: "Gwalior Ruler", mount: "elephant", color: "#ea580c" };
+      }
+      if (isShamsherSelected) {
+        return { name: "Shamsher Bahadur", role: "Cavalry Commander", mount: "horse", color: "#ea580c" };
+      }
+      if (isParvatibaiSelected) {
+        return { name: "Queen Parvatibai", role: "Camp Pillar", mount: "horse", color: "#ec4899" };
+      }
+      if (isGopikabaiSelected) {
+        return { name: "Regent Gopikabai", role: "Regent Empress", mount: "elephant", color: "#ea580c" };
+      }
+      if (isRaghobaSelected) {
+        return { name: "Raghunathrao (Raghoba)", role: "Frontier Conqueror", mount: "horse", color: "#f59e0b" };
+      }
+      return { name: "Sadashivrao Bhau", role: "Peshwa Generalissimo", mount: "elephant", color: "#ea580c" };
+    } else {
+      if (stage === 'NIZAM_CAMPAIGN') {
+        return { name: "Nizam Salabat Jung", role: "Deccan Sovereign", mount: "elephant", color: "#0284c7" };
+      }
+      if (stage === 'SHINDE_STAND' || stage === 'DELHI_NEGOTIATIONS') {
+        return { name: "Najib-ud-Daula", role: "Rohilla Chief", mount: "horse", color: "#0284c7" };
+      }
+      return { name: "Ahmad Shah Abdali", role: "Durrani Sovereign", mount: "elephant", color: "#059669" };
+    }
+  };
+
+  const getEnemyCommanderInfo = () => {
+    if (activeFaction === 'maratha') {
+      if (stage === 'NIZAM_CAMPAIGN') {
+        return { name: "Nizam Salabat Jung", role: "Deccan Sovereign", mount: "elephant", color: "#0284c7" };
+      }
+      if (stage === 'SHINDE_STAND') {
+        return { name: "Najib-ud-Daula", role: "Rohilla Chief", mount: "horse", color: "#059669" };
+      }
+      return { name: "Ahmad Shah Abdali", role: "Durrani Sovereign", mount: "elephant", color: "#059669" };
+    } else {
+      if (stage === 'SHINDE_STAND') {
+        return { name: "Dattaji Shinde", role: "Scindia General", mount: "horse", color: "#ea580c" };
+      }
+      if (stage === 'GWALIOR') {
+        return { name: "Mahadji Shinde", role: "Gwalior Ruler", mount: "elephant", color: "#ea580c" };
+      }
+      if (isShamsherSelected) {
+        return { name: "Shamsher Bahadur", role: "Cavalry Commander", mount: "horse", color: "#ea580c" };
+      }
+      if (isParvatibaiSelected) {
+        return { name: "Queen Parvatibai", role: "Camp Pillar", mount: "horse", color: "#ec4899" };
+      }
+      if (isGopikabaiSelected) {
+        return { name: "Regent Gopikabai", role: "Regent Empress", mount: "elephant", color: "#ea580c" };
+      }
+      if (isRaghobaSelected) {
+        return { name: "Raghunathrao (Raghoba)", role: "Frontier Conqueror", mount: "horse", color: "#f59e0b" };
+      }
+      return { name: "Sadashivrao Bhau", role: "Peshwa Generalissimo", mount: "elephant", color: "#ea580c" };
+    }
+  };
 
   useEffect(() => {
     // Populate historic targets based on faction and stage
@@ -203,7 +281,26 @@ export const BattleCanvas: React.FC<BattleCanvasProps> = ({
     }
 
     const initialTargets = [];
-    for (let i = 0; i < 8; i++) {
+    const enemyCommander = getEnemyCommanderInfo();
+    // Add enemy commander
+    initialTargets.push({
+      id: 999,
+      x: 800 - 180,
+      y: 210,
+      z: 0.85,
+      hp: 350,
+      maxHp: 350,
+      vx: -0.3,
+      type: enemyCommander.name,
+      shieldActive: true,
+      isCommander: true,
+      commanderName: enemyCommander.name,
+      commanderRole: enemyCommander.role,
+      commanderMount: enemyCommander.mount,
+      commanderColor: enemyCommander.color
+    });
+
+    for (let i = 0; i < 7; i++) {
       const z = 0.4 + (i % 4) * 0.14;
       const isRear = i % 2 === 1;
       const initialW = 800;
@@ -213,6 +310,7 @@ export const BattleCanvas: React.FC<BattleCanvasProps> = ({
         y: 170 + (i % 4) * 18, 
         z,
         hp: i % 4 === 3 ? 180 : 100,
+        maxHp: i % 4 === 3 ? 180 : 100,
         vx: (i % 4 === 3 ? 0.22 : 0.4 + Math.random() * 0.5) * (i % 2 === 0 ? 1 : -1),
         type: targetTypes[i % 4] || 'Target',
         shieldActive: i % 2 === 0
@@ -221,7 +319,28 @@ export const BattleCanvas: React.FC<BattleCanvasProps> = ({
     targetsRef.current = initialTargets;
 
     const initialAllies = [];
-    for (let i = 0; i < 7; i++) {
+    const allyCommander = getAlliedCommanderInfo();
+    // Add allied commander
+    initialAllies.push({
+      id: 1000,
+      x: 180,
+      y: 260,
+      z: 0.9,
+      hp: 350,
+      maxHp: 350,
+      vx: 0.3,
+      type: allyCommander.name,
+      boboffset: 0,
+      slashTimer: 0,
+      targetEnemyId: null,
+      isCommander: true,
+      commanderName: allyCommander.name,
+      commanderRole: allyCommander.role,
+      commanderMount: allyCommander.mount,
+      commanderColor: allyCommander.color
+    });
+
+    for (let i = 0; i < 6; i++) {
       const z = 0.45 + (i % 4) * 0.14;
       const isRear = i % 2 === 1;
       initialAllies.push({
@@ -230,7 +349,8 @@ export const BattleCanvas: React.FC<BattleCanvasProps> = ({
         y: 230 + (i % 4) * 20,
         z,
         hp: i % 4 === 3 ? 180 : 100,
-        vx: (i % 4 === 3 ? 0.2 : 0.42 + Math.random() * 0.4) * (i % 2 === 0 ? 1 : -1),
+        maxHp: i % 4 === 3 ? 180 : 100,
+        vx: (i % 4 === 3 ? 0.22 : 0.42 + Math.random() * 0.4) * (i % 2 === 0 ? 1 : -1),
         type: allyTypes[i % 4] || 'Ally',
         boboffset: Math.random() * Math.PI,
         slashTimer: 0,
@@ -317,31 +437,55 @@ export const BattleCanvas: React.FC<BattleCanvasProps> = ({
     const maxGroundY = height * 0.72;
 
     targetsRef.current.forEach((t, i) => {
-      t.hp = i % 4 === 3 ? 180 : 100; // Reset health
-      const isRear = i % 2 === 1;
-      t.x = isRear ? (width - 60 - (i % 3) * 15) : (width - 150 - (i % 3) * 15);
-      
-      const z = 0.4 + (i % 4) * 0.14;
-      t.z = z;
-      const normZ = Math.max(0, Math.min(1, (z - 0.4) / 0.55));
-      t.y = minGroundY + normZ * (maxGroundY - minGroundY);
+      if (t.isCommander) {
+        t.hp = 350;
+        t.maxHp = 350;
+        t.x = width - 180;
+        t.z = 0.85;
+        const normZ = Math.max(0, Math.min(1, (0.85 - 0.4) / 0.55));
+        t.y = minGroundY + normZ * (maxGroundY - minGroundY);
+        t.vx = -0.3;
+        t.targetAllyId = null;
+      } else {
+        t.hp = i % 4 === 3 ? 180 : 100; // Reset health
+        t.maxHp = i % 4 === 3 ? 180 : 100;
+        const isRear = i % 2 === 1;
+        t.x = isRear ? (width - 60 - (i % 3) * 15) : (width - 150 - (i % 3) * 15);
+        
+        const z = 0.4 + (i % 4) * 0.14;
+        t.z = z;
+        const normZ = Math.max(0, Math.min(1, (z - 0.4) / 0.55));
+        t.y = minGroundY + normZ * (maxGroundY - minGroundY);
 
-      t.vx = (i % 4 === 3 ? 0.22 : 0.35 + Math.random() * 0.5) * (i % 2 === 0 ? 1 : -1);
-      t.targetAllyId = null;
+        t.vx = (i % 4 === 3 ? 0.22 : 0.35 + Math.random() * 0.5) * (i % 2 === 0 ? 1 : -1);
+        t.targetAllyId = null;
+      }
     });
 
     alliedSoldiersRef.current.forEach((a, i) => {
-      a.hp = i % 4 === 3 ? 180 : 100; // Reset health
-      const isRear = i % 2 === 1;
-      a.x = isRear ? (60 + (i % 3) * 15) : (150 + (i % 3) * 15);
-      
-      const z = 0.45 + (i % 4) * 0.14;
-      a.z = z;
-      const normZ = Math.max(0, Math.min(1, (z - 0.4) / 0.55));
-      a.y = (minGroundY + 35) + normZ * (maxGroundY - (minGroundY + 35));
+      if (a.isCommander) {
+        a.hp = 350;
+        a.maxHp = 350;
+        a.x = 180;
+        a.z = 0.9;
+        const normZ = Math.max(0, Math.min(1, (0.9 - 0.4) / 0.55));
+        a.y = (minGroundY + 35) + normZ * (maxGroundY - (minGroundY + 35));
+        a.vx = 0.3;
+        a.targetEnemyId = null;
+      } else {
+        a.hp = i % 4 === 3 ? 180 : 100; // Reset health
+        a.maxHp = i % 4 === 3 ? 180 : 100;
+        const isRear = i % 2 === 1;
+        a.x = isRear ? (60 + (i % 3) * 15) : (150 + (i % 3) * 15);
+        
+        const z = 0.45 + (i % 4) * 0.14;
+        a.z = z;
+        const normZ = Math.max(0, Math.min(1, (z - 0.4) / 0.55));
+        a.y = (minGroundY + 35) + normZ * (maxGroundY - (minGroundY + 35));
 
-      a.vx = (i % 4 === 3 ? 0.2 : 0.42 + Math.random() * 0.4) * (i % 2 === 0 ? 1 : -1);
-      a.targetEnemyId = null;
+        a.vx = (i % 4 === 3 ? 0.22 : 0.42 + Math.random() * 0.4) * (i % 2 === 0 ? 1 : -1);
+        a.targetEnemyId = null;
+      }
     });
 
     battleModeRef.current = 'marching';
@@ -380,8 +524,12 @@ export const BattleCanvas: React.FC<BattleCanvasProps> = ({
         t.y = minGroundY + normZ * (maxGroundY - minGroundY);
         // Snap to structured horizontal ranks if not currently in live clashing combat
         if (phase !== 'clash' && phase !== 'resolution' && phase !== 'defeat') {
-          const isRear = t.id % 2 === 1;
-          t.x = isRear ? (w - 60 - (t.id % 3) * 15) : (w - 150 - (t.id % 3) * 15);
+          if (t.isCommander) {
+            t.x = w - 180;
+          } else {
+            const isRear = t.id % 2 === 1;
+            t.x = isRear ? (w - 60 - (t.id % 3) * 15) : (w - 150 - (t.id % 3) * 15);
+          }
         }
       });
 
@@ -389,9 +537,13 @@ export const BattleCanvas: React.FC<BattleCanvasProps> = ({
         const normZ = Math.max(0, Math.min(1, (a.z - 0.4) / 0.55));
         a.y = (minGroundY + 35) + normZ * (maxGroundY - (minGroundY + 35));
         if (phase !== 'clash' && phase !== 'resolution' && phase !== 'defeat') {
-          const idx = a.id - 100;
-          const isRear = idx % 2 === 1;
-          a.x = isRear ? (60 + (idx % 3) * 15) : (150 + (idx % 3) * 15);
+          if (a.isCommander) {
+            a.x = 180;
+          } else {
+            const idx = a.id - 100;
+            const isRear = idx % 2 === 1;
+            a.x = isRear ? (60 + (idx % 3) * 15) : (150 + (idx % 3) * 15);
+          }
         }
       });
     };
@@ -463,7 +615,26 @@ export const BattleCanvas: React.FC<BattleCanvasProps> = ({
         const maxGroundY = canvas.height * 0.72;
         
         const newTargets = [];
-        for (let i = 0; i < 8; i++) {
+        const enemyCommander = getEnemyCommanderInfo();
+        // Prepend enemy commander to new wave
+        newTargets.push({
+          id: Date.now() + 999,
+          x: canvas.width - 180,
+          y: minGroundY + Math.max(0, Math.min(1, (0.85 - 0.4) / 0.55)) * (maxGroundY - minGroundY),
+          z: 0.85,
+          hp: 350,
+          maxHp: 350,
+          vx: -0.3,
+          type: enemyCommander.name,
+          shieldActive: true,
+          isCommander: true,
+          commanderName: enemyCommander.name,
+          commanderRole: enemyCommander.role,
+          commanderMount: enemyCommander.mount,
+          commanderColor: enemyCommander.color
+        });
+
+        for (let i = 0; i < 7; i++) {
           const z = 0.4 + (i % 4) * 0.14;
           const normZ = Math.max(0, Math.min(1, (z - 0.4) / 0.55));
           const y = minGroundY + normZ * (maxGroundY - minGroundY);
@@ -475,6 +646,7 @@ export const BattleCanvas: React.FC<BattleCanvasProps> = ({
             y,
             z,
             hp: i % 4 === 3 ? 180 : 100,
+            maxHp: i % 4 === 3 ? 180 : 100,
             vx: (i % 4 === 3 ? 0.22 : 0.35 + Math.random() * 0.5) * (i % 2 === 0 ? 1 : -1),
             type: waveTargetTypes[i % 4] || 'Target',
             shieldActive: i % 2 === 0
@@ -483,7 +655,28 @@ export const BattleCanvas: React.FC<BattleCanvasProps> = ({
         targetsRef.current = newTargets;
 
         const newAllies = [];
-        for (let i = 0; i < 7; i++) {
+        const allyCommander = getAlliedCommanderInfo();
+        // Prepend allied commander to new wave
+        newAllies.push({
+          id: Date.now() + 1000,
+          x: 180,
+          y: (minGroundY + 35) + Math.max(0, Math.min(1, (0.9 - 0.4) / 0.55)) * (maxGroundY - (minGroundY + 35)),
+          z: 0.9,
+          hp: 350,
+          maxHp: 350,
+          vx: 0.3,
+          type: allyCommander.name,
+          boboffset: 0,
+          slashTimer: 0,
+          targetEnemyId: null,
+          isCommander: true,
+          commanderName: allyCommander.name,
+          commanderRole: allyCommander.role,
+          commanderMount: allyCommander.mount,
+          commanderColor: allyCommander.color
+        });
+
+        for (let i = 0; i < 6; i++) {
           const z = 0.45 + (i % 4) * 0.14;
           const normZ = Math.max(0, Math.min(1, (z - 0.4) / 0.55));
           const y = (minGroundY + 35) + normZ * (maxGroundY - (minGroundY + 35));
@@ -495,6 +688,7 @@ export const BattleCanvas: React.FC<BattleCanvasProps> = ({
             y,
             z,
             hp: i % 4 === 3 ? 180 : 100,
+            maxHp: i % 4 === 3 ? 180 : 100,
             vx: (i % 4 === 3 ? 0.2 : 0.4 + Math.random() * 0.4) * (i % 2 === 0 ? 1 : -1),
             type: waveAllyTypes[i % 4] || 'Ally',
             boboffset: Math.random() * Math.PI,
@@ -646,6 +840,15 @@ export const BattleCanvas: React.FC<BattleCanvasProps> = ({
 
   // Respond dynamically to button triggers on the Dashboard
   const handleActionInteractions = (clash: typeof clashAction, enemy: typeof enemyAction, canvas: HTMLCanvasElement) => {
+    if (!clash || clash === 'none') {
+      lastProcessedClashRef.current = null;
+      return;
+    }
+    if (clash === lastProcessedClashRef.current) {
+      return;
+    }
+    lastProcessedClashRef.current = clash;
+
     if (clash === 'artillery') {
       // Trigger a massive cannon shell launch towards the center
       if (shellRef.current.length === 0) {
@@ -1491,11 +1694,13 @@ export const BattleCanvas: React.FC<BattleCanvasProps> = ({
       let riderYOffset = bobbing;
       let turbanColor = '#991b1b'; // red turban standard default
 
-      const isCavalry = item.type.includes('Cavalry') || item.type.includes('Scout');
-      const isElephant = item.type.includes('Elephant');
+      const isCavalry = item.type.includes('Cavalry') || item.type.includes('Scout') || (!!item.isCommander && item.commanderMount === 'horse');
+      const isElephant = item.type.includes('Elephant') || (!!item.isCommander && item.commanderMount === 'elephant');
       const isCamel = item.type.includes('Zamburak') || item.type.includes('Gunner');
 
-      if (item.type.includes('Pashtun') || item.type.includes('Ghazi')) {
+      if (item.isCommander) {
+        turbanColor = item.commanderColor || '#991b1b';
+      } else if (item.type.includes('Pashtun') || item.type.includes('Ghazi')) {
         turbanColor = '#b91c1c'; // Crimson
       } else if (item.type.includes('Durrani Elite') || item.type.includes('Afghan')) {
         turbanColor = '#065f46'; // Royal Emerald Green
@@ -1513,18 +1718,42 @@ export const BattleCanvas: React.FC<BattleCanvasProps> = ({
         riderYOffset -= size * 0.45;
 
         // Horse shadow body
-        ctx.fillStyle = item.type.includes('Maratha') || item.type.includes('Nizam') ? '#543d2b' : '#1f2937';
-        ctx.beginPath();
-        ctx.ellipse(-size * 0.2, size * 0.3 + bobbing, size * 0.8, size * 0.35, 0, 0, Math.PI * 2);
-        ctx.fill();
+        if (item.isCommander) {
+          // Pure white royal stallion with polished golden armor!
+          ctx.fillStyle = '#fafaf9'; // beautiful off-white horse
+          ctx.beginPath();
+          ctx.ellipse(-size * 0.2, size * 0.3 + bobbing, size * 0.85, size * 0.36, 0, 0, Math.PI * 2);
+          ctx.fill();
 
-        // Horse neck & head
-        ctx.beginPath();
-        ctx.moveTo(size * 0.4, size * bobbing * 0.1);
-        ctx.lineTo(size * 0.55, -size * 0.25);
-        ctx.lineTo(size * 0.2, size * bobbing * 0.1);
-        ctx.closePath();
-        ctx.fill();
+          // Golden royal caparison (saddle cloth) draping down
+          ctx.fillStyle = turbanColor;
+          ctx.fillRect(-size * 0.55, size * 0.22 + bobbing, size * 1.1, size * 0.26);
+          ctx.strokeStyle = '#eab308'; // gold embroidered trim
+          ctx.lineWidth = 1.8;
+          ctx.strokeRect(-size * 0.55, size * 0.22 + bobbing, size * 1.1, size * 0.26);
+          
+          // Gilded chamfron (horse face shield helm)
+          ctx.fillStyle = '#f59e0b'; // golden brass armor face plate
+          ctx.beginPath();
+          ctx.moveTo(size * 0.4, size * bobbing * 0.1);
+          ctx.lineTo(size * 0.6, -size * 0.32);
+          ctx.lineTo(size * 0.2, size * bobbing * 0.1);
+          ctx.closePath();
+          ctx.fill();
+        } else {
+          ctx.fillStyle = item.type.includes('Maratha') || item.type.includes('Nizam') ? '#543d2b' : '#1f2937';
+          ctx.beginPath();
+          ctx.ellipse(-size * 0.2, size * 0.3 + bobbing, size * 0.8, size * 0.35, 0, 0, Math.PI * 2);
+          ctx.fill();
+
+          // Horse neck & head
+          ctx.beginPath();
+          ctx.moveTo(size * 0.4, size * bobbing * 0.1);
+          ctx.lineTo(size * 0.55, -size * 0.25);
+          ctx.lineTo(size * 0.2, size * bobbing * 0.1);
+          ctx.closePath();
+          ctx.fill();
+        }
 
         // Horse legs (stick style)
         ctx.strokeStyle = '#221108';
@@ -1572,38 +1801,52 @@ export const BattleCanvas: React.FC<BattleCanvasProps> = ({
         riderYOffset -= size * 1.35; // Much higher passenger seat!
 
         // Elephant Body - Huge dark slate gray shape
-        ctx.fillStyle = item.type.includes('Maratha') || item.type.includes('Nizam') ? '#4b5563' : '#64748b';
-        ctx.beginPath();
-        ctx.ellipse(0, size * 0.22 + bobbing, size * 1.3, size * 0.85, 0, 0, Math.PI * 2);
-        ctx.fill();
+        if (item.isCommander) {
+          // Giant royal commander elephant with steel plate scales and armor
+          ctx.fillStyle = '#1e293b'; // Slate armor black grey
+          ctx.beginPath();
+          ctx.ellipse(0, size * 0.22 + bobbing, size * 1.5, size * 1.0, 0, 0, Math.PI * 2);
+          ctx.fill();
+
+          // Scale armor overlays
+          ctx.fillStyle = '#475569';
+          ctx.fillRect(-size * 0.5, size * 0.1 + bobbing, size * 1.0, size * 0.25);
+          ctx.strokeStyle = '#b45309'; // brass border
+          ctx.strokeRect(-size * 0.5, size * 0.1 + bobbing, size * 1.0, size * 0.25);
+        } else {
+          ctx.fillStyle = item.type.includes('Maratha') || item.type.includes('Nizam') ? '#4b5563' : '#64748b';
+          ctx.beginPath();
+          ctx.ellipse(0, size * 0.22 + bobbing, size * 1.3, size * 0.85, 0, 0, Math.PI * 2);
+          ctx.fill();
+        }
 
         // Thick Elephant Legs
-        ctx.fillStyle = '#475569';
+        ctx.fillStyle = '#334155';
         const legCycleTotal = Math.sin(time * 8 + item.id) * size * 0.15;
         // Front left leg
         ctx.fillRect(size * 0.45 - size * 0.15, size * 0.4 + bobbing, size * 0.3, size * 0.6 + legCycleTotal);
         // Back right leg
         ctx.fillRect(-size * 0.6 - size * 0.15, size * 0.4 + bobbing, size * 0.3, size * 0.6 - legCycleTotal);
         // Inner front right leg (slightly darker shadow)
-        ctx.fillStyle = '#334155';
+        ctx.fillStyle = '#1e293b';
         ctx.fillRect(size * 0.15 - size * 0.12, size * 0.4 + bobbing, size * 0.24, size * 0.6 - legCycleTotal);
         // Inner back left leg
         ctx.fillRect(-0.2 * size - size * 0.12, size * 0.4 + bobbing, size * 0.24, size * 0.6 + legCycleTotal);
 
         // Head
-        ctx.fillStyle = item.type.includes('Maratha') || item.type.includes('Nizam') ? '#4b5563' : '#64748b';
+        ctx.fillStyle = item.isCommander ? '#1e293b' : (item.type.includes('Maratha') || item.type.includes('Nizam') ? '#4b5563' : '#64748b');
         ctx.beginPath();
         ctx.ellipse(size * 1.15, -0.05 * size + bobbing, size * 0.56, size * 0.52, 0, 0, Math.PI * 2);
         ctx.fill();
 
         // Ear
-        ctx.fillStyle = '#475569';
+        ctx.fillStyle = '#1e293b';
         ctx.beginPath();
         ctx.ellipse(size * 0.88, -size * 0.08 + bobbing, size * 0.33, size * 0.44, Math.PI / 12, 0, Math.PI * 2);
         ctx.fill();
 
         // Trunk
-        ctx.strokeStyle = item.type.includes('Maratha') || item.type.includes('Nizam') ? '#4b5563' : '#64748b';
+        ctx.strokeStyle = item.isCommander ? '#1e293b' : (item.type.includes('Maratha') || item.type.includes('Nizam') ? '#4b5563' : '#64748b');
         ctx.lineWidth = size * 0.18;
         ctx.lineCap = 'round';
         ctx.beginPath();
@@ -1620,24 +1863,53 @@ export const BattleCanvas: React.FC<BattleCanvasProps> = ({
         ctx.stroke();
 
         // Traditional Royal Howdah (Wooden ornate box on back)
-        ctx.fillStyle = '#78350f'; // Rich reddish mahogany wood
-        ctx.fillRect(-size * 0.55, -size * 0.95 + bobbing, size * 1.1, size * 0.6);
-        ctx.strokeStyle = '#d97706'; // Gold golden trims
-        ctx.lineWidth = 1.5;
-        ctx.strokeRect(-size * 0.55, -size * 0.95 + bobbing, size * 1.1, size * 0.6);
+        if (item.isCommander) {
+          // Grand gilded two-story Royal Howdah
+          ctx.fillStyle = '#78350f'; // rich bronze/mahogany wood
+          ctx.fillRect(-size * 0.65, -size * 1.1 + bobbing, size * 1.3, size * 0.75);
+          ctx.strokeStyle = '#b45309'; // shimmering brass copper border
+          ctx.lineWidth = 2.5;
+          ctx.strokeRect(-size * 0.65, -size * 1.1 + bobbing, size * 1.3, size * 0.75);
+
+          // Golden imperial shields on howdah sides
+          ctx.fillStyle = '#eab308';
+          ctx.beginPath();
+          ctx.arc(-size * 0.35, -size * 0.72 + bobbing, size * 0.15, 0, Math.PI * 2);
+          ctx.arc(size * 0.35, -size * 0.72 + bobbing, size * 0.15, 0, Math.PI * 2);
+          ctx.fill();
+
+          // Massive twin royal banners flowing behind
+          ctx.fillStyle = turbanColor;
+          ctx.beginPath();
+          ctx.moveTo(-size * 0.6, -size * 0.95 + bobbing);
+          ctx.lineTo(-size * 1.75, -size * 1.1 + bobbing + Math.sin(time * 8) * 8);
+          ctx.lineTo(-size * 1.2, -size * 0.86 + bobbing);
+          ctx.lineTo(-size * 1.75, -size * 0.65 + bobbing + Math.sin(time * 8) * 8);
+          ctx.lineTo(-size * 0.5, -size * 0.75 + bobbing);
+          ctx.closePath();
+          ctx.fill();
+        } else {
+          ctx.fillStyle = '#78350f'; // Rich reddish mahogany wood
+          ctx.fillRect(-size * 0.55, -size * 0.95 + bobbing, size * 1.1, size * 0.6);
+          ctx.strokeStyle = '#d97706'; // Gold golden trims
+          ctx.lineWidth = 1.5;
+          ctx.strokeRect(-size * 0.55, -size * 0.95 + bobbing, size * 1.1, size * 0.6);
+        }
 
         // Howdah seat details inside the box
         ctx.fillStyle = turbanColor;
-        ctx.fillRect(-size * 0.5, -size * 0.95 + bobbing, size * 1.0, size * 0.12);
+        ctx.fillRect(-size * 0.5, (item.isCommander ? -size * 1.15 : -size * 0.95) + bobbing, size * 1.0, size * 0.12);
 
-        // Royal Banner flowing from back of Howdah
-        ctx.fillStyle = turbanColor;
-        ctx.beginPath();
-        ctx.moveTo(-size * 0.5, -size * 0.8 + bobbing);
-        ctx.lineTo(-size * 1.25, -size * 0.85 + bobbing + Math.sin(time * 6) * 6);
-        ctx.lineTo(-size * 0.5, -size * 0.66 + bobbing);
-        ctx.closePath();
-        ctx.fill();
+        // Royal Banner flowing from back of Howdah (only regular)
+        if (!item.isCommander) {
+          ctx.fillStyle = turbanColor;
+          ctx.beginPath();
+          ctx.moveTo(-size * 0.5, -size * 0.8 + bobbing);
+          ctx.lineTo(-size * 1.25, -size * 0.85 + bobbing + Math.sin(time * 6) * 6);
+          ctx.lineTo(-size * 0.5, -size * 0.66 + bobbing);
+          ctx.closePath();
+          ctx.fill();
+        }
       }
 
       // 2. Draw Afghan Stick Figure Soldier and High-Fidelity Uniforms
@@ -1880,22 +2152,41 @@ export const BattleCanvas: React.FC<BattleCanvasProps> = ({
 
       // UI Indicators above head
       // Health meters
-      const isHostileElephant = item.type.includes('Elephant');
-      const meterW = size * (isHostileElephant ? 1.8 : 1.3);
-      const hostHpY = isHostileElephant ? -size * 2.3 + bobbing : -size * 1.5 + bobbing;
-      const hostLabelY = isHostileElephant ? -size * 2.5 + bobbing : -size * 1.7 + bobbing;
-      const hostMaxHp = isHostileElephant ? 180 : 100;
+      const isHostileElephant = item.type.includes('Elephant') || (!!item.isCommander && item.commanderMount === 'elephant');
+      let hostMaxHp = item.maxHp || 100;
+      let meterW = size * (isHostileElephant ? 1.8 : 1.3);
+      let hostHpY = isHostileElephant ? -size * 2.3 + bobbing : -size * 1.5 + bobbing;
+      let hostLabelY = isHostileElephant ? -size * 2.5 + bobbing : -size * 1.7 + bobbing;
+
+      if (item.isCommander) {
+        hostMaxHp = 350;
+        meterW = size * 2.5; // wider health bar
+        hostHpY = isHostileElephant ? -size * 2.5 + bobbing : -size * 1.3 + bobbing;
+        hostLabelY = isHostileElephant ? -size * 2.7 + bobbing : -size * 1.5 + bobbing;
+      }
 
       ctx.fillStyle = '#00000090';
-      ctx.fillRect(-meterW / 2, hostHpY, meterW, 4);
-      ctx.fillStyle = '#38bdf8'; // Allied blue shield damage limit
-      ctx.fillRect(-meterW / 2, hostHpY, meterW * Math.min(1, item.hp / hostMaxHp), 4);
+      ctx.fillRect(-meterW / 2, hostHpY, meterW, item.isCommander ? 4 : 2.5);
+      ctx.fillStyle = item.isCommander ? '#ef4444' : '#38bdf8'; // hostile threat crimson vs standard teal
+      ctx.fillRect(-meterW / 2, hostHpY, meterW * Math.min(1, item.hp / hostMaxHp), item.isCommander ? 4 : 2.5);
 
       // Text label
-      ctx.fillStyle = '#fb923c';
-      ctx.font = `bold ${Math.max(6, (isHostileElephant ? 9 : 8.5) * item.z)}px sans-serif`;
-      ctx.textAlign = 'center';
-      ctx.fillText(item.type.toUpperCase(), 0, hostLabelY);
+      if (item.isCommander) {
+        // Draw elegant hostile commander plate
+        ctx.fillStyle = 'rgba(239, 68, 68, 0.9)'; // threat crimson
+        ctx.font = `bold ${Math.max(8, 11 * item.z)}px sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.fillText(`👑 ${item.commanderName?.toUpperCase()}`, 0, hostLabelY);
+        
+        ctx.fillStyle = '#cbd5e1'; // light slate subtitle
+        ctx.font = `${Math.max(6, 8 * item.z)}px sans-serif`;
+        ctx.fillText(item.commanderRole || "Commander", 0, hostLabelY + 8 * item.z);
+      } else {
+        ctx.fillStyle = '#fb923c';
+        ctx.font = `bold ${Math.max(6, (isHostileElephant ? 9 : 8.5) * item.z)}px sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.fillText(item.type.toUpperCase(), 0, hostLabelY);
+      }
 
       ctx.restore();
     });
@@ -2075,6 +2366,14 @@ export const BattleCanvas: React.FC<BattleCanvasProps> = ({
                   "A brave soldier has fallen in service of the Peshwas! Every sacrifice is recorded in Pune's golden scrolls. Maintain the front!",
                   "maratha"
                 );
+              } else if (isRaghobaSelected) {
+                triggerCommanderShout(
+                  "Raghunathrao (Raghoba)",
+                  "Frontier Conqueror",
+                  "🐎 Cavalier Surge",
+                  "A brave horseman has fallen! Mount up, step forward, and drive the Afghan guard back to the river! Charge!",
+                  "maratha"
+                );
               } else {
                 triggerCommanderShout(
                   "Sadashivrao Bhau",
@@ -2112,6 +2411,14 @@ export const BattleCanvas: React.FC<BattleCanvasProps> = ({
                   "Our lines are bleeding under critical fire! Stand firm, and the royal treasury shall double your battlefield stipends!",
                   "maratha"
                 );
+              } else if (isRaghobaSelected) {
+                triggerCommanderShout(
+                  "Raghunathrao (Raghoba)",
+                  "Frontier Conqueror",
+                  "⚔️ Northern Spirit",
+                  "Our line is wavering on the coordinates! Remember the conquest of Peshawar! Do not let these invaders breach your shields!",
+                  "maratha"
+                );
               } else {
                 triggerCommanderShout(
                   "Sadashivrao Bhau",
@@ -2141,11 +2448,14 @@ export const BattleCanvas: React.FC<BattleCanvasProps> = ({
       let riderYOffset = bobbing;
       let headgearColor = '#f97316'; // standard saffron
 
-      const isCavalry = ally.type.includes('Cavalry') || ally.type.includes('Scout');
-      const isElephant = ally.type.includes('Elephant');
+      const isCavalry = ally.type.includes('Cavalry') || ally.type.includes('Scout') || (!!ally.isCommander && ally.commanderMount === 'horse');
+      const isElephant = ally.type.includes('Elephant') || (!!ally.isCommander && ally.commanderMount === 'elephant');
       const isCamel = ally.type.includes('Zamburak') || ally.type.includes('Gunner');
+      const isCannon = ally.type.includes('Cannon') || ally.type.includes('Artillery');
 
-      if (ally.type.includes('Pashtun') || ally.type.includes('Ghazi')) {
+      if (ally.isCommander) {
+        headgearColor = ally.commanderColor || '#f97316';
+      } else if (ally.type.includes('Pashtun') || ally.type.includes('Ghazi')) {
         headgearColor = '#b91c1c'; // Afghan/Ghilzai Crimson Red
       } else if (ally.type.includes('Durrani Elite') || ally.type.includes('Afghan')) {
         headgearColor = '#065f46'; // Royal Emerald Green
@@ -2153,27 +2463,168 @@ export const BattleCanvas: React.FC<BattleCanvasProps> = ({
         headgearColor = '#78716c'; // Sandy grey
       } else if (ally.type.includes('Nizam')) {
         headgearColor = '#047857'; // Hyderabad teal
-      } else if (ally.type === 'Gardi Infantry') {
+      } else if (ally.type === 'Gardi Infantry' || ally.type.includes('Gardi')) {
         headgearColor = '#3b82f6'; // European Gardi Navy Blue
       } else if (ally.type.includes('Maratha')) {
         headgearColor = '#ea580c'; // Pure saffron orange
+      }
+
+      if (isCannon) {
+        // Draw French Gardi Field Cannon Carriage
+        // Carriage body (Wooden beam)
+        ctx.strokeStyle = '#5c2d12'; // timber
+        ctx.lineWidth = size * 0.22;
+        ctx.lineCap = 'round';
+        ctx.beginPath();
+        ctx.moveTo(-size * 0.5, size * 0.35 + bobbing);
+        ctx.lineTo(size * 0.2, size * 0.15 + bobbing);
+        ctx.stroke();
+
+        // Large rustic wooden carriage wheel
+        ctx.fillStyle = '#78350f'; // reddish wood
+        ctx.beginPath();
+        ctx.arc(-size * 0.12, size * 0.3 + bobbing, size * 0.44, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Wheel rim lining
+        ctx.strokeStyle = '#292524'; // iron tread
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.arc(-size * 0.12, size * 0.3 + bobbing, size * 0.44, 0, Math.PI * 2);
+        ctx.stroke();
+
+        // Hub cap
+        ctx.fillStyle = '#b45309'; // brass nut
+        ctx.beginPath();
+        ctx.arc(-size * 0.12, size * 0.3 + bobbing, size * 0.09, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Spokes
+        ctx.strokeStyle = '#1e1b4b';
+        ctx.lineWidth = 1.5;
+        for (let k = 0; k < 6; k++) {
+          const angle = (k * Math.PI) / 3;
+          ctx.beginPath();
+          ctx.moveTo(-size * 0.12, size * 0.3 + bobbing);
+          ctx.lineTo(
+            -size * 0.12 + Math.cos(angle) * size * 0.44,
+            size * 0.3 + bobbing + Math.sin(angle) * size * 0.44
+          );
+          ctx.stroke();
+        }
+
+        // Heavy Brass Cannon Barrel
+        ctx.save();
+        // Slightly elevate muzzle on bobbing
+        ctx.translate(-size * 0.12, size * 0.15 + bobbing);
+        ctx.rotate(-Math.PI / 15 + Math.sin(time * 5) * 0.01); // point slightly upward
+
+        // Cannon barrel cone-cylinder
+        const grd = ctx.createLinearGradient(-size * 0.45, 0, size * 0.55, 0);
+        grd.addColorStop(0, '#541c0e'); // shadow copper
+        grd.addColorStop(0.3, '#d97706'); // polished bronze
+        grd.addColorStop(0.8, '#f59e0b'); // sparkling highlight
+        grd.addColorStop(1, '#b45309'); // rim copper
+
+        ctx.fillStyle = grd;
+        ctx.beginPath();
+        ctx.moveTo(-size * 0.45, -size * 0.14);
+        ctx.lineTo(size * 0.55, -size * 0.08); // tapered tip muzzle
+        ctx.lineTo(size * 0.55, size * 0.08);
+        ctx.lineTo(-size * 0.45, size * 0.16);
+        ctx.closePath();
+        ctx.fill();
+
+        // Muzzle band ring
+        ctx.fillStyle = '#92400e';
+        ctx.fillRect(size * 0.48, -size * 0.095, size * 0.07, size * 0.19);
+
+        // Breech ball pin (Cascable)
+        ctx.fillStyle = '#78350f';
+        ctx.beginPath();
+        ctx.arc(-size * 0.49, size * 0.01, size * 0.07, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Glowing burning fuse on breech
+        ctx.strokeStyle = '#d97706';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(-size * 0.35, -size * 0.13);
+        ctx.quadraticCurveTo(-size * 0.38, -size * 0.25, -size * 0.32, -size * 0.32);
+        ctx.stroke();
+
+        if (Math.random() > 0.3) {
+          ctx.fillStyle = '#f97316';
+          ctx.beginPath();
+          ctx.arc(-size * 0.32, -size * 0.32, 2.5, 0, Math.PI * 2);
+          ctx.fill();
+        }
+
+        ctx.restore();
+
+        // Also, let's draw a tiny stick figure Gardi cannoneer operator standing beside the gun preparing ammunition!
+        ctx.fillStyle = '#1e3a8a'; // Gardi Blue uniform
+        ctx.fillRect(size * 0.42, size * 0.15 + bobbing, size * 0.18, size * 0.38);
+        ctx.fillStyle = '#fdf2e9'; // Skin
+        ctx.beginPath();
+        ctx.arc(size * 0.51, size * 0.07 + bobbing, size * 0.08, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#ef4444'; // Red turban
+        ctx.beginPath();
+        ctx.ellipse(size * 0.51, size * 0.03 + bobbing, size * 0.09, size * 0.05, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Holding a hand ramrod (stick)
+        ctx.strokeStyle = '#292524';
+        ctx.lineWidth = 1.3;
+        ctx.beginPath();
+        ctx.moveTo(size * 0.2, size * 0.2 + bobbing);
+        ctx.lineTo(size * 0.52, size * 0.25 + bobbing);
+        ctx.stroke();
+
+        ctx.restore();
+        return;
       }
 
       if (isCavalry) {
         riderYOffset -= size * 0.45;
 
         // Draw cavalry horse mount
-        ctx.fillStyle = ally.type.includes('Maratha') || ally.type.includes('Nizam') ? '#543d2b' : '#331a0e'; // dark brown vs black charger
-        ctx.beginPath();
-        ctx.ellipse(-size * 0.25, size * 0.3 + bobbing, size * 0.75, size * 0.32, 0, 0, Math.PI * 2);
-        ctx.fill();
-        
-        ctx.beginPath();
-        ctx.moveTo(size * 0.35, size * bobbing * 0.1);
-        ctx.lineTo(size * 0.5, -size * 0.25);
-        ctx.lineTo(size * 0.15, size * bobbing * 0.1);
-        ctx.closePath();
-        ctx.fill();
+        if (ally.isCommander) {
+          // Pure white royal stallion with polished golden armor!
+          ctx.fillStyle = '#fafaf9'; // beautiful off-white horse
+          ctx.beginPath();
+          ctx.ellipse(-size * 0.25, size * 0.3 + bobbing, size * 0.85, size * 0.36, 0, 0, Math.PI * 2);
+          ctx.fill();
+
+          // Golden royal caparison (saddle cloth) draping down
+          ctx.fillStyle = headgearColor;
+          ctx.fillRect(-size * 0.6, size * 0.22 + bobbing, size * 1.1, size * 0.26);
+          ctx.strokeStyle = '#eab308'; // gold embroidered trim
+          ctx.lineWidth = 1.8;
+          ctx.strokeRect(-size * 0.6, size * 0.22 + bobbing, size * 1.1, size * 0.26);
+          
+          // Gilded chamfron (horse face shield helm)
+          ctx.fillStyle = '#f59e0b'; // golden brass armor face plate
+          ctx.beginPath();
+          ctx.moveTo(size * 0.35, size * bobbing * 0.1);
+          ctx.lineTo(size * 0.55, -size * 0.32);
+          ctx.lineTo(size * 0.15, size * bobbing * 0.1);
+          ctx.closePath();
+          ctx.fill();
+        } else {
+          ctx.fillStyle = ally.type.includes('Maratha') || ally.type.includes('Nizam') ? '#543d2b' : '#331a0e'; // dark brown vs black charger
+          ctx.beginPath();
+          ctx.ellipse(-size * 0.25, size * 0.3 + bobbing, size * 0.75, size * 0.32, 0, 0, Math.PI * 2);
+          ctx.fill();
+          
+          ctx.beginPath();
+          ctx.moveTo(size * 0.35, size * bobbing * 0.1);
+          ctx.lineTo(size * 0.5, -size * 0.25);
+          ctx.lineTo(size * 0.15, size * bobbing * 0.1);
+          ctx.closePath();
+          ctx.fill();
+        }
 
         // Horse legs
         ctx.strokeStyle = '#27170c';
@@ -2245,10 +2696,24 @@ export const BattleCanvas: React.FC<BattleCanvasProps> = ({
         riderYOffset -= size * 1.35; // Much higher passenger seat!
 
         // Elephant Body - Huge dark slate/gray shape
-        ctx.fillStyle = ally.type.includes('Maratha') || ally.type.includes('Nizam') ? '#4b5563' : '#64748b'; // Slightly darker basalt gray vs royal grey
-        ctx.beginPath();
-        ctx.ellipse(0, size * 0.22 + bobbing, size * 1.3, size * 0.85, 0, 0, Math.PI * 2);
-        ctx.fill();
+        if (ally.isCommander) {
+          // Giant royal commander elephant with silver chainmail overlay
+          ctx.fillStyle = '#374151'; // dark iron steel plate gray
+          ctx.beginPath();
+          ctx.ellipse(0, size * 0.22 + bobbing, size * 1.5, size * 1.0, 0, 0, Math.PI * 2);
+          ctx.fill();
+
+          // Gilded iron plate scales covering head
+          ctx.fillStyle = '#708090'; // slate armor
+          ctx.fillRect(-size * 0.5, size * 0.1 + bobbing, size * 1.0, size * 0.25);
+          ctx.strokeStyle = '#d97706'; // brass borders
+          ctx.strokeRect(-size * 0.5, size * 0.1 + bobbing, size * 1.0, size * 0.25);
+        } else {
+          ctx.fillStyle = ally.type.includes('Maratha') || ally.type.includes('Nizam') ? '#4b5563' : '#64748b'; // Slightly darker basalt gray vs royal grey
+          ctx.beginPath();
+          ctx.ellipse(0, size * 0.22 + bobbing, size * 1.3, size * 0.85, 0, 0, Math.PI * 2);
+          ctx.fill();
+        }
 
         // Thick Elephant Legs
         ctx.fillStyle = '#374151';
@@ -2264,7 +2729,7 @@ export const BattleCanvas: React.FC<BattleCanvasProps> = ({
         ctx.fillRect(-0.2 * size - size * 0.12, size * 0.4 + bobbing, size * 0.24, size * 0.6 + legCycleTotal);
 
         // Head
-        ctx.fillStyle = ally.type.includes('Maratha') || ally.type.includes('Nizam') ? '#4b5563' : '#64748b';
+        ctx.fillStyle = ally.isCommander ? '#374151' : (ally.type.includes('Maratha') || ally.type.includes('Nizam') ? '#4b5563' : '#64748b');
         ctx.beginPath();
         ctx.ellipse(size * 1.15, -0.05 * size + bobbing, size * 0.56, size * 0.52, 0, 0, Math.PI * 2);
         ctx.fill();
@@ -2276,7 +2741,7 @@ export const BattleCanvas: React.FC<BattleCanvasProps> = ({
         ctx.fill();
 
         // Trunk
-        ctx.strokeStyle = ally.type.includes('Maratha') || ally.type.includes('Nizam') ? '#4b5563' : '#64748b';
+        ctx.strokeStyle = ally.isCommander ? '#374151' : (ally.type.includes('Maratha') || ally.type.includes('Nizam') ? '#4b5563' : '#64748b');
         ctx.lineWidth = size * 0.18;
         ctx.lineCap = 'round';
         ctx.beginPath();
@@ -2293,7 +2758,7 @@ export const BattleCanvas: React.FC<BattleCanvasProps> = ({
         ctx.stroke();
 
         // jhool cloth on its back (traditional ornamental drapes)
-        ctx.fillStyle = ally.type.includes('Maratha') || ally.type.includes('Nizam') ? '#ea580c' : '#047857'; // Saffron vs Royal Green
+        ctx.fillStyle = headgearColor; // Saffron vs Royal Green
         ctx.beginPath();
         ctx.ellipse(0, size * 0.25 + bobbing, size * 0.95, size * 0.52, 0, 0, Math.PI);
         ctx.fill();
@@ -2302,26 +2767,55 @@ export const BattleCanvas: React.FC<BattleCanvasProps> = ({
         ctx.stroke();
 
         // Traditional Royal Howdah (Wooden ornate box on back)
-        ctx.fillStyle = '#7c2d12'; // Rich reddish wood
-        ctx.fillRect(-size * 0.55, -size * 0.95 + bobbing, size * 1.1, size * 0.6);
-        ctx.strokeStyle = '#eab308'; // Gold royal trim
-        ctx.lineWidth = 1.5;
-        ctx.strokeRect(-size * 0.55, -size * 0.95 + bobbing, size * 1.1, size * 0.6);
+        if (ally.isCommander) {
+          // Grand gilded two-story Royal Howdah
+          ctx.fillStyle = '#92400e'; // rich bronze/mahogany wood
+          ctx.fillRect(-size * 0.65, -size * 1.1 + bobbing, size * 1.3, size * 0.75);
+          ctx.strokeStyle = '#facc15'; // shimmering direct gold border
+          ctx.lineWidth = 2.5;
+          ctx.strokeRect(-size * 0.65, -size * 1.1 + bobbing, size * 1.3, size * 0.75);
+
+          // Golden imperial shields on howdah sides
+          ctx.fillStyle = '#eab308';
+          ctx.beginPath();
+          ctx.arc(-size * 0.35, -size * 0.72 + bobbing, size * 0.15, 0, Math.PI * 2);
+          ctx.arc(size * 0.35, -size * 0.72 + bobbing, size * 0.15, 0, Math.PI * 2);
+          ctx.fill();
+
+          // Massive twin royal banners flowing behind
+          ctx.fillStyle = headgearColor;
+          ctx.beginPath();
+          ctx.moveTo(-size * 0.6, -size * 0.95 + bobbing);
+          ctx.lineTo(-size * 1.75, -size * 1.1 + bobbing + Math.sin(time * 8) * 8);
+          ctx.lineTo(-size * 1.2, -size * 0.86 + bobbing);
+          ctx.lineTo(-size * 1.75, -size * 0.65 + bobbing + Math.sin(time * 8) * 8);
+          ctx.lineTo(-size * 0.5, -size * 0.75 + bobbing);
+          ctx.closePath();
+          ctx.fill();
+        } else {
+          ctx.fillStyle = '#7c2d12'; // Rich timber wood
+          ctx.fillRect(-size * 0.55, -size * 0.95 + bobbing, size * 1.1, size * 0.6);
+          ctx.strokeStyle = '#eab308'; // Gold royal trim
+          ctx.lineWidth = 1.5;
+          ctx.strokeRect(-size * 0.55, -size * 0.95 + bobbing, size * 1.1, size * 0.6);
+        }
 
         // Howdah seat inside
         ctx.fillStyle = headgearColor;
-        ctx.fillRect(-size * 0.5, -size * 0.95 + bobbing, size * 1.0, size * 0.12);
+        ctx.fillRect(-size * 0.5, (ally.isCommander ? -size * 1.15 : -size * 0.95) + bobbing, size * 1.0, size * 0.12);
 
-        // Flag flowing from back of Howdah
-        ctx.fillStyle = headgearColor;
-        ctx.beginPath();
-        ctx.moveTo(-size * 0.5, -size * 0.8 + bobbing);
-        ctx.lineTo(-size * 1.35, -size * 0.9 + bobbing + Math.sin(time * 6) * 6);
-        ctx.lineTo(-size * 0.9, -size * 0.76 + bobbing);
-        ctx.lineTo(-size * 1.35, -size * 0.62 + bobbing + Math.sin(time * 6) * 6);
-        ctx.lineTo(-size * 0.5, -size * 0.66 + bobbing);
-        ctx.closePath();
-        ctx.fill();
+        // Flag flowing from back of Howdah (only regular)
+        if (!ally.isCommander) {
+          ctx.fillStyle = headgearColor;
+          ctx.beginPath();
+          ctx.moveTo(-size * 0.5, -size * 0.8 + bobbing);
+          ctx.lineTo(-size * 1.35, -size * 0.9 + bobbing + Math.sin(time * 6) * 6);
+          ctx.lineTo(-size * 0.9, -size * 0.76 + bobbing);
+          ctx.lineTo(-size * 1.35, -size * 0.62 + bobbing + Math.sin(time * 6) * 6);
+          ctx.lineTo(-size * 0.5, -size * 0.66 + bobbing);
+          ctx.closePath();
+          ctx.fill();
+        }
       }
 
       // Draw Allied Stick components and High-Fidelity Uniforms
@@ -2675,20 +3169,37 @@ export const BattleCanvas: React.FC<BattleCanvasProps> = ({
       }
 
       // Allied soldier health indicators
-      const isAllyElephant = ally.type === 'Maratha War Elephant';
-      const barW = size * (isAllyElephant ? 1.8 : 1.1);
-      const allyHpY = isAllyElephant ? -size * 2.3 + bobbing : -size * 1.1 + bobbing;
-      const allyLabelY = isAllyElephant ? -size * 2.5 + bobbing : -size * 1.30 + bobbing;
-      const allyMaxHp = isAllyElephant ? 180 : 100;
+      const isAllyElephant = ally.type.includes('Elephant') || (!!ally.isCommander && ally.commanderMount === 'elephant');
+      let maxHp = ally.maxHp || 100;
+      let barW = size * (isAllyElephant ? 1.8 : 1.1);
+      let allyHpY = isAllyElephant ? -size * 2.3 + bobbing : -size * 1.1 + bobbing;
+      let allyLabelY = isAllyElephant ? -size * 2.5 + bobbing : -size * 1.30 + bobbing;
+
+      if (ally.isCommander) {
+        maxHp = 350;
+        barW = size * 2.5; // wider health bar
+        allyHpY = isAllyElephant ? -size * 2.5 + bobbing : -size * 1.3 + bobbing;
+        allyLabelY = isAllyElephant ? -size * 2.7 + bobbing : -size * 1.5 + bobbing;
+      }
 
       ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
-      ctx.fillRect(-barW / 2, allyHpY, barW, 2.5);
+      ctx.fillRect(-barW / 2, allyHpY, barW, ally.isCommander ? 4 : 2.5);
       // Health meter
-      ctx.fillStyle = '#22c55e'; // Green health
-      ctx.fillRect(-barW / 2, allyHpY, barW * Math.min(1, ally.hp / allyMaxHp), 2.5);
+      ctx.fillStyle = ally.isCommander ? '#eab308' : '#22c55e'; // Golden plate for commander!
+      ctx.fillRect(-barW / 2, allyHpY, barW * Math.min(1, ally.hp / maxHp), ally.isCommander ? 4 : 2.5);
 
-      // Text label for Elephant
-      if (isAllyElephant) {
+      // Labeling for Commanders and Elephants
+      if (ally.isCommander) {
+        // Draw elegant framed commander title!
+        ctx.fillStyle = 'rgba(251, 191, 36, 0.9)'; // majestic gold
+        ctx.font = `bold ${Math.max(8, 11 * ally.z)}px sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.fillText(`👑 ${ally.commanderName?.toUpperCase()}`, 0, allyLabelY);
+        
+        ctx.fillStyle = '#cbd5e1'; // light slate subtitle
+        ctx.font = `${Math.max(6, 8 * ally.z)}px sans-serif`;
+        ctx.fillText(ally.commanderRole || "Commander", 0, allyLabelY + 8 * ally.z);
+      } else if (isAllyElephant) {
         ctx.fillStyle = '#f97316';
         ctx.font = `bold ${Math.max(6, 9 * ally.z)}px sans-serif`;
         ctx.textAlign = 'center';
@@ -2768,7 +3279,7 @@ export const BattleCanvas: React.FC<BattleCanvasProps> = ({
         });
 
         if (hitMultiplier > 0) {
-          onEnemyHit(28, "🔥 SIEGE ARTILLERY IMPACT");
+          onEnemyHit(28, "🔥 SIEGE ARTILLERY IMPACT", true);
           textsRef.current.push({
             x: s.targetX,
             y: s.targetY - 30,
@@ -2819,7 +3330,7 @@ export const BattleCanvas: React.FC<BattleCanvasProps> = ({
       if (ally.hp <= 0) return;
 
       // Check if ranged unit type
-      const isRanged = ally.type === 'Gardi Infantry' || ally.type.includes('Swivel') || ally.type.includes('Gunner');
+      const isRanged = ally.type === 'Gardi Infantry' || ally.type.includes('Swivel') || ally.type.includes('Gunner') || ally.type.includes('Cannon') || ally.type.includes('Artillery');
       if (!isRanged) return;
 
       // Tick down shootCooldown
@@ -2829,6 +3340,8 @@ export const BattleCanvas: React.FC<BattleCanvasProps> = ({
         ally.shootCooldown -= 1;
       }
 
+      const isCannon = ally.type.includes('Cannon') || ally.type.includes('Artillery');
+
       if (ally.shootCooldown <= 0) {
         // Find a target to shoot at
         const target = ally.targetEnemyId !== null ? hostiles.find(h => h.id === ally.targetEnemyId && h.hp > 0) : null;
@@ -2836,25 +3349,49 @@ export const BattleCanvas: React.FC<BattleCanvasProps> = ({
           const dist = Math.hypot(target.x - ally.x, target.y - ally.y);
           // Only shoot if far (not in close melee clashing)
           if (dist > 90) {
-            ally.shootCooldown = 150 + Math.random() * 120; // Cooldown 2-4 seconds
+            if (isCannon) {
+              ally.shootCooldown = 280 + Math.random() * 150; // Cannon reload takes 5-7.5 seconds
+              
+              // Spawn a cannonball!
+              bulletTracersRef.current.push({
+                id: Math.random(),
+                startX: ally.x + 20,
+                startY: ally.y - 4, // near muzzle
+                currentX: ally.x + 20,
+                currentY: ally.y - 4,
+                targetX: target.x,
+                targetY: target.y - 10 * target.z,
+                progress: 0,
+                speed: 0.045 + Math.random() * 0.015,
+                color: '#facc15',
+                type: 'cannonball'
+              });
 
-            // Spawn a bullet tracer!
-            bulletTracersRef.current.push({
-              id: Math.random(),
-              startX: ally.x + 10,
-              startY: ally.y - 12 * ally.z,
-              currentX: ally.x + 10,
-              currentY: ally.y - 12 * ally.z,
-              targetX: target.x,
-              targetY: target.y - 10 * target.z,
-              progress: 0,
-              speed: 0.08 + Math.random() * 0.04, // Travels in ~8-12 frames
-              color: ally.type.includes('Swivel') ? '#f59e0b' : '#fef08a',
-              type: ally.type.includes('Swivel') ? 'zamburak' : 'musket'
-            });
+              // Initial massive powder smoke burst at muzzle!
+              spawnHitSplatter(ally.x + 24, ally.y, '#f5fafb', 1.5);
+              spawnHitSplatter(ally.x + 24, ally.y, '#f97316', 1.0);
+              shakeRef.current = Math.min(shakeRef.current + 8, 25);
+            } else {
+              ally.shootCooldown = 150 + Math.random() * 120; // Cooldown 2-4 seconds
 
-            // Spawn initial powder smoke puff at muzzle
-            spawnHitSplatter(ally.x + 12, ally.y - 12 * ally.z, '#e2e8f0', 0.5);
+              // Spawn a bullet tracer!
+              bulletTracersRef.current.push({
+                id: Math.random(),
+                startX: ally.x + 10,
+                startY: ally.y - 12 * ally.z,
+                currentX: ally.x + 10,
+                currentY: ally.y - 12 * ally.z,
+                targetX: target.x,
+                targetY: target.y - 10 * target.z,
+                progress: 0,
+                speed: 0.08 + Math.random() * 0.04, // Travels in ~8-12 frames
+                color: ally.type.includes('Swivel') ? '#f59e0b' : '#fef08a',
+                type: ally.type.includes('Swivel') ? 'zamburak' : 'musket'
+              });
+
+              // Spawn initial powder smoke puff at muzzle
+              spawnHitSplatter(ally.x + 12, ally.y - 12 * ally.z, '#e2e8f0', 0.5);
+            }
           } else {
             // Under intensive face-to-face melee, speed up reload or force close-melee
             ally.shootCooldown = 20;
@@ -2932,54 +3469,96 @@ export const BattleCanvas: React.FC<BattleCanvasProps> = ({
       b.currentY = b.startY + (b.targetY - b.startY) * b.progress;
 
       ctx.save();
-      ctx.beginPath();
-      const travelDx = b.targetX - b.startX;
-      const travelDy = b.targetY - b.startY;
-      const travelLen = Math.hypot(travelDx, travelDy);
-      const traceLength = 25;
-      const backX = b.currentX - (travelDx / (travelLen || 1)) * traceLength;
-      const backY = b.currentY - (travelDy / (travelLen || 1)) * traceLength;
+      if (b.type === 'cannonball') {
+        const rotationAngle = (Date.now() / 50) % (Math.PI * 2); // spinning artillery projectile
+        ctx.translate(b.currentX, b.currentY);
+        ctx.rotate(rotationAngle);
 
-      ctx.moveTo(backX, backY);
-      ctx.lineTo(b.currentX, b.currentY);
-      ctx.strokeStyle = b.color;
-      ctx.lineWidth = b.type === 'zamburak' ? 2.5 : 1.5;
-      ctx.shadowBlur = 8;
-      ctx.shadowColor = b.color;
-      ctx.lineCap = 'round';
-      ctx.stroke();
+        // Draw fiery cannon shell core
+        ctx.beginPath();
+        ctx.arc(0, 0, 7.5, 0, Math.PI * 2);
+        const grad = ctx.createRadialGradient(-2, -2, 1, 0, 0, 8);
+        grad.addColorStop(0, '#fef08a'); // inner white-hot core
+        grad.addColorStop(0.3, '#f97316'); // fire orange
+        grad.addColorStop(0.8, '#ea580c'); // dark crimson shell
+        grad.addColorStop(1, '#1e293b'); // iron cast casing
+        ctx.fillStyle = grad;
+        ctx.shadowBlur = 18;
+        ctx.shadowColor = '#ea580c';
+        ctx.fill();
+
+        // High velocity sparking fuse tail sparks emited behind shell
+        ctx.fillStyle = '#ef4444';
+        ctx.beginPath();
+        ctx.arc(-8, -4, 2.5, 0, Math.PI * 2);
+        ctx.arc(-11, 2, 2.0, 0, Math.PI * 2);
+        ctx.fill();
+      } else {
+        ctx.beginPath();
+        const travelDx = b.targetX - b.startX;
+        const travelDy = b.targetY - b.startY;
+        const travelLen = Math.hypot(travelDx, travelDy);
+        const traceLength = 25;
+        const backX = b.currentX - (travelDx / (travelLen || 1)) * traceLength;
+        const backY = b.currentY - (travelDy / (travelLen || 1)) * traceLength;
+
+        ctx.moveTo(backX, backY);
+        ctx.lineTo(b.currentX, b.currentY);
+        ctx.strokeStyle = b.color;
+        ctx.lineWidth = b.type === 'zamburak' ? 2.5 : 1.5;
+        ctx.shadowBlur = 8;
+        ctx.shadowColor = b.color;
+        ctx.lineCap = 'round';
+        ctx.stroke();
+      }
       ctx.restore();
 
       if (b.progress >= 1.0) {
         list.splice(i, 1);
 
         // Check hostile hit
-        const hitHostile = hostiles.find(h => h.hp > 0 && Math.abs(h.x - b.targetX) < 35 && Math.abs(h.y - b.targetY) < 35);
-        if (hitHostile) {
+        const hitHostiles = b.type === 'cannonball'
+          ? hostiles.filter(h => h.hp > 0 && Math.abs(h.x - b.targetX) < 75 && Math.abs(h.y - b.targetY) < 75)
+          : hostiles.filter(h => h.hp > 0 && Math.abs(h.x - b.targetX) < 35 && Math.abs(h.y - b.targetY) < 35).slice(0, 1);
+
+        if (hitHostiles.length > 0) {
           const difficultyKey = localStorage.getItem('panipat_battle_difficulty') || 'veteran';
-          const isElephant = hitHostile.type.includes('Elephant');
-          const standardDmg = b.type === 'zamburak' ? 16 + Math.random() * 10 : 8 + Math.random() * 6;
-          const finalDmg = Math.round(standardDmg * (difficultyKey === 'recruit' ? 1.35 : difficultyKey === 'peshwa' ? 0.65 : 1.0));
+          
+          hitHostiles.forEach(hitHostile => {
+            const isElephant = hitHostile.type.includes('Elephant');
+            const standardDmg = b.type === 'cannonball'
+              ? 90 + Math.random() * 45 // massive explosive damage
+              : b.type === 'zamburak' ? 16 + Math.random() * 10 : 8 + Math.random() * 6;
+              
+            const finalDmg = Math.round(standardDmg * (difficultyKey === 'recruit' ? 1.35 : difficultyKey === 'peshwa' ? 0.65 : 1.0));
 
-          hitHostile.hp = Math.max(0, hitHostile.hp - finalDmg);
-          spawnHitSplatter(hitHostile.x, hitHostile.y, '#b91c1c', isElephant ? 1.3 : 0.7);
-          spawnHitSplatter(hitHostile.x, hitHostile.y, '#f59e0b', 0.4);
+            hitHostile.hp = Math.max(0, hitHostile.hp - finalDmg);
+            spawnHitSplatter(hitHostile.x, hitHostile.y, '#b91c1c', isElephant ? 1.4 : 0.8);
+            spawnHitSplatter(hitHostile.x, hitHostile.y, '#f59e0b', isElephant ? 1.0 : 0.6);
+            
+            if (b.type === 'cannonball') {
+              spawnHitSplatter(hitHostile.x, hitHostile.y, '#ef4444', 1.25);
+              spawnHitSplatter(hitHostile.x + 10, hitHostile.y - 10, '#f97316', 0.9);
+            }
 
-          if (b.type === 'zamburak') {
-            shakeRef.current = Math.min(shakeRef.current + 3, 10);
-          }
+            textsRef.current.push({
+              x: hitHostile.x,
+              y: hitHostile.y - 15 - (Math.random() * 10),
+              text: `-${finalDmg} ${b.type === 'cannonball' ? '💥 CANNON BLAST!' : b.type === 'zamburak' ? '💥 Zamburak' : '🎯 Musket'}`,
+              alpha: 1,
+              color: b.type === 'cannonball' ? '#f97316' : b.type === 'zamburak' ? '#fb923c' : '#facc15',
+              scale: b.type === 'cannonball' ? 1.25 : 0.8,
+              vy: -1.2
+            });
 
-          textsRef.current.push({
-            x: hitHostile.x,
-            y: hitHostile.y - 15,
-            text: `-${finalDmg} ${b.type === 'zamburak' ? '💥 Zamburak' : '🎯 Musket'}`,
-            alpha: 1,
-            color: b.type === 'zamburak' ? '#fb923c' : '#facc15',
-            scale: 0.8,
-            vy: -1.0
+            onEnemyHit(finalDmg, b.type === 'cannonball' ? '🔥 HEAVY ARTILLERY' : b.type === 'zamburak' ? '🐫 SWIVEL FIRE' : '🎯 GARDI MUSKETRY', true);
           });
 
-          onEnemyHit(finalDmg, b.type === 'zamburak' ? '🐫 SWIVEL FIRE' : '🎯 GARDI MUSKETRY');
+          if (b.type === 'cannonball') {
+            shakeRef.current = Math.min(shakeRef.current + 15, 30);
+          } else if (b.type === 'zamburak') {
+            shakeRef.current = Math.min(shakeRef.current + 3, 10);
+          }
           continue;
         }
 

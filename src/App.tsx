@@ -19,6 +19,7 @@ import { Timeline } from './screens/Timeline';
 import { LMS } from './screens/LMS';
 import { Cartography } from './screens/Cartography';
 import { HelpOverlay, SettingsOverlay } from './components/GlobalOverlays';
+import { BattleLogOverlay } from './components/BattleLogOverlay';
 import { FeedbackWidget } from './components/FeedbackWidget';
 import { panipatAudioEngine } from './utils/audioSystem';
 
@@ -29,6 +30,7 @@ export default function App() {
   const [audioStarted, setAudioStarted] = useState(false);
   const [isHelpOpen, setIsHelpOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isBattleLogOpen, setIsBattleLogOpen] = useState(false);
 
   React.useEffect(() => {
     localStorage.setItem('panipat_campaign_stage', campaignStage);
@@ -69,6 +71,7 @@ export default function App() {
     const commonProps = {
       onHelp: () => setIsHelpOpen(true),
       onSettings: () => setIsSettingsOpen(true),
+      onShowBattleLog: () => setIsBattleLogOpen(true),
     };
 
     switch (currentScreen) {
@@ -127,6 +130,7 @@ export default function App() {
       {renderScreen()}
       <HelpOverlay isOpen={isHelpOpen} onClose={() => setIsHelpOpen(false)} />
       <SettingsOverlay isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
+      <BattleLogOverlay isOpen={isBattleLogOpen} onClose={() => setIsBattleLogOpen(false)} campaignStage={campaignStage} />
       <FeedbackWidget currentScreen={currentScreen} />
     </div>
   );

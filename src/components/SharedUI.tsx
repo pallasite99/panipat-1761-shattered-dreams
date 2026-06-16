@@ -28,7 +28,8 @@ import {
   Menu,
   X,
   GraduationCap,
-  Compass
+  Compass,
+  Scroll
 } from 'lucide-react';
 import { Screen } from '../types';
 
@@ -40,7 +41,8 @@ export const TopBar: React.FC<{
   onToggleMenu?: () => void;
   onHelp?: () => void;
   onSettings?: () => void;
-}> = ({ screen, onNavigate, onToggleMenu, onHelp, onSettings }) => (
+  onShowBattleLog?: () => void;
+}> = ({ screen, onNavigate, onToggleMenu, onHelp, onSettings, onShowBattleLog }) => (
   <header className="fixed top-0 left-0 w-full z-50 flex justify-between items-center px-4 md:px-10 py-3 bg-stone-950/90 backdrop-blur-sm border-b-4 border-stone-800/80 bronze-bevel">
     <div className="flex items-center gap-4 md:gap-8">
       <button 
@@ -78,6 +80,15 @@ export const TopBar: React.FC<{
     </div>
     <div className="flex items-center gap-6">
       <div className="flex gap-4">
+        {onShowBattleLog && (
+          <button 
+            onClick={onShowBattleLog}
+            className="text-saffron hover:text-orange-300 transition-all active:scale-90"
+            title="Campaign Chronicles"
+          >
+            <Scroll size={20} />
+          </button>
+        )}
         <button 
           onClick={onSettings}
           className="text-saffron hover:text-orange-300 transition-all active:scale-90"

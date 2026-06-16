@@ -5,6 +5,7 @@ import { Screen, CampaignStage, General } from '../types';
 
 const MARATHA_GENERALS: General[] = [
   { id: 'bhau', name: 'Sadashivrao Bhau', faction: 'maratha', bio: 'Grand Commander of the Maratha grand expedition; master state financier.', bonus: 'Higher Aggression (+15% attack damage)' },
+  { id: 'raghoba', name: 'Raghunathrao (Raghoba)', faction: 'maratha', bio: 'The ambitious northern conqueror who carried the saffron flag to Lahore and Peshawar; master of high-speed expedition surges.', bonus: 'Frontier Blitz (+30% troop speed & extra Huzurat cavalry spawns)' },
   { id: 'shamsher', name: 'Shamsher Bahadur', faction: 'maratha', bio: 'Sword & Cavalry Master (Son of Bajirao & Mastani); brave horse subahdar.', bonus: 'Heroic Sword Charge (+45% melee damage)' },
   { id: 'parvatibai', name: 'Queen Parvatibai', faction: 'maratha', bio: 'Camp Pillar & spiritual anchor of camp followers who organized emergency winter food distribution.', bonus: 'Sacred Resilience (+30% starting provisions & attrition immunity)' },
   { id: 'gopikabai', name: 'Regent Gopikabai', faction: 'maratha', bio: 'The fierce, highly influential regent empress of Pune Shaniwar Treasury controls administrative gold ledger.', bonus: 'Golden Sovereign (+40,000 baseline starting Gold Mohurs)' },
@@ -302,24 +303,29 @@ export const MainMenu: React.FC<{
   if (appState === 'general') {
       const generals = faction === 'maratha' ? MARATHA_GENERALS : DURRANI_GENERALS;
       return (
-        <div className="h-screen w-screen bg-stone-950 flex flex-col items-center justify-center p-10">
-            <h2 className="text-white text-5xl font-serif mb-16 uppercase tracking-[0.4em]">Choose Thy General</h2>
-            <div className="grid grid-cols-3 gap-10">
+        <div className="h-screen w-screen bg-stone-950 flex flex-col items-center justify-center p-6 md:p-10">
+            <h2 className="text-white text-3xl md:text-5xl font-serif mb-6 md:mb-12 uppercase tracking-[0.4em] text-center">Choose Thy General</h2>
+            <div className="w-full max-w-6xl grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6 max-h-[75vh] overflow-y-auto p-4 custom-scrollbar">
                 {generals.map(g => (
                     <motion.button
                         key={g.id}
-                        whileHover={{ scale: 1.05 }}
+                        whileHover={{ scale: 1.02 }}
                         onClick={() => { 
                           setGeneral(g); 
                           localStorage.setItem('panipat_campaign_general', g.id);
                           localStorage.setItem('panipat_campaign_general_name', g.name);
                           setAppState('menu'); 
                         }}
-                        className="p-6 border border-stone-800 bg-stone-900 text-left hover:border-saffron transition-all"
+                        className="p-5 border border-stone-800 bg-stone-900/90 hover:bg-stone-900 text-left hover:border-saffron transition-all flex flex-col justify-between rounded-sm h-full"
                     >
-                        <h3 className="text-saffron font-serif text-2xl uppercase mb-2">{g.name}</h3>
-                        <p className="text-stone-400 text-sm mb-4 italic">{g.bio}</p>
-                        <div className="text-stone-500 text-xs font-mono uppercase border-t border-stone-800 pt-2">Bonus: {g.bonus}</div>
+                        <div>
+                          <h3 className="text-saffron font-serif text-xl uppercase mb-2 border-b border-stone-800 pb-1">{g.name}</h3>
+                          <p className="text-stone-400 text-xs md:text-sm mb-4 italic leading-relaxed">{g.bio}</p>
+                        </div>
+                        <div className="text-stone-500 text-[10px] md:text-xs font-mono uppercase border-t border-stone-800 pt-2 shrink-0">
+                          <span className="text-amber-500 font-bold block mb-0.5">Bonus Action:</span>
+                          {g.bonus}
+                        </div>
                     </motion.button>
                 ))}
             </div>

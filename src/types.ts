@@ -37,6 +37,7 @@ export interface BattleProps {
   stage: CampaignStage;
   onHelp?: () => void;
   onSettings?: () => void;
+  onShowBattleLog?: () => void;
 }
 
 export interface Unit {
