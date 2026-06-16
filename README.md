@@ -78,13 +78,19 @@ Manage the state coffers (**Gold Mohurs**), provisions, and caravan supply lines
 ### 🧠 7. AI War Council & Debates (Visual Novel Mode)
 Launch the **AI War Council** to witness Maratha generals (Sadashivrao Bhau, Malharrao Holkar, Ibrahim Khan Gardi) debate campaign tactics in a visual novel-style layout. Siding with a general applies instant mechanical adjustments to your camp resources.
 
-### 🎓 8. Academy Hub & Student LMS
+### 🛡️ 8. Pre-Battle Council Prelude & Strategy Orders
+Before launching active military engagements on the battlefield, enter the grand commander's tent to consult your generals in an **interactive tactical prelude**. Review historical troop positions on a dynamic schematic sand board and debate campaign plan options:
+*   **Artillery Breach (Gardi's Plan)**: Focuses heavy field brass guns on gates to weaken initial enemy fortifications, decreasing starting fort integrity and awarding bonus frag bombs.
+*   **Ganimi Kava Cavalry Raid (Holkar's Plan)**: Swift flanking maneuvers to harass and demoralize advanced enemy forces, raising friendly starting morale and expanding focus bullet stamina.
+*   **Saffron Encircled Ward (Bhau's Plan)**: Solid cohort line defense to shield forces during transitions, awarding upgraded armor tier equipment and premium adrenaline supplies.
+
+### 🎓 9. Academy Hub & Student LMS
 Includes a complete interactive **Learning Management System (LMS)** and **Academy Hub** allowing students to study historical timelines, review comprehensive interactive cartography, take quizzes, track academic milestones, and view educational resources with a persistent state engine powered by `Zustand`.
 
-### 🌐 9. Multiplayer Matchmaking Arena
+### 🌐 10. Multiplayer Matchmaking Arena
 Open the **Multiplayer Matchmaking** simulator to view active rooms, regions, pings, and chat with local recruits. Enter turn-based card battles deploying unit counters against simulated live opponents to protect your campaign flanks.
 
-### 📰 10. Campaign Tension Ticker
+### 📰 11. Campaign Tension Ticker
 Keep track of the strategic status via a continuous scrolling newspaper marquee ticker at the top of the campaign map, fed with real-time historical event logs.
 
 ---

@@ -28,6 +28,7 @@ import {
 import { Screen, CampaignStage, BattleProps } from '../types';
 import { TopBar } from '../components/SharedUI';
 import { RoyalBanner } from '../components/RoyalBanner';
+import { MARATHA_PRELUDES, DURRANI_PRELUDES } from '../data/battlePreludes';
 
 const TERRAIN_CONFIGS: { [key: string]: {
   name: string;
@@ -674,7 +675,7 @@ export const HISTORICAL_BRIEFS: Record<string, HistoricalBrief> = {
   }
 };
 
-export const BattleScene: React.FC<BattleProps> = ({ onNavigate, onAdvance, stage, onHelp, onSettings }) => {
+export const BattleScene: React.FC<BattleProps> = ({ onNavigate, onAdvance, stage, onHelp, onSettings, onShowBattleLog }) => {
   // PUBG drop phases: 'choosing_drop' | 'dropping' | 'clash' | 'resolution' | 'defeat'
   const [battlePhase, setBattlePhase] = useState<'choosing_drop' | 'dropping' | 'clash' | 'resolution' | 'defeat'>('choosing_drop');
   const [selectedDropHotspot, setSelectedDropHotspot] = useState<string | null>(null);
@@ -684,11 +685,52 @@ export const BattleScene: React.FC<BattleProps> = ({ onNavigate, onAdvance, stag
   const [fortWallIntegrity, setFortWallIntegrity] = useState(100);
   const [showBriefing, setShowBriefing] = useState(true);
 
+  // Pre-battle Prelude & Council Cutscene states
+  const [preludeStage, setPreludeStage] = useState<'generals_grouping' | 'briefing_details'>('generals_grouping');
+  const [currentDialogueIndex, setCurrentDialogueIndex] = useState(0);
+  const [selectedStrategyPlan, setSelectedStrategyPlan] = useState<'artillery' | 'guerilla' | 'defense' | null>(null);
+
   // Auto-reset fort values and show briefing on campaign level transitions
   useEffect(() => {
     setFortWallIntegrity(100);
     setShowBriefing(true);
+    setPreludeStage('generals_grouping');
+    setCurrentDialogueIndex(0);
+    setSelectedStrategyPlan(null);
   }, [stage]);
+
+  const handleSelectStrategy = (planId: 'artillery' | 'guerilla' | 'defense') => {
+    setSelectedStrategyPlan(planId);
+    
+    // Apply starting battle ready bonuses dynamically!
+    if (planId === 'artillery') {
+      setFragBombs(prev => prev + 1);
+      setFortWallIntegrity(80); // Weaken enemy fort gates initially
+      // Weaken starting enemy troop confidence/morale
+      if (activeFaction === 'maratha') {
+        setDurraniMorale(prev => Math.max(40, prev - 15));
+      } else {
+        setMarathaMorale(prev => Math.max(40, prev - 15));
+      }
+    } else if (planId === 'guerilla') {
+      setAmmoCount(7); // Extra focus/stamina bullet count!
+      if (activeFaction === 'maratha') {
+        setMarathaMorale(120);
+      } else {
+        setDurraniMorale(prev => prev + 20);
+      }
+    } else if (planId === 'defense') {
+      setArmorTier(3); // Upgrade to Heavy Mail & Shields
+      setAdrenalineSyringes(prev => prev + 1);
+      if (activeFaction === 'maratha') {
+        setMarathaMorale(125);
+      } else {
+        setDurraniMorale(prev => prev + 25);
+      }
+    }
+    
+    setPreludeStage('briefing_details');
+  };
 
   const [clashAction, setClashAction] = useState<'none' | 'charge' | 'defend' | 'artillery' | 'feint' | 'flank' | 'adrenaline' | 'bomb' | 'loot' | null>(null);
   const [enemyAction, setEnemyAction] = useState<'none' | 'zamburak' | 'charge' | null>(null);
@@ -716,6 +758,25 @@ export const BattleScene: React.FC<BattleProps> = ({ onNavigate, onAdvance, stag
   const [adrenalineSyringes, setAdrenalineSyringes] = useState(2);
   const [fragBombs, setFragBombs] = useState(1);
   const [airdropCargoAvailable, setAirdropCargoAvailable] = useState(true);
+
+  // Age Of Empires Stance & Formations state
+  const [selectedFormation, setSelectedFormation] = useState<'chakra' | 'sunder' | 'ardhachandra' | 'gardi'>('chakra');
+  const [selectedDensity, setSelectedDensity] = useState<'horde' | 'veterans' | 'cavalry'>('horde');
+  const [deploymentStance, setDeploymentStance] = useState<'aggressive' | 'defensive' | 'flank'>('aggressive');
+  
+  // Tactical Battle Decisions board triggers
+  const [activeDecision, setActiveDecision] = useState<{
+    id: string;
+    title: string;
+    challenge: string;
+    options: {
+      id: string;
+      title: string;
+      desc: string;
+      apply: () => void;
+    }[];
+  } | null>(null);
+  const [decisionsHistory, setDecisionsHistory] = useState<string[]>([]);
 
   // Weather and Music synthesizers variables
   const [timeOfDay, setTimeOfDay] = useState<'dawn' | 'noon' | 'dusk' | 'midnight'>('noon');
@@ -978,9 +1039,37 @@ export const BattleScene: React.FC<BattleProps> = ({ onNavigate, onAdvance, stag
       // Speed up initial battles (non-Panipat stages) by applying a speed factor so matches are highly dynamic
       const speedFactor = isPanipat ? 1.0 : 3.2;
       
-      const marathaLoss = (Math.random() * (0.9 * stageDifficulty * (isPanipat ? 1.8 : 1) * (1 / activeTerrain.defenseModifier))) * armorReduction * damageBlocked * difficultyMult * speedFactor;
+      // Incorporate AOE Formations and Combat Stance modifiers
+      let formationMarathaMod = 1.0;
+      let formationDurraniMod = 1.0;
+      
+      if (selectedFormation === 'chakra') {
+        formationMarathaMod = 0.65; // 35% reduction in taking damage due to Wheel Matrix protection
+      } else if (selectedFormation === 'sunder') {
+        formationDurraniMod = 1.40; // 40% extra offense due to deep Wedge penetration
+        formationMarathaMod = 1.15; // slightly exposed
+      } else if (selectedFormation === 'ardhachandra') {
+        formationDurraniMod = 1.25; // Crescent flanking surrounds
+        formationMarathaMod = 0.85;
+      } else if (selectedFormation === 'gardi') {
+        // Line battery inflicts huge siege impact & regular attrition
+        formationDurraniMod = 1.45;
+        formationMarathaMod = 1.20;
+      }
+      
+      if (deploymentStance === 'defensive') {
+        formationMarathaMod *= 0.70;
+        formationDurraniMod *= 0.80;
+      } else if (deploymentStance === 'aggressive') {
+        formationDurraniMod *= 1.30;
+        formationMarathaMod *= 1.20;
+      } else if (deploymentStance === 'flank') {
+        formationDurraniMod *= 1.15;
+      }
+
+      const marathaLoss = (Math.random() * (0.9 * stageDifficulty * (isPanipat ? 1.8 : 1) * (1 / activeTerrain.defenseModifier))) * armorReduction * damageBlocked * difficultyMult * speedFactor * formationMarathaMod;
       // Balance Durrani passive attrition symmetrically based on active difficulty scaling
-      const durraniLoss = ((Math.random() * (isPanipat ? 1.05 : 0.8) * (1.1 / difficultyMult)) * stageDifficulty) * speedFactor;
+      const durraniLoss = ((Math.random() * (isPanipat ? 1.05 : 0.8) * (1.1 / difficultyMult)) * stageDifficulty) * speedFactor * formationDurraniMod;
 
       // Calculate active Prahar elapsed time for dynamic game modifiers
       const elapsed = 45 - battleTimeLeft;
@@ -1020,20 +1109,127 @@ export const BattleScene: React.FC<BattleProps> = ({ onNavigate, onAdvance, stag
       });
 
       // 2. Accumulate simulated casualties realistically per tick (Detailed casualties feature)
-      const pCas = Math.floor(marathaLoss * 46 + Math.random() * 15);
-      const eCas = Math.floor(durraniLoss * 49 + Math.random() * 18);
+      // Horde density multiplies casualties for a grand war feels
+      const casualtyScale = selectedDensity === 'horde' ? 3.2 : selectedDensity === 'cavalry' ? 1.5 : 0.8;
+      const pCas = Math.floor((marathaLoss * 46 + Math.random() * 15) * casualtyScale);
+      const eCas = Math.floor((durraniLoss * 49 + Math.random() * 18) * casualtyScale);
       setStagePlayerCasualties(prev => prev + pCas);
       setStageEnemyCasualties(prev => prev + eCas);
 
-      // 3. Automated reinforcements counter-spawning (Both sides spawn elements feature)
-      // If enemy morale is dropping, they have a chance to call reserves code in
-      if (Math.random() < 0.22 && durraniMorale < 80) {
-        setSpawnEnemyTrigger(t => t + 2);
-        setEnemiesSummonedCount(prev => prev + 2);
-        setLog(prevLog => [
-          "🚨 [ENEMY REINFORCEMENTS] Afghan Durrani command has summoned 2 heavy tribal Ghazi skirmishers to hold the sector!",
-          ...prevLog.slice(0, 3)
-        ]);
+      // Trigger AOE Mid-battle strategic choices
+      if (elapsed === 8 && !decisionsHistory.includes('camel_swivel')) {
+        setDecisionsHistory(prev => [...prev, 'camel_swivel']);
+        setActiveDecision({
+          id: 'camel_swivel',
+          title: "🐫 CAMEL SWIVELS ENCIRCLEMENT",
+          challenge: "Hostile camel-back swivel guns (Zamburaks) are bombarding our Left Flank! The gun crews are panicking under explosive rain.",
+          options: [
+            {
+              id: 'artillery_counter',
+              title: "💥 Counter-battery Salvos",
+              desc: "Command Gardi guns to focus on camel mounts. (Shatters 35 enemy morale points but decreases fortress defense)",
+              apply: () => {
+                setDurraniMorale(prev => Math.max(2, prev - 35));
+                setLog(prev => ["💣 [STRATEGY DECISION] Executed Gardi counter-salvo on Zamburaks. Dealt -35 enemy morale!", ...prev.slice(0, 3)]);
+                setActiveDecision(null);
+              }
+            },
+            {
+              id: 'lancer_charge',
+              title: "🏇 Imperial Cavalry Charge",
+              desc: "Unleash swift horse riders to over-run their flanks. (Spawns 6 heavy cavalry, deals -25 enemy morale; costs -5 friendly morale)",
+              apply: () => {
+                setDurraniMorale(prev => Math.max(2, prev - 25));
+                setMarathaMorale(prev => Math.max(10, prev - 5));
+                setSpawnAllyType(activeFaction === 'maratha' ? 'Maratha Spear Cavalry' : 'Durrani Elite Cavalry');
+                setSpawnAllyTrigger(prev => prev + 6);
+                setLog(prev => ["🏇 [STRATEGY DECISION] Outflanked camel posts with lancers. 6 Cavalry deployed!", ...prev.slice(0, 3)]);
+                setActiveDecision(null);
+              }
+            },
+            {
+              id: 'shield_barrier',
+              title: "🛡️ Lock Defensive Shields",
+              desc: "Order regiments to huddle under heavy hide barriers. (Reduces future attrition; boosts armor to Grade 3 Steel)",
+              apply: () => {
+                setArmorTier(3);
+                setLog(prev => ["🛡️ [STRATEGY DECISION] Formed shell shield covers. Armor upgraded to Grade 3!", ...prev.slice(0, 3)]);
+                setActiveDecision(null);
+              }
+            }
+          ]
+        });
+      } else if (elapsed === 22 && !decisionsHistory.includes('war_elephants')) {
+        setDecisionsHistory(prev => [...prev, 'war_elephants']);
+        setActiveDecision({
+          id: 'war_elephants',
+          title: "🐘 BEAST BREACH EMERGENCY",
+          challenge: "CRITICAL: Armed war elephants wearing metal armor and swinging heavy tree-trunks are breaking through our center shield-lines!",
+          options: [
+            {
+              id: 'iron_arrows',
+              title: "🚀 Fire Rocket Arrows (Ban)",
+              desc: "Launch iron-tipped explosive rockets into their ranks. (Inflicts massive splash damage; reduces enemy morale by 35)",
+              apply: () => {
+                setDurraniMorale(prev => Math.max(2, prev - 35));
+                setLog(prev => ["🚀 [STRATEGY DECISION] Launched heavy iron-tipped war rocket salvos. Slayed the heavy beasts!", ...prev.slice(0, 3)]);
+                setActiveDecision(null);
+              }
+            },
+            {
+              id: 'musket_focus',
+              title: "🎯 Concentrate Gardi Fire",
+              desc: "Direct French-trained Gardi infantry musketeers to aim at the elephant mahouts. (Spawns 5 elite Gardi Riflemen, +15 starting morale)",
+              apply: () => {
+                setSpawnAllyType(activeFaction === 'maratha' ? 'Gardi Infantry' : 'Durrani Elite Cavalry');
+                setSpawnAllyTrigger(prev => prev + 5);
+                setMarathaMorale(prev => Math.min(100, prev + 15));
+                setLog(prev => ["🎯 [STRATEGY DECISION] Gardi snipers picked off the drivers. Restored 15 friendly morale!", ...prev.slice(0, 3)]);
+                setActiveDecision(null);
+              }
+            },
+            {
+              id: 'spear_wall',
+              title: "🧱 Brace Iron Spear Walls",
+              desc: "Force vanguard columns into an iron wall to absorb the impact. (Spawns 7 frontline shield soliders immediately)",
+              apply: () => {
+                setSpawnAllyType(activeFaction === 'maratha' ? 'Maratha Mawala Swordsman' : 'Pashtun Ghazi swordsman');
+                setSpawnAllyTrigger(prev => prev + 7);
+                setLog(prev => ["🧱 [STRATEGY DECISION] Formed rigid infantry wall blocks. Absorbed elephant stomp!", ...prev.slice(0, 3)]);
+                setActiveDecision(null);
+              }
+            }
+          ]
+        });
+      }
+
+      // 3. Automated reinforcements counter-spawning (AOE style Auto-Mode clash)
+      // Let's spawn reinforcements for BOTH sides periodically to keep a large busy army clashing on the pitch!
+      if (Math.random() < 0.35) {
+        const amt = selectedDensity === 'horde' ? 4 : selectedDensity === 'cavalry' ? 2 : 1;
+        setSpawnAllyTrigger(prev => prev + amt);
+        setAlliesSummonedCount(prev => prev + amt);
+        
+        if (Math.random() < 0.2) {
+          const allyUnitLabel = selectedDensity === 'cavalry' ? 'heavy cavalry' : selectedDensity === 'veterans' ? 'elite guards' : 'swordsman infantry';
+          setLog(prevLog => [
+            `⚔️ [AUTO-BATTLE] ${amt} allied ${allyUnitLabel} joined the line in ${selectedFormation.toUpperCase()} stance.`,
+            ...prevLog.slice(0, 3)
+          ]);
+        }
+      }
+
+      if (Math.random() < 0.38) {
+        const amt = selectedDensity === 'horde' ? 4 : 2;
+        setSpawnEnemyTrigger(prev => prev + amt);
+        setEnemiesSummonedCount(prev => prev + amt);
+        
+        if (Math.random() < 0.2) {
+          setLog(prevLog => [
+            `🔺 [AUTO-BATTLE] Ahmad Shah's reinforcement columns converged to hold the defense!`,
+            ...prevLog.slice(0, 3)
+          ]);
+        }
       }
 
       // Gradual decay of Fort siege walls so it NEVER is never-ending!
@@ -1151,14 +1347,33 @@ export const BattleScene: React.FC<BattleProps> = ({ onNavigate, onAdvance, stag
     }
   }, [battleTimeLeft, battlePhase, showStageResultModal, timeOfDay]);
 
-  // Handle active drop action
-  const triggerDropLaunch = (hotspot: string) => {
-    setSelectedDropHotspot(hotspot);
+  // Handle Age Of Empires styled army deployment
+  const triggerArmyDeployment = (formation: "chakra" | "sunder" | "ardhachandra" | "gardi", density: "horde" | "veterans" | "cavalry", stance: "aggressive" | "defensive" | "flank") => {
+    let hotspotName = "Chakra Phalanx";
+    if (formation === 'sunder') hotspotName = "Sunder Wedge";
+    else if (formation === 'ardhachandra') hotspotName = "Ardhachandra Crescent";
+    else if (formation === 'gardi') hotspotName = "Gardi Line";
+    
+    setSelectedDropHotspot(hotspotName);
     setBattlePhase('dropping');
-    setLog(prev => [
-      `SQUAD DEPLOYED! Parachuting down to ${hotspot.toUpperCase()}... Hold tight!`,
-      ...prev
-    ]);
+    
+    // Reset decisions history so they trigger mid-battle reliably
+    setDecisionsHistory([]);
+    setActiveDecision(null);
+
+    // Apply initial design settings of different formations
+    if (formation === 'chakra') {
+      setArmorTier(3);
+      setMarathaMorale(100);
+      setLog(prev => ["🏰 [FORMATION BUFF] Deployed Chakra-Vyuha Phalanx. Frontline armor resistance increased!", ...prev.slice(0, 3)]);
+    } else if (formation === 'sunder') {
+      setLog(prev => ["🔥 [FORMATION BUFF] Deployed Sunder-Vyuha Wedge. Standard melee swing penetration boosted!", ...prev.slice(0, 3)]);
+    } else if (formation === 'ardhachandra') {
+      setLog(prev => ["🌙 [FORMATION BUFF] Deployed Ardhachandra Crescent. Rear flank companion speeds enabled!", ...prev.slice(0, 3)]);
+    } else if (formation === 'gardi') {
+      setFragBombs(prev => prev + 2);
+      setLog(prev => ["💣 [FORMATION BUFF] Deployed Gardi Battery Line. Gained +2 French Powder Bombs!", ...prev.slice(0, 3)]);
+    }
 
     let timer = 3;
     const interval = setInterval(() => {
@@ -1168,11 +1383,20 @@ export const BattleScene: React.FC<BattleProps> = ({ onNavigate, onAdvance, stag
         clearInterval(interval);
         setBattlePhase('clash');
         setLog(prev => [
-          "🎉 LANDED! Match started! Click directly on the Canvas targets or trigger actions inside active combat safe limits!",
+          "⚔️ ARMIES COLLIDED! Auto-battle simulator is active! Command the lines and victory is yours!",
           ...prev
         ]);
+        
+        // Spawn the large initial army on the canvas based on density!
+        const spawnCount = density === 'horde' ? 18 : density === 'cavalry' ? 12 : 8;
+        setSpawnAllyTrigger(prevTrigger => prevTrigger + spawnCount);
+        setSpawnEnemyTrigger(prevTrigger => prevTrigger + spawnCount);
       }
     }, 1000);
+  };
+
+  const triggerDropLaunch = (hotspot: string) => {
+    triggerArmyDeployment('chakra', 'horde', 'aggressive');
   };
 
   // Recover active weapon stamina / focus
@@ -1188,8 +1412,44 @@ export const BattleScene: React.FC<BattleProps> = ({ onNavigate, onAdvance, stag
   };
 
   // Canvas-based click enemy hit registration callback
-  const handleEnemyHitInCanvas = (dmg: number, label: string) => {
+  const handleEnemyHitInCanvas = (dmg: number, label: string, isAutonomous?: boolean) => {
     const isShamsher = localStorage.getItem('panipat_campaign_general') === 'shamsher';
+    
+    // If autonomous damage (cannons, swivels, musketeers), apply directly without draining user's stamina/ammo or spamming logs
+    if (isAutonomous) {
+      const isSiege = stage === CampaignStage.NIZAM_CAMPAIGN || stage === CampaignStage.GWALIOR || stage === CampaignStage.DELHI_NEGOTIATIONS;
+      let finalDmg = dmg / 2.3;
+      
+      if (isSiege && fortWallIntegrity > 0) {
+        finalDmg *= 0.33;
+        setFortWallIntegrity(prev => {
+          if (prev <= 0) return 0;
+          const next = Math.max(0, prev - 0.2); // Slow, progressive wall wearing for autonomous projectiles
+          if (next === 0) {
+            setLog(prevLog => [
+              "🔓 FORTRESS GATES CRUMBLED under intense artillery bombardment!",
+              ...prevLog.slice(0, 3)
+            ]);
+            setShowBreachDialogueModal(true);
+          }
+          return next;
+        });
+      }
+
+      if (activeFaction === 'maratha') {
+        setDurraniMorale(prev => {
+          const next = prev - finalDmg;
+          return (isSiege && fortWallIntegrity > 0) ? Math.max(35, next) : Math.max(0, next);
+        });
+      } else {
+        setMarathaMorale(prev => {
+          const next = prev - finalDmg;
+          return (isSiege && fortWallIntegrity > 0) ? Math.max(35, next) : Math.max(0, next);
+        });
+      }
+      return;
+    }
+
     if (ammoCount <= 0) {
       setLog(prev => ["⚠️ STAMINA DEPLETED! Click 'MUSTER FOCUS' to refresh your strike energy!", ...prev.slice(0, 4)]);
       return;
@@ -1495,97 +1755,416 @@ export const BattleScene: React.FC<BattleProps> = ({ onNavigate, onAdvance, stag
 
   return (
     <div id="battle-scene-wrapper" className={`relative h-screen w-screen bg-[#070404] text-stone-200 overflow-hidden font-sans ${showShake ? 'battle-shake' : ''}`}>
-      <TopBar screen={Screen.BATTLE} onNavigate={onNavigate} onHelp={onHelp} onSettings={onSettings} />
+      <TopBar screen={Screen.BATTLE} onNavigate={onNavigate} onHelp={onHelp} onSettings={onSettings} onShowBattleLog={onShowBattleLog} />
 
-      {/* HISTORICAL PRE-BATTLE parchment BRIEFING MODAL */}
+      {/* HISTORICAL PRE-BATTLE PRELUDE & PARCHMENT BRIEFING */}
       <AnimatePresence>
-        {showBriefing && (
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.95 }}
-            className="absolute inset-0 z-50 bg-[#0c0806]/95 flex items-center justify-center p-4 md:p-8"
-          >
-            {/* Scroll Container */}
-            <div className="max-w-xl w-full bg-[#f4ebe1] border-8 border-double border-[#8B5E3C] p-6 md:p-8 text-[#2c1d11] shadow-2xl rounded-sm relative overflow-y-auto max-h-[90vh]">
-              {/* Inner border */}
-              <div className="absolute inset-1 border border-[#8B5E3C]/30 rounded-xs pointer-events-none" />
-              
-              {/* Royal Seal Wax Decoration */}
-              <div className="absolute top-4 right-4 text-3xl opacity-85 select-none pointer-events-none">
-                🏮
-              </div>
-
-              {/* Title Section */}
-              <div className="text-center pb-4 mb-4 border-b border-[#2c1d11]/20">
-                <p className="text-[10px] uppercase tracking-widest font-mono text-[#8B5E3C] font-bold">
-                  MILITARY COUNCIL BRIEFING
-                </p>
-                <h1 className="text-2xl md:text-3xl font-serif font-black uppercase text-[#4c1d12] mt-1 tracking-tight">
-                  {stage && activeBrief?.title || "BATTLEPLAN ORDER"}
-                </h1>
-                <div className="flex justify-center items-center gap-4 text-xs font-mono text-[#5c3e21] mt-2 font-bold uppercase w-full">
-                  <span>📍 {stage && activeBrief?.location || "Frontier Plain"}</span>
-                  <span>•</span>
-                  <span>📅 {stage && activeBrief?.year || "1760 AD"}</span>
-                </div>
-              </div>
-
-              {/* Scenario Narrative */}
-              <div className="mb-6">
-                <h3 className="text-xs uppercase font-bold tracking-wider text-[#8B5E3C] mb-1 font-mono">
-                  I. Strategic Scenario
-                </h3>
-                <p className="text-sm leading-relaxed text-[#453221] font-serif italic bg-white/40 p-3 rounded border border-[#8B5E3C]/10 shadow-xs">
-                  "{stage && activeBrief?.scenario || "A cold frost settles as scouts report enemy divisions organizing along the tree barrier."}"
-                </p>
-              </div>
-
-              {/* Tactical Objectives */}
-              <div className="mb-6">
-                <h3 className="text-xs uppercase font-bold tracking-wider text-[#8B5E3C] mb-2 font-mono flex items-center gap-1.5">
-                  🎯 II. Tactical Objectives
-                </h3>
-                <ul className="space-y-2 text-sm text-[#382613]">
-                  {stage && (activeBrief?.objectives || [
-                    "Achieve victory in the central sector clash",
-                    "Maintain high soldier morale and discipline"
-                  ]).map((obj, i) => (
-                    <li key={i} className="flex items-start gap-2.5">
-                      <span className="text-[#8B5E3C] font-black text-xs font-mono bg-[#8B5E3C]/10 rounded-full w-5 h-5 flex items-center justify-center flex-shrink-0 mt-0.5 font-bold">
-                        {i + 1}
-                      </span>
-                      <span className="leading-tight font-medium">{obj}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-
-              {/* General Staff Recommendation / Tip */}
-              <div className="mb-8 p-3 rounded bg-amber-100/65 border border-amber-300/40">
-                <h4 className="text-xs uppercase font-bold text-[#b45309] font-mono tracking-wide flex items-center gap-1">
-                  💡 Grand Strategy
-                </h4>
-                <p className="text-xs text-[#78350f] leading-normal font-sans mt-0.5">
-                  {stage && activeBrief?.strategyTip || "Observe enemy lines carefully and strike when focus indicators reach their peak!"}
-                </p>
-              </div>
-
-              {/* Command Action Buttons */}
-              <div className="text-center">
-                <button
-                  id="accept-briefing-btn"
-                  onClick={() => {
-                    setShowBriefing(false);
-                  }}
-                  className="w-full md:w-auto px-6 py-3.5 bg-[#4c1d12] hover:bg-[#3b120c] text-[#f4ebe1] hover:text-white font-serif font-bold uppercase tracking-widest text-xs rounded shadow-lg transition-transform hover:scale-[1.02] active:scale-[0.98] border border-[#ffedd5]/20 flex items-center justify-center gap-2 cursor-pointer"
+        {showBriefing && (() => {
+          const activePreludeData = (activeFaction === 'maratha' 
+            ? MARATHA_PRELUDES[stage] || MARATHA_PRELUDES[CampaignStage.NIZAM_CAMPAIGN]
+            : DURRANI_PRELUDES[stage] || DURRANI_PRELUDES[CampaignStage.NIZAM_CAMPAIGN]);
+          
+          return (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 z-50 bg-[#0c0806]/97 flex items-center justify-center p-4 md:p-6 overflow-y-auto overflow-x-hidden"
+            >
+              {preludeStage === 'generals_grouping' ? (
+                /* --- GENERALS' PRELUDE COUNCIL CUTSCENE OVERLAY --- */
+                <motion.div
+                  key="cutscene"
+                  initial={{ opacity: 0, scale: 0.97 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.97 }}
+                  className="w-full max-w-4xl bg-gradient-to-br from-[#1b1008] via-[#0f0a06] to-[#0d0704] border-4 border-[#8B5E3C] p-4 md:p-6 rounded-sm relative shadow-2xl flex flex-col md:flex-row gap-6 max-h-[95vh] overflow-y-auto overflow-x-hidden md:overflow-hidden font-sans text-stone-200"
                 >
-                  ⚔️ ACCEPT COMMAND & SURVEY LANDING BOUNDS
-                </button>
-              </div>
-            </div>
-          </motion.div>
-        )}
+                  {/* Decorative flickering candles */}
+                  <div className="absolute top-2 right-2 flex gap-1 pointer-events-none opacity-60">
+                    <span className="w-1.5 h-1.5 bg-yellow-500 rounded-full animate-ping" />
+                    <span className="w-1.5 h-1.5 bg-orange-500 rounded-full animate-pulse" />
+                  </div>
+
+                  {/* Left: Interactive Strategic Table Map */}
+                  <div className="flex-1 border-2 border-[#8B5E3C]/30 bg-[#160f0b] p-4 rounded-xs flex flex-col justify-between relative overflow-hidden select-none min-h-[300px] md:min-h-0">
+                    <div className="absolute inset-0 parchment opacity-[0.03] pointer-events-none" />
+                    
+                    <div className="text-center pb-2 border-b border-white/5 relative z-10">
+                      <span className="text-[9px] font-mono uppercase tracking-[0.2em] text-[#ca8a04] font-black">
+                        ⚔️ TACTICAL STRATEGY BOARD
+                      </span>
+                      <h4 className="font-serif text-sm uppercase text-stone-200 font-bold max-w-[240px] mx-auto truncate mt-0.5">
+                        {activePreludeData.mapName}
+                      </h4>
+                    </div>
+
+                    {/* Interactive battlefield SVG schematic drawing */}
+                    <div className="relative h-44 my-3 flex items-center justify-center border border-white/5 rounded bg-black/50 relative z-10 overflow-hidden">
+                      <div className="absolute inset-0 grid grid-cols-4 grid-rows-4 opacity-[0.05] pointer-events-none">
+                        {[...Array(16)].map((_, i) => (
+                          <div key={i} className="border border-white" />
+                        ))}
+                      </div>
+
+                      {/* Terrain drawings */}
+                      <svg className="absolute inset-0 w-full h-full pointer-events-none opacity-25" viewBox="0 0 100 100" preserveAspectRatio="none">
+                        <circle cx="50" cy="50" r="30" fill="none" stroke="#ca8a04" strokeWidth="0.5" strokeDasharray="2" />
+                        <path d="M 5,90 Q 40,75 70,90 T 100,80" fill="none" stroke="#8b5e3c" strokeWidth="0.8" />
+                        <path d="M 0,25 Q 35,40 65,20 T 100,30" fill="none" stroke="#3b82f6" strokeWidth="0.6" opacity="0.6" />
+                      </svg>
+
+                      {/* Tactical lines matching dialog maps highlight */}
+                      <AnimatePresence>
+                        {(activePreludeData.dialogues[currentDialogueIndex]?.mapHighlight === 'artillery' || selectedStrategyPlan === 'artillery') && (
+                          <motion.svg 
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            className="absolute inset-0 w-full h-full pointer-events-none z-10"
+                            viewBox="0 0 100 100"
+                          >
+                            <motion.path 
+                              d="M 15 80 Q 50 15 85 45" 
+                              fill="none" 
+                              stroke="#ef4444" 
+                              strokeWidth="1.5" 
+                              strokeDasharray="4,4"
+                              initial={{ strokeDashoffset: 100 }}
+                              animate={{ strokeDashoffset: 0 }}
+                              transition={{ duration: 2, repeat: Infinity, ease: 'linear' }}
+                            />
+                            <motion.circle cx="85" cy="45" r="3.5" fill="#ef4444" animate={{ scale: [1, 1.8, 1] }} transition={{ repeat: Infinity, duration: 1 }} />
+                            <text x="50" y="22" fill="#ef4444" className="text-[6.5px] font-mono font-black tracking-wider text-center" textAnchor="middle">💣 FIELD BOMBARDMENT RANGE</text>
+                          </motion.svg>
+                        )}
+
+                        {(activePreludeData.dialogues[currentDialogueIndex]?.mapHighlight === 'cavalry' || selectedStrategyPlan === 'guerilla') && (
+                          <motion.svg 
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            className="absolute inset-0 w-full h-full pointer-events-none z-10"
+                            viewBox="0 0 100 100"
+                          >
+                            <motion.path 
+                              d="M 20 65 Q 85 20 80 80" 
+                              fill="none" 
+                              stroke="#eab308" 
+                              strokeWidth="1.8" 
+                              initial={{ pathLength: 0 }}
+                              animate={{ pathLength: 1 }}
+                              transition={{ duration: 1.5, repeat: Infinity, repeatDelay: 0.5 }}
+                            />
+                            {/* SVG Arrow head */}
+                            <polygon points="80,80 77,74 83,74" fill="#eab308" />
+                            <text x="52" y="45" fill="#eab308" className="text-[6.5px] font-mono font-black animate-pulse tracking-wide" textAnchor="middle">🏇 CAVALRY FLANK FLIGHT</text>
+                          </motion.svg>
+                        )}
+
+                        {(activePreludeData.dialogues[currentDialogueIndex]?.mapHighlight === 'defense' || selectedStrategyPlan === 'defense') && (
+                          <motion.svg 
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            className="absolute inset-0 w-full h-full pointer-events-none z-10"
+                            viewBox="0 0 100 100"
+                          >
+                            <circle cx="50" cy="50" r="18" fill="rgba(34, 197, 94, 0.08)" stroke="#22c55e" strokeWidth="1" strokeDasharray="3" />
+                            <circle cx="50" cy="50" r="28" fill="none" stroke="#22c55e" strokeWidth="0.5" opacity="0.3" strokeDasharray="1,2" />
+                            <text x="50" y="52" fill="#22c55e" className="text-[6.5px] font-mono font-black tracking-widest text-center" textAnchor="middle">🛡️ ENCLOSED COHORT GUARD</text>
+                          </motion.svg>
+                        )}
+                      </AnimatePresence>
+
+                      {/* Faction Token Badges on Table */}
+                      <div className="absolute left-6 bottom-8 flex flex-col items-center gap-0.5 pointer-events-none">
+                        <span className="text-xl drop-shadow-md select-none">⚜️</span>
+                        <span className="text-[7px] font-mono uppercase bg-amber-955 px-1 py-0.2 text-saffron border border-saffron/40 font-bold scale-[0.8] rounded">PLAYER STANDARD</span>
+                      </div>
+
+                      <div className="absolute right-8 top-10 flex flex-col items-center gap-0.5 pointer-events-none">
+                        <span className="text-xl drop-shadow-md select-none">🌙</span>
+                        <span className="text-[7px] font-mono uppercase bg-emerald-950 px-1 py-0.2 text-emerald-300 border border-emerald-500/40 font-bold scale-[0.8] rounded">ENEMY FORCE</span>
+                      </div>
+
+                      {/* Table Location labels */}
+                      <div className="absolute inset-x-0 bottom-2 flex justify-between px-3 text-[7.5px] font-mono text-stone-500 select-none">
+                        {activePreludeData.gridLabels.slice(0, 2).map((lbl, idx) => (
+                          <span key={idx}>📍 {lbl}</span>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="bg-stone-950/80 p-2.5 rounded border border-white/5 relative z-10">
+                      <p className="text-[9px] font-mono text-stone-400 leading-snug">
+                        <span className="text-[#ca8a04] font-black">LEDGER NOTE:</span> Select your desired approach at the end of council dialogs. Each offers distinct starter bonuses below.
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Right: Council Debates & Strategy Decision */}
+                  <div className="flex-[1.2] flex flex-col justify-between text-left relative z-10 md:max-h-none overflow-y-auto overflow-x-hidden">
+                    <div>
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="px-1.5 py-0.5 bg-[#4c1d12] border border-[#8B5E3C] text-stone-200 text-[8px] font-mono uppercase tracking-widest rounded-xs font-bold leading-none">
+                          PRE-BATTLE PRELUDE
+                        </span>
+                        <span className="text-stone-500 text-[9px] font-mono">• {activeBrief?.year || "1760 AD"}</span>
+                      </div>
+                      
+                      <h3 className="font-serif text-lg text-white font-black uppercase tracking-tight leading-none mb-1">
+                        {activeBrief?.title || "BATTLE DISPATCH"}
+                      </h3>
+                      <p className="text-[10px] font-mono text-stone-400 mb-4 border-b border-white/10 pb-2">
+                        📍 {activeBrief?.location || "Panipat Plain"}
+                      </p>
+
+                      <p className="text-[11px] text-stone-300 font-serif italic leading-relaxed mb-4 p-2.5 bg-stone-950/40 border-l border-[#8B5E3C] rounded-r">
+                        "{activePreludeData.intro}"
+                      </p>
+
+                      {/* General Avatars row */}
+                      <div className="grid grid-cols-3 gap-2 mb-4">
+                        {activePreludeData.generals.map((gen) => {
+                          const isSpeaking = activePreludeData.dialogues[currentDialogueIndex]?.speakerId === gen.id;
+                          return (
+                            <div 
+                              key={gen.id} 
+                              className={`p-2 rounded border transition-all flex flex-col justify-between h-20 bg-stone-950/50 ${gen.bgColor} ${isSpeaking ? `${gen.borderColor} scale-105 shadow-[0_0_10px_rgba(234,179,8,0.2)] ring-1 ring-yellow-500/20` : 'border-stone-850 opacity-45'}`}
+                            >
+                              <div className="flex justify-between items-start">
+                                <span className="text-xl select-none">{gen.avatar}</span>
+                                <span className={`text-[6px] font-mono tracking-widest px-1 py-0.1 uppercase font-black rounded-xs ${isSpeaking ? 'bg-yellow-500 text-black animate-pulse font-bold' : 'bg-stone-850 text-stone-400'}`}>
+                                  {isSpeaking ? "ACTIVE" : "SITTING"}
+                                </span>
+                              </div>
+                              <div className="mt-1">
+                                <h5 className="text-[9.5px] font-sans font-black text-stone-100 leading-tight uppercase truncate">
+                                  {gen.name}
+                                </h5>
+                                <p className="text-[7.5px] font-sans text-stone-400 font-bold leading-none mt-0.5 truncate uppercase">
+                                  {gen.title}
+                                </p>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+
+                      {/* Active Dialog Text Bubble */}
+                      <div className="relative p-3.5 bg-stone-900/90 border border-[#8B5E3C]/30 rounded-xs shadow-inner min-h-[90px] flex flex-col justify-between">
+                        {(() => {
+                          const activeGen = activePreludeData.generals.find(g => g.id === activePreludeData.dialogues[currentDialogueIndex]?.speakerId);
+                          return (
+                            <div className="flex flex-col h-full justify-between">
+                              <div>
+                                <span className="text-[8px] font-mono uppercase font-black text-[#ca8a04] mb-1 block">
+                                  💬 {activeGen?.name || "General Officer"} ({activeGen?.title || "Staff Advisor"})
+                                </span>
+                                <motion.p 
+                                  key={currentDialogueIndex}
+                                  initial={{ opacity: 0, y: 3 }}
+                                  animate={{ opacity: 1, y: 0 }}
+                                  className="text-stone-200 font-serif text-[11.5px] leading-relaxed italic"
+                                >
+                                  "{activePreludeData.dialogues[currentDialogueIndex]?.text}"
+                                </motion.p>
+                              </div>
+                            </div>
+                          );
+                        })()}
+                      </div>
+                    </div>
+
+                    {/* Navigation Buttons OR Strategy plan Cards */}
+                    <div className="mt-4 pt-3 border-t border-white/5">
+                      {currentDialogueIndex < activePreludeData.dialogues.length - 1 ? (
+                        <div className="flex flex-col sm:flex-row gap-2 sm:items-center justify-between">
+                          <span className="text-[9px] font-mono text-stone-500">
+                            COUNCIL DEBATE {currentDialogueIndex + 1} / {activePreludeData.dialogues.length}
+                          </span>
+                          
+                          <div className="flex gap-2 flex-wrap sm:flex-nowrap">
+                            {currentDialogueIndex > 0 && (
+                              <button
+                                type="button"
+                                onClick={() => setCurrentDialogueIndex(prev => prev - 1)}
+                                className="px-3 py-1.5 bg-stone-900 border border-stone-800 text-stone-300 text-[10px] font-mono hover:bg-stone-850 hover:text-white rounded transition-colors flex items-center justify-center cursor-pointer"
+                              >
+                                ◀ PREV
+                              </button>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => setCurrentDialogueIndex(prev => prev + 1)}
+                              className="px-4 py-2 bg-[#d97706] hover:bg-yellow-600 text-stone-950 text-[10px] font-mono font-extrabold tracking-widest rounded transition-all hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-1.5 cursor-pointer"
+                            >
+                              NEXT DEBATE ADVANCE ▶
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="space-y-3">
+                          <div className="text-center">
+                            <span className="text-[9px] font-mono uppercase tracking-[0.2em] font-black text-[#eab308] block mb-1">
+                              🛡️ COMMAND DECISION REQUIRED — SELECT BATTLE ORDER:
+                            </span>
+                          </div>
+
+                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                            {activePreludeData.strategies.map((plan) => {
+                              const isChosen = selectedStrategyPlan === plan.id;
+                              return (
+                                <button
+                                  type="button"
+                                  key={plan.id}
+                                  onClick={() => handleSelectStrategy(plan.id)}
+                                  className={`text-left p-2.5 border-2 rounded transition-all hover:scale-[1.02] flex flex-col justify-between h-36 w-full cursor-pointer ${isChosen ? 'border-yellow-500 bg-amber-950/30 shadow-[0_0_12px_rgba(234,179,8,0.25)]' : 'border-[#8B5E3C]/30 bg-[#140e0a] hover:border-[#ca8a04]/50'}`}
+                                >
+                                  <div className="flex justify-between items-center w-full">
+                                    <span className="text-lg select-none">{plan.icon}</span>
+                                    <span className="text-[7px] font-mono text-stone-400 font-bold uppercase shrink-0">By {plan.proposer.split(' ').pop()}</span>
+                                  </div>
+                                  
+                                  <div className="my-1">
+                                    <h4 className="text-[9.5px] font-mono font-black text-stone-100 leading-tight uppercase">
+                                      {plan.title}
+                                    </h4>
+                                    <p className="text-[8px] text-stone-300 leading-tight mt-0.5 line-clamp-2">
+                                      {plan.description}
+                                    </p>
+                                  </div>
+                                  
+                                  <div className="pt-1.5 border-t border-white/5 w-full">
+                                    <span className="text-[7.5px] font-mono text-[#22c55e] font-black uppercase leading-none tracking-wide block truncate">
+                                      🎁 {plan.bonusText.split(',')[0]}
+                                    </span>
+                                  </div>
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </motion.div>
+              ) : (
+                /* --- GENERALS' PARCHMENT BRIEFING SCREEN (Part 2) --- */
+                <motion.div
+                  key="briefing"
+                  initial={{ opacity: 0, scale: 0.96 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.96 }}
+                  className="max-w-xl w-full bg-[#f4ebe1] border-8 border-double border-[#8B5E3C] p-6 md:p-8 text-[#2c1d11] shadow-2xl rounded-sm relative overflow-y-auto max-h-[90vh]"
+                >
+                  {/* Inner border */}
+                  <div className="absolute inset-1 border border-[#8B5E3C]/30 rounded-xs pointer-events-none" />
+                  
+                  {/* Royal Seal Wax Decoration */}
+                  <div className="absolute top-4 right-4 text-3xl opacity-85 select-none pointer-events-none">
+                    🏮
+                  </div>
+
+                  {/* Title Section */}
+                  <div className="text-center pb-4 mb-4 border-b border-[#2c1d11]/20">
+                    <p className="text-[10px] uppercase tracking-widest font-mono text-[#8B5E3C] font-bold">
+                      OFFICIAL MILITARY DISPATCH
+                    </p>
+                    <h1 className="text-2xl md:text-3xl font-serif font-black uppercase text-[#4c1d12] mt-1 tracking-tight">
+                      {stage && activeBrief?.title || "BATTLEPLAN ORDER"}
+                    </h1>
+                    <div className="flex justify-center items-center gap-4 text-xs font-mono text-[#5c3e21] mt-2 font-bold uppercase w-full">
+                      <span>📍 {stage && activeBrief?.location || "Frontier Plain"}</span>
+                      <span>•</span>
+                      <span>📅 {stage && activeBrief?.year || "1760 AD"}</span>
+                    </div>
+                  </div>
+
+                  {/* Adopted Strategic Plan Header Details */}
+                  {selectedStrategyPlan && (
+                    <div className="mb-5 p-3 rounded bg-[#dcfce7] border border-[#bbf7d0] text-[#14532d]">
+                      <h4 className="text-[10.5px] uppercase font-black text-emerald-800 font-mono tracking-wide flex items-center gap-1.5">
+                        <span>🔱 STRATEGY ADOPTED:</span>
+                        <span className="bg-emerald-800 text-white text-[8px] font-mono font-black tracking-widest px-1 rounded uppercase">
+                          {activePreludeData.strategies.find(s => s.id === selectedStrategyPlan)?.title}
+                        </span>
+                      </h4>
+                      <p className="text-xs leading-normal text-emerald-950 font-serif italic mt-1">
+                        "{activePreludeData.strategies.find(s => s.id === selectedStrategyPlan)?.description}"
+                      </p>
+                      <div className="text-[8.5px] font-mono text-emerald-800 font-bold uppercase mt-1 flex flex-wrap items-center gap-1">
+                        ⚡ COMBAT BUFFS APPLIED: <span className="text-emerald-950 bg-emerald-100 font-sans px-1 text-[8.5px] lowercase font-semibold">{activePreludeData.strategies.find(s => s.id === selectedStrategyPlan)?.bonusText}</span>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Scenario Narrative */}
+                  <div className="mb-5">
+                    <h3 className="text-xs uppercase font-bold tracking-wider text-[#8B5E3C] mb-1 font-mono">
+                      I. Stragetic Scenario
+                    </h3>
+                    <p className="text-sm leading-relaxed text-[#453221] font-serif italic bg-white/40 p-3 rounded border border-[#8B5E3C]/10 shadow-xs">
+                      "{stage && activeBrief?.scenario || "A cold frost settles as scouts report enemy divisions organizing along the tree barrier."}"
+                    </p>
+                  </div>
+
+                  {/* Tactical Objectives */}
+                  <div className="mb-5">
+                    <h3 className="text-xs uppercase font-bold tracking-wider text-[#8B5E3C] mb-2 font-mono flex items-center gap-1.5">
+                      🎯 II. Tactical Objectives
+                    </h3>
+                    <ul className="space-y-2 text-sm text-[#382613]">
+                      {stage && (activeBrief?.objectives || [
+                        "Achieve victory in the central sector clash",
+                        "Maintain high soldier morale and discipline"
+                      ]).map((obj, i) => (
+                        <li key={i} className="flex items-start gap-2.5">
+                          <span className="text-[#8B5E3C] font-black text-xs font-mono bg-[#8B5E3C]/10 rounded-full w-5 h-5 flex items-center justify-center flex-shrink-0 mt-0.5 font-bold">
+                            {i + 1}
+                          </span>
+                          <span className="leading-tight font-medium">{obj}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+
+                  {/* General Staff Recommendation / Tip */}
+                  <div className="mb-6 p-3 rounded bg-amber-100/65 border border-amber-300/40">
+                    <h4 className="text-xs uppercase font-bold text-[#b45309] font-mono tracking-wide flex items-center gap-1">
+                      💡 Grand Strategy
+                    </h4>
+                    <p className="text-xs text-[#78350f] leading-normal font-sans mt-0.5">
+                      {stage && activeBrief?.strategyTip || "Observe enemy lines carefully and strike when focus indicators reach their peak!"}
+                    </p>
+                  </div>
+
+                  {/* Command Action Buttons */}
+                  <div className="text-center space-y-2">
+                    <button
+                      id="accept-briefing-btn"
+                      onClick={() => {
+                        setShowBriefing(false);
+                      }}
+                      className="w-full px-6 py-3.5 bg-[#4c1d12] hover:bg-[#3b120c] text-[#f4ebe1] hover:text-white font-serif font-bold uppercase tracking-widest text-xs rounded shadow-lg transition-transform hover:scale-[1.02] active:scale-[0.98] border border-[#ffedd5]/20 flex items-center justify-center gap-2 cursor-pointer"
+                    >
+                      ⚔️ ACCEPT COMMAND & START TACTICAL APPROACH
+                    </button>
+                    
+                    <button
+                      type="button"
+                      onClick={() => setPreludeStage('generals_grouping')}
+                      className="text-[9.5px] font-mono text-[#8B5E3C] hover:text-[#4c1d12] underline hover:no-underline font-extrabold uppercase tracking-widest block mx-auto py-1 cursor-pointer"
+                    >
+                      ◀ RE-CONSULT COUNCIL GENERALS
+                    </button>
+                  </div>
+                </motion.div>
+              )}
+            </motion.div>
+          );
+        })()}
       </AnimatePresence>
 
       {/* RENDER PHASE 1: CHOOSE AIR DROP COORDS (Like PUBG Drop Plan) OR PRE-STAGE DILEMMA */}
@@ -1702,78 +2281,126 @@ export const BattleScene: React.FC<BattleProps> = ({ onNavigate, onAdvance, stag
                 </div>
               </div>
             ) : (
-              /* THE ORIGINAL LANDING HOTSPOT SPECIFICATION SELECTOR */
-              <div className="max-w-4xl bg-[#1e140f] border-4 border-[#8B5E3C] p-8 shadow-2xl rounded-sm relative">
-                <div className="absolute inset-1 border border-[#8B5E3C]/40 rounded-xs pointer-events-none" />
+              /* THE AGE OF EMPIRES FORMATIONS DEPLOYMENT MATRICES */
+              <div className="max-w-4xl bg-[#1c120c] border-4 border-[#8B5E3C] p-6 shadow-2xl rounded-xs relative">
+                <div className="absolute inset-1 border border-[#8B5E3C]/35 rounded-xs pointer-events-none" />
                 
-                <div className="flex justify-center mb-2">
-                  <span className="px-3 py-1 bg-saffron text-stone-950 font-black text-[10px] tracking-widest uppercase rounded-xs">
-                    SQUAD SHUTTLE MAP OVERVIEW
+                <div className="flex justify-center mb-1">
+                  <span className="px-3 py-1 bg-saffron text-stone-950 font-black text-[9px] tracking-widest uppercase rounded-xs font-mono">
+                    📯 PRE-BATTLE WAR COMMAND CENTER
                   </span>
                 </div>
                 
-                <h2 className="text-4xl text-white font-serif font-black uppercase tracking-wide">
-                  LANDING BOUNDS SECTOR SELECT
+                <h2 className="text-3xl text-white font-serif font-black uppercase text-center tracking-medium mt-1">
+                  COHORT DEPLOYMENT STRATEGY
                 </h2>
-                <p className="text-stone-300 text-xs italic mt-2 max-w-xl mx-auto">
-                  "By military order, select your landing zone on the 18th-century Hindusthan frontier lines. Choose wisely; different sectors yield distinct strategic cover bonuses and loot quantities."
+                <p className="text-stone-300 text-xs italic text-center mt-1.5 max-w-xl mx-auto block">
+                  "Sovereign, organize our regiments before clashing. Different army structures alter the visual formation of your units in the battlefield canvas, adjusting base attributes for automated combat."
                 </p>
 
-                {/* Grid map for drops */}
-                <div id="drop-hotspot-grid" className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-8">
-                  {[
-                    {
-                      id: 'trenches',
-                      name: "Yamuna Canal Trenches",
-                      risk: "LOW RISK",
-                      loot: "TIER 1 LOOT x1.1",
-                      color: "text-emerald-400 border-emerald-900/45",
-                      desc: "Rich soil bank protection. Safer descent with enhanced cover but restricted weapon loot drops.",
-                      bonus: "🛡️ Defense: +35%"
-                    },
-                    {
-                      id: 'encampment',
-                      name: "Panipat Royal Barracks",
-                      risk: "EXTREME RISK",
-                      loot: "TIER 3 LOOT x2.0",
-                      color: "text-red-500 border-red-900/60 animate-pulse",
-                      desc: "Highly populated. Hot dropping into main armor depots. High early engagement guarantees epic weapons.",
-                      bonus: "🎯 Sniper Gear Guaranteed"
-                    },
-                    {
-                      id: 'temple',
-                      name: "Sutlej Defile Ruins",
-                      risk: "MEDIUM RISK",
-                      loot: "TIER 2 LOOT x1.5",
-                      color: "text-amber-400 border-amber-900/50",
-                      desc: "High altitude stone pillars providing incredible vertical shooting profiles over the valley.",
-                      bonus: "⚡ Flanking Buffs"
-                    }
-                  ].map(spot => (
-                    <button
-                      key={spot.id}
-                      id={`hotspot-${spot.id}`}
-                      onClick={() => triggerDropLaunch(spot.name)}
-                      className="flex flex-col text-left p-4 bg-stone-950/80 border-2 hover:border-saffron rounded-xs transition-all transform hover:-translate-y-1 cursor-pointer focus:outline-none"
-                    >
-                      <span className={`text-[10px] font-black tracking-widest uppercase ${spot.color}`}>
-                        {spot.risk} • {spot.loot}
-                      </span>
-                      <h4 className="text-white text-md font-serif font-bold mt-1 uppercase">
-                        {spot.name}
-                      </h4>
-                      <p className="text-[11px] text-stone-400 mt-2 leading-relaxed">
-                        {spot.desc}
-                      </p>
-                      <div className="mt-4 pt-2 border-t border-stone-900 text-[10px] font-mono text-saffron uppercase">
-                        {spot.bonus}
-                      </div>
-                    </button>
-                  ))}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mt-6">
+                  {/* FORMATION COLUMN */}
+                  <div className="flex flex-col space-y-3 bg-[#110b07] border border-[#8B5E3C]/20 p-4 rounded-xs">
+                    <h3 className="text-sm font-serif font-black uppercase text-saffron border-b border-[#8B5E3C]/25 pb-1 flex items-center gap-1.5">
+                      <Swords size={14} /> I. Choose Formation
+                    </h3>
+                    
+                    {[
+                      { id: 'chakra', name: "Chakra-Vyuha (चक्रव्यूह)", bonus: "🛡️ +35% Shield Defense", desc: "Aligns units in sturdy circular phalanxes to safely absorb enemy arrow and fire streams." },
+                      { id: 'sunder', name: "Sunder-Vyuha (सुंदरव्यूह)", bonus: "🔥 +40% Melee Penetration", desc: "Sharp wedge formation piercing deep into Ahmad Shah's central guard line." },
+                      { id: 'ardhachandra', name: "Ardhachandra (अर्धचंद्र)", bonus: "🌙 +20% Companion Speed", desc: "A sweeping crescent layout designed to curl around and flank hostile columns." },
+                      { id: 'gardi', name: "Gardi Line (गार्दी रेषा)", bonus: "💣 +2 French Powder Bombs", desc: "Twin parallel defensive musket ranks with heavy siege artillery focus." }
+                    ].map(f => (
+                      <button
+                        key={f.id}
+                        type="button"
+                        onClick={() => setSelectedFormation(f.id as any)}
+                        className={`w-full text-left p-2.5 rounded-xs border-2 text-xs transition-all pointer-events-auto cursor-pointer ${
+                          selectedFormation === f.id 
+                            ? 'bg-[#311f14] border-saffron text-white shadow-md shadow-saffron/10' 
+                            : 'bg-[#0a0604] border-[#8B5E3C]/15 text-stone-400 hover:border-saffron/40'
+                        }`}
+                      >
+                        <div className="font-serif font-bold text-gray-200">{f.name}</div>
+                        <div className="text-[10px] text-emerald-400 font-mono font-bold mt-0.5">{f.bonus}</div>
+                        <div className="text-[9.5px] text-stone-500 font-sans mt-1 leading-snug">{f.desc}</div>
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* DENSITY COLUMN */}
+                  <div className="flex flex-col space-y-3 bg-[#110b07] border border-[#8B5E3C]/20 p-4 rounded-xs">
+                    <h3 className="text-sm font-serif font-black uppercase text-saffron border-b border-[#8B5E3C]/25 pb-1 flex items-center gap-1.5">
+                      <User size={14} /> II. Soldier Density
+                    </h3>
+                    
+                    {[
+                      { id: 'horde', name: "Massive Horde (हानी)", scale: "⚔️ Scale: 3.2x Casualties", desc: "Spawn up to 36 clashing troops on the canvas! Simulates epic large battles and dense visual casualties." },
+                      { id: 'veterans', name: "Heavy Iron Guard (रक्षक)", scale: "🛡️ Scale: 2.2x HP Elites", desc: "Fewer but significantly tougher warriors. Absorbs incoming charge impacts elegantly with high resilience." },
+                      { id: 'cavalry', name: "Royal Cavalry Strike", scale: "🏇 Scale: High Charge Speed", desc: "Focuses on deploying rapid horse-back lancers to overrun fortifications swiftly." }
+                    ].map(d => (
+                      <button
+                        key={d.id}
+                        type="button"
+                        onClick={() => setSelectedDensity(d.id as any)}
+                        className={`w-full text-left p-2.5 rounded-xs border-2 text-xs transition-all pointer-events-auto cursor-pointer ${
+                          selectedDensity === d.id 
+                            ? 'bg-[#311f14] border-saffron text-white shadow-md shadow-saffron/10' 
+                            : 'bg-[#0a0604] border-[#8B5E3C]/15 text-stone-400 hover:border-saffron/40'
+                        }`}
+                      >
+                        <div className="font-serif font-bold text-gray-200">{d.name}</div>
+                        <div className="text-[10px] text-amber-500 font-mono font-bold mt-0.5">{d.scale}</div>
+                        <div className="text-[9.5px] text-stone-500 font-sans mt-0.5 leading-snug">{d.desc}</div>
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* ATTACK STANCE COLUMN */}
+                  <div className="flex flex-col space-y-3 bg-[#110b07] border border-[#8B5E3C]/20 p-4 rounded-xs">
+                    <h3 className="text-sm font-serif font-black uppercase text-saffron border-b border-[#8B5E3C]/25 pb-1 flex items-center gap-1.5">
+                      <Crosshair size={14} /> III. Tactical Stance
+                    </h3>
+                    
+                    {[
+                      { id: 'aggressive', name: "Aggressive Rush", mod: "💥 Inflict +30% Combat Attrition", desc: "All-out vanguard charge focusing on speed, reducing fort wall health quickly at the cost of higher casualties." },
+                      { id: 'defensive', name: "Hold Defensive Lines", mod: "🛡️ Block 30% Incoming Attrition", desc: "Rigid shield coalitions. Focus on holding ground and minimizing casualties during heavy clashes." },
+                      { id: 'flank', name: "Flank & Pincer", mod: "⚡ Flank damage multiplier active", desc: "Pincer assault coordinates focused on routing enemy artillery batteries first." }
+                    ].map(s => (
+                      <button
+                        key={s.id}
+                        type="button"
+                        onClick={() => setDeploymentStance(s.id as any)}
+                        className={`w-full text-left p-2.5 rounded-xs border-2 text-xs transition-all pointer-events-auto cursor-pointer ${
+                          deploymentStance === s.id 
+                            ? 'bg-[#311f14] border-saffron text-white shadow-md shadow-saffron/10' 
+                            : 'bg-[#0a0604] border-[#8B5E3C]/15 text-stone-400 hover:border-saffron/40'
+                        }`}
+                      >
+                        <div className="font-serif font-bold text-gray-200">{s.name}</div>
+                        <div className="text-[10px] text-emerald-400 font-mono font-bold mt-0.5">{s.mod}</div>
+                        <div className="text-[9.5px] text-stone-500 font-sans mt-0.5 leading-snug">{s.desc}</div>
+                      </button>
+                    ))}
+                  </div>
                 </div>
 
-                <div className="mt-8 text-[10px] text-stone-500 font-mono uppercase tracking-widest text-center">
-                  Awaiting squad coordination... Choose zone to fly!
+                {/* HISTORICAL MILITARY READOUT ACCURACY */}
+                <div className="mt-5 p-3.5 bg-[#0f0a07] border border-[#8B5E3C]/15 rounded-xs flex flex-col md:flex-row items-center justify-between gap-4">
+                  <div className="font-mono text-[10.5px] text-stone-400 text-center md:text-left leading-relaxed">
+                    ⚙️ <span className="text-white font-bold">ESTIMATED COMBAT STRENGTH:</span>{" "}
+                    <span className="text-saffron font-bold font-serif">{selectedDensity === 'horde' ? "5,400 Elite Infatrymen" : selectedDensity === 'cavalry' ? "2,100 Royal Hussars" : "3,200 High Guardians"}</span>{" "}
+                    arranged in <span className="text-saffron font-serif font-bold italic">{selectedFormation.toUpperCase()} VYUHA</span>.{" "}
+                    Tactics stance is set to <span className="text-saffron font-serif font-bold">{deploymentStance.toUpperCase()}</span>.
+                  </div>
+                  
+                  <button
+                    type="button"
+                    onClick={() => triggerArmyDeployment(selectedFormation, selectedDensity, deploymentStance)}
+                    className="px-6 py-2.5 bg-gradient-to-r from-saffron to-amber-600 hover:from-amber-600 hover:to-saffron active:scale-95 text-stone-950 font-serif font-black text-xs uppercase tracking-widest shadow-xl rounded-sm hover:shadow-saffron/20 transition-all cursor-pointer pointer-events-auto shrink-0"
+                  >
+                    ⚔️ INITIATE AUTO-COMBAT
+                  </button>
                 </div>
               </div>
             )}
@@ -1781,40 +2408,40 @@ export const BattleScene: React.FC<BattleProps> = ({ onNavigate, onAdvance, stag
         )}
       </AnimatePresence>
 
-      {/* RENDER PHASE 2: ANIMATED PARACHUTE DESCENT */}
+      {/* RENDER PHASE 2: ANIMATED ARMY DEPLOYMENT ADVANCEMENT */}
       <AnimatePresence>
         {battlePhase === 'dropping' && (
           <motion.div 
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="absolute inset-0 z-50 bg-[#090503] flex flex-col items-center justify-center p-6 text-center"
+            className="absolute inset-0 z-50 bg-[#0c0806] flex flex-col items-center justify-center p-6 text-center"
           >
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_30%,black_100%)] z-10" />
             
-            {/* Pulsing parachute visual indicator */}
+            {/* Pulsing visual war horn/swords indicator */}
             <div className="relative z-20 space-y-6">
               <motion.div 
-                animate={{ y: [0, -25, 0] }}
-                transition={{ duration: 1.5, repeat: Infinity }}
+                animate={{ scale: [1, 1.15, 1], rotate: [0, -5, 5, 0] }}
+                transition={{ duration: 1.2, repeat: Infinity }}
                 className="text-8xl text-saffron select-none"
               >
-                🪂
+                📯
               </motion.div>
               
               <span className="text-[11px] font-black text-saffron font-mono uppercase tracking-[0.5em] block">
-                BLUE ZONE SAFE CIRCLE DETECTED
+                SOUNDING THE GRAND WAR HORNS
               </span>
               <h2 className="text-4xl text-white font-serif font-black uppercase tracking-widest">
-                DESCENDING INTO {selectedDropHotspot?.toUpperCase()}
+                DEPLOYING {selectedDropHotspot?.toUpperCase()}
               </h2>
               
-              <div className="text-5xl font-mono text-emerald-400 font-black animate-scale">
+              <div className="text-5xl font-mono text-saffron font-black animate-pulse">
                 {dropCountdown}s
               </div>
               
               <p className="text-stone-400 text-xs italic max-w-sm mx-auto">
-                Opening parachute valves... Arming French flintlock sights... Keep crosshair steady!
+                Raising saffron banners... Aligning spear coalitions... Drumming the battle chants of Hindusthan!
               </p>
             </div>
           </motion.div>
@@ -2328,164 +2955,202 @@ export const BattleScene: React.FC<BattleProps> = ({ onNavigate, onAdvance, stag
               </div>
             </div>
 
-            {/* UPGRADE AREA: THE 6 PUBG ACTION GRID */}
+            {/* UPGRADE AREA: THE AGE OF EMPIRES COMMANDER COCKPIT */}
             <div>
               <div className="flex justify-between items-center mb-2">
-                <span className="text-[10px] text-stone-500 font-bold uppercase tracking-widest">
-                  TACTICAL COMBAT MATRIX
+                <span className="text-[10px] text-stone-500 font-mono font-black uppercase tracking-widest">
+                  🏟️ DIRECT COMMAND CONSOLE
                 </span>
                 {smokeActive && (
                   <span className="text-[9px] px-2 py-0.5 bg-emerald-950 border border-emerald-500 text-emerald-400 font-mono rounded-xs animate-pulse">
-                    💨 SMOKE SCREEN DEPLOYED
+                    💨 SHIELD SCREEN ACTIVE
                   </span>
                 )}
               </div>
 
-              {/* DUEL CHALLENGE CARD OVERLAY */}
-              <div id="duel-challenge-teaser" className={`p-3.5 rounded-xs border-2 text-left shadow-lg mb-4 ${stageDuelsWon > 0 ? 'border-emerald-500 bg-[#0d2215]' : 'border-saffron bg-[#261304]'}`}>
-                <div className="flex justify-between items-start">
-                  <div>
-                    <h4 className="text-[8.5px] font-mono font-black text-saffron uppercase tracking-widest flex items-center gap-1.5">
-                      <span className="relative flex h-1.5 w-1.5">
-                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-orange-400 opacity-75"></span>
-                        <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-saffron"></span>
-                      </span>
-                      {stageDuelsWon > 0 ? "★ COMPULSORY TALWAR DUEL: CLEARED" : "⭐ COMPULSORY TALWAR DUEL: REQUIRED"}
-                    </h4>
-                    <h5 className="text-[13px] font-serif font-black text-white leading-tight uppercase mt-1">
-                      CHALLENGE DURRANI SARDAR JAHAN KHAN
-                    </h5>
-                    <p className="text-[10.5px] text-stone-300 mt-1 leading-snug font-sans">
-                      {stageDuelsWon > 0 ? (
-                        <span className="text-emerald-450 font-bold">✓ Valor proven! You have defeated General Jahan Khan in close combat, satisfying the compulsory battle requirement.</span>
-                      ) : (
-                        <span className="text-amber-300 font-medium">⚠️ COMPULSORY BATTLE STEP: You MUST initiate and WIN this close-quarters sword duel to shatter enemy morale and secure stage victory!</span>
-                      )}
-                    </p>
+              {/* DYNAMIC MIDDLE BATTLE STRATEGIC STORY CARDS */}
+              {activeDecision ? (
+                <div id="mid-battle-choice-alert" className="p-4 bg-[#231309] border-4 border-[#ca8a04] rounded-sm text-left shadow-2xl relative animate-pulse-fast mb-4">
+                  <div className="absolute inset-0.5 border border-[#ca8a04]/40 pointer-events-none" />
+                  <span className="text-[9px] font-mono px-2 py-0.5 bg-saffron text-stone-950 font-black rounded-xs uppercase tracking-widest block text-center mb-2">
+                    🚨 EMERGENCY WAR COUNSEL DILEMMA
+                  </span>
+                  <h4 className="text-[12px] font-serif font-black text-white uppercase leading-normal">
+                    {activeDecision.title}
+                  </h4>
+                  <p className="text-[10.5px] text-stone-300 font-sans mt-2 leading-relaxed">
+                    "{activeDecision.challenge}"
+                  </p>
+                  
+                  <div className="space-y-2 mt-4">
+                    {activeDecision.options.map(opt => (
+                      <button
+                        key={opt.id}
+                        type="button"
+                        onClick={() => opt.apply()}
+                        className="w-full text-left p-2.5 bg-stone-950/90 hover:bg-[#311f14] border border-[#ca8a04]/30 hover:border-[#ca8a04] transition-all rounded-xs flex flex-col cursor-pointer pointer-events-auto outline-none"
+                      >
+                        <div className="text-[11px] font-serif font-bold text-saffron uppercase">{opt.title}</div>
+                        <div className="text-[9.5px] text-stone-400 leading-normal mt-0.5">{opt.desc}</div>
+                      </button>
+                    ))}
                   </div>
                 </div>
-                {stageDuelsWon === 0 ? (
-                  <button
-                    type="button"
-                    disabled={battlePhase !== 'clash' || showStageResultModal}
-                    onClick={() => {
-                      setStageDuelsAttempted(prev => prev + 1);
-                      setActiveDuelOpponent({
-                        name: "Jahan Khan",
-                        title: "Grand General of Durrani Vanguard",
-                        difficulty: battleDifficulty
-                      });
-                    }}
-                    className="w-full mt-3 py-2 bg-gradient-to-r from-saffron to-[#9a3412] hover:from-[#f59e0b] hover:to-[#b45308] disabled:opacity-40 text-stone-950 font-mono text-[9px] font-black uppercase tracking-wider border border-[#fed7aa] rounded-xs cursor-pointer flex items-center justify-center gap-1.5 shadow-md transition-all active:scale-[0.98]"
-                  >
-                    ⚔️ INITIATE COMPULSORY SECTOR DUEL
-                  </button>
-                ) : (
-                  <div className="w-full mt-3 py-1.5 bg-emerald-950 border border-emerald-500/30 text-emerald-400 text-center font-mono text-[9px] uppercase tracking-wider rounded-xs">
-                    ✓ COMPULSORY SWORD DUEL COMPLETED SUCCESSFULLY
+              ) : (
+                <div className="space-y-4">
+                  {/* COMPULSORY DUEL CONTROLLER */}
+                  <div id="duel-challenge-teaser" className={`p-3.5 rounded-xs border-2 text-left shadow-lg ${stageDuelsWon > 0 ? 'border-emerald-500 bg-[#0d2215]' : 'border-saffron bg-[#261304]'}`}>
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <h4 className="text-[8.5px] font-mono font-black text-saffron uppercase tracking-widest flex items-center gap-1.5">
+                          <span className="relative flex h-1.5 w-1.5">
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-orange-400 opacity-75"></span>
+                            <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-saffron"></span>
+                          </span>
+                          {stageDuelsWon > 0 ? "★ COMMANDER DUEL: SECURED" : "⭐ COMPULSORY COMMANDER SECURED DUEL"}
+                        </h4>
+                        <h5 className="text-[13px] font-serif font-black text-white leading-tight uppercase mt-1">
+                          ⚔️ Dueling Sardar Jahan Khan (Close Combat)
+                        </h5>
+                        <p className="text-[10.5px] text-stone-300 mt-1 leading-snug font-sans">
+                          {stageDuelsWon > 0 ? (
+                            <span className="text-emerald-400 font-bold">✓ Enemy commander Ahmad Shah's top general Jahan Khan has been slain in single sword-play! Afghan core center broken!</span>
+                          ) : (
+                            <span className="text-amber-300 font-medium">⚠️ YOU MUST WIN THIS DUEL: The battle cannot end with victory unless you personally cross steel with their vanguard chief and defeat him!</span>
+                          )}
+                        </p>
+                      </div>
+                    </div>
+                    {stageDuelsWon === 0 ? (
+                      <button
+                        type="button"
+                        disabled={battlePhase !== 'clash' || showStageResultModal}
+                        onClick={() => {
+                          setStageDuelsAttempted(prev => prev + 1);
+                          setActiveDuelOpponent({
+                            name: "Jahan Khan",
+                            title: "Grand General of Durrani Vanguard",
+                            difficulty: battleDifficulty
+                          });
+                        }}
+                        className="w-full mt-3 py-2 bg-gradient-to-r from-saffron to-[#9a3412] hover:from-[#f59e0b] hover:to-[#b45308] disabled:opacity-40 text-stone-950 font-mono text-[9px] font-black uppercase tracking-wider border border-[#fed7aa] rounded-xs cursor-pointer flex items-center justify-center gap-1.5 shadow-md transition-all active:scale-[0.98]"
+                      >
+                        ⚔️ ENTER COMPULSORY SWORD DUEL
+                      </button>
+                    ) : (
+                      <div className="w-full mt-3 py-1.5 bg-emerald-950 border border-emerald-500/30 text-emerald-400 text-center font-mono text-[9px] uppercase tracking-wider rounded-xs">
+                        ✓ COMPULSORY SWORD DUEL COMPLETED SUCCESSFULLY
+                      </div>
+                    )}
                   </div>
-                )}
-              </div>
 
-              <div id="tactics-bulletin-actions" className="grid grid-cols-2 gap-2">
-                
-                {/* 1. Rifle Fire Action */}
-                <button
-                  id="action-rifle-fire"
-                  disabled={isReloading || ammoCount <= 0 || battlePhase !== 'clash' || showStageResultModal}
-                  onClick={() => handleEnemyHitInCanvas(22, "SWORD LUNGE")}
-                  className="flex items-center gap-3 p-2.5 bg-gradient-to-r from-stone-900 to-stone-950 border border-saffron hover:bg-stone-900 rounded-xs transition-colors cursor-pointer group text-left disabled:opacity-50"
-                >
-                  <div className="w-8 h-8 rounded-xs bg-[#452814] flex items-center justify-center text-saffron font-bold group-hover:scale-105 transition-transform">
-                    ⚔️
+                  {/* ACTIVE COHORT AUTOMATION TELEMETRY */}
+                  <div className="p-3 bg-[#0d0a07] border border-[#8B5E3C]/20 rounded-xs text-left text-[11px] space-y-2">
+                    <div className="text-amber-500 font-mono font-black uppercase tracking-wider border-b border-stone-900 pb-1 flex items-center justify-between">
+                      <span>🤖 AOE CLASH AUTOMATOR active</span>
+                      <span className="px-1.5 py-0.5 bg-amber-955 text-[8px] text-stone-300 rounded-sm">AUTO-MODE</span>
+                    </div>
+                    <p className="text-stone-400 leading-normal">
+                      Vanguard lines are clashing coordinates automatically based on your chosen formation stats:
+                    </p>
+                    <div className="grid grid-cols-3 gap-2 font-mono text-[9.5px]">
+                      <div className="bg-stone-950 border border-stone-850 p-1 text-center">
+                        <span className="text-stone-500 block">FORMATION</span>
+                        <span className="text-white font-bold">{selectedFormation.toUpperCase()}</span>
+                      </div>
+                      <div className="bg-stone-950 border border-stone-850 p-1 text-center">
+                        <span className="text-stone-500 block">DENSITY</span>
+                        <span className="text-white font-bold">{selectedDensity.toUpperCase()}</span>
+                      </div>
+                      <div className="bg-stone-950 border border-stone-850 p-1 text-center">
+                        <span className="text-stone-500 block">STANCE</span>
+                        <span className="text-white font-bold">{deploymentStance.toUpperCase()}</span>
+                      </div>
+                    </div>
+                    <p className="text-[10px] text-stone-500 italic text-center pt-1 border-t border-stone-900 leading-tight">
+                      "Manual swordsmanship is automated. You focus on general command calls and close-combat duels!"
+                    </p>
                   </div>
-                  <div className="flex-1 font-mono text-left">
-                    <span className="text-white text-[10px] font-black block uppercase">1. SWORD LUNGE</span>
-                    <span className="text-[9px] text-stone-400">High-speed sweep cut</span>
-                  </div>
-                </button>
 
-                {/* 2. Deploy thick shield defense */}
-                <button
-                  id="action-smoke-grenade"
-                  disabled={smokeActive || battlePhase !== 'clash' || showStageResultModal}
-                  onClick={() => executeCombatOperation('smoke')}
-                  className="flex items-center gap-3 p-2.5 bg-stone-950 border border-stone-800 hover:border-emerald-500 hover:bg-stone-900 rounded-xs transition-colors cursor-pointer group text-left"
-                >
-                  <div className="w-8 h-8 rounded-xs bg-stone-900 border border-stone-800 flex items-center justify-center text-emerald-400 font-bold">
-                    🛡️
-                  </div>
-                  <div className="flex-1 font-mono text-left">
-                    <span className="text-white text-[10px] font-black block uppercase">2. SHIELD COALITION</span>
-                    <span className="text-[9px] text-stone-400">Block coming raids</span>
-                  </div>
-                </button>
+                  {/* GENERAL STRATEGIC CALLS INPUT MATRICES */}
+                  <div className="bg-[#120d09] border border-[#8B5E3C]/25 p-3 rounded-xs text-left">
+                    <span className="text-[9px] font-mono text-[#8B5E3C] font-black uppercase tracking-wide block mb-2 border-b border-stone-900 pb-1">
+                      📯 GENERAL DISPATCH CALLS (TACTICAL DECISIONS)
+                    </span>
+                    <div id="tactics-bulletin-actions" className="grid grid-cols-2 gap-2 font-mono">
+                      
+                      {/* 1. Shield Wall Cover */}
+                      <button
+                        id="action-smoke-grenade"
+                        disabled={smokeActive || battlePhase !== 'clash' || showStageResultModal}
+                        type="button"
+                        onClick={() => executeCombatOperation('smoke')}
+                        className="flex items-center gap-2 p-2 bg-stone-950 hover:bg-[#1f160f] border border-stone-800 hover:border-saffron rounded-xs transition-colors cursor-pointer text-left disabled:opacity-50"
+                      >
+                        <div className="w-6 h-6 bg-stone-900 flex items-center justify-center text-saffron text-xs font-bold">
+                          🛡️
+                        </div>
+                        <div className="flex-1">
+                          <span className="text-white text-[9px] font-black block leading-none">SHIELD COALITION</span>
+                          <span className="text-[8px] text-stone-500 block mt-0.5">Absorb hits</span>
+                        </div>
+                      </button>
 
-                {/* 3. Brass Siege Artillery */}
-                <button
-                  id="action-carpet-mortar"
-                  disabled={battlePhase !== 'clash' || showStageResultModal}
-                  onClick={() => executeCombatOperation('artillery')}
-                  className="flex items-center gap-3 p-2.5 bg-stone-950 border border-stone-800 hover:border-[#b45308] hover:bg-stone-900 rounded-xs transition-colors cursor-pointer group text-left"
-                >
-                  <div className="w-8 h-8 rounded-xs bg-stone-900 border border-stone-800 flex items-center justify-center text-amber-500 font-bold">
-                    💣
-                  </div>
-                  <div className="flex-1 font-mono text-left">
-                    <span className="text-white text-[10px] font-black block uppercase">3. BRASS ARTILLERY</span>
-                    <span className="text-[9px] text-stone-400">Siege cannon barrage</span>
-                  </div>
-                </button>
+                      {/* 2. Siege cannon barrage */}
+                      <button
+                        id="action-carpet-mortar"
+                        disabled={battlePhase !== 'clash' || showStageResultModal}
+                        type="button"
+                        onClick={() => executeCombatOperation('artillery')}
+                        className="flex items-center gap-2 p-2 bg-stone-950 hover:bg-[#1f160f] border border-stone-800 hover:border-saffron rounded-xs transition-colors cursor-pointer text-left disabled:opacity-50"
+                      >
+                        <div className="w-6 h-6 bg-stone-900 flex items-center justify-center text-saffron text-xs font-bold">
+                          💣
+                        </div>
+                        <div className="flex-1">
+                          <span className="text-white text-[9px] font-black block leading-none">BRASS CANNONS</span>
+                          <span className="text-[8px] text-stone-500 block mt-0.5">Siege wall shell</span>
+                        </div>
+                      </button>
 
-                {/* 4. Medkit heal */}
-                <button
-                  id="action-medkit"
-                  disabled={adrenalineSyringes <= 0 || battlePhase !== 'clash' || showStageResultModal}
-                  onClick={() => executeCombatOperation('adrenaline')}
-                  className="flex items-center gap-3 p-2.5 bg-stone-950 border border-stone-800 hover:border-blue-500 hover:bg-stone-900 rounded-xs transition-colors cursor-pointer group text-left disabled:opacity-50"
-                >
-                  <div className="w-8 h-8 rounded-xs bg-stone-900 border border-stone-800 flex items-center justify-center text-blue-400 font-bold">
-                    🍯
-                  </div>
-                  <div className="flex-1 font-mono text-left font-sans">
-                    <span className="text-white text-[10px] font-black block uppercase">4. ELIXIR DRAUGHT ({adrenalineSyringes})</span>
-                    <span className="text-[9px] text-stone-400">Heal & restore health</span>
-                  </div>
-                </button>
+                      {/* 3. Rally draft potion */}
+                      <button
+                        id="action-medkit"
+                        disabled={adrenalineSyringes <= 0 || battlePhase !== 'clash' || showStageResultModal}
+                        type="button"
+                        onClick={() => executeCombatOperation('adrenaline')}
+                        className="flex items-center gap-2 p-2 bg-stone-950 hover:bg-[#1f160f] border border-stone-800 hover:border-saffron rounded-xs transition-colors cursor-pointer text-left disabled:opacity-50"
+                      >
+                        <div className="w-6 h-6 bg-stone-900 flex items-center justify-center text-saffron text-xs font-bold">
+                          🍯
+                        </div>
+                        <div className="flex-1">
+                          <span className="text-white text-[9px] font-black block leading-none">RALLY DRINK ({adrenalineSyringes})</span>
+                          <span className="text-[8px] text-stone-500 block mt-0.5">Restore morale</span>
+                        </div>
+                      </button>
 
-                {/* 5. Garmadi explosives */}
-                <button
-                  id="action-frag-bomb"
-                  disabled={fragBombs <= 0 || battlePhase !== 'clash' || showStageResultModal}
-                  onClick={() => executeCombatOperation('bomb')}
-                  className="flex items-center gap-3 p-2.5 bg-stone-950 border border-stone-800 hover:border-red-500 hover:bg-stone-900 rounded-xs transition-colors cursor-pointer group text-left disabled:opacity-50"
-                >
-                  <div className="w-8 h-8 rounded-xs bg-stone-900 border border-stone-800 flex items-center justify-center text-red-500 font-bold">
-                    💥
-                  </div>
-                  <div className="flex-1 font-mono text-left">
-                    <span className="text-white text-[10px] font-black block uppercase">5. POWDER GRENADO ({fragBombs})</span>
-                    <span className="text-[9px] text-stone-400">Heavy shrapnel burst</span>
-                  </div>
-                </button>
+                      {/* 4. Powder explosives */}
+                      <button
+                        id="action-frag-bomb"
+                        disabled={fragBombs <= 0 || battlePhase !== 'clash' || showStageResultModal}
+                        type="button"
+                        onClick={() => executeCombatOperation('bomb')}
+                        className="flex items-center gap-2 p-2 bg-stone-950 hover:bg-[#1f160f] border border-stone-800 hover:border-saffron rounded-xs transition-colors cursor-pointer text-left disabled:opacity-50"
+                      >
+                        <div className="w-6 h-6 bg-stone-900 flex items-center justify-center text-saffron text-xs font-bold">
+                          💥
+                        </div>
+                        <div className="flex-1">
+                          <span className="text-white text-[9px] font-black block leading-none">EXPLOSIVE BOMB ({fragBombs})</span>
+                          <span className="text-[8px] text-stone-500 block mt-0.5">Shrapnel splash</span>
+                        </div>
+                      </button>
 
-                {/* 6. Infiltration flank raid */}
-                <button
-                  id="action-flank-raid"
-                  disabled={battlePhase !== 'clash' || showStageResultModal}
-                  onClick={() => executeCombatOperation('flank')}
-                  className="flex items-center gap-3 p-2.5 bg-stone-950 border border-stone-800 hover:border-amber-400 hover:bg-stone-900 rounded-xs transition-colors cursor-pointer group text-left"
-                >
-                  <div className="w-8 h-8 rounded-xs bg-stone-900 border border-stone-800 flex items-center justify-center text-amber-500 font-bold">
-                    🐎
+                    </div>
                   </div>
-                  <div className="flex-1 font-mono text-left">
-                    <span className="text-white text-[10px] font-black block uppercase">6. CAVALRY CHARGE</span>
-                    <span className="text-[9px] text-stone-400">High speed flank attack</span>
-                  </div>
-                </button>
-
-              </div>
+                </div>
+              )}
             </div>
 
             {/* ARMY REINFORCEMENTS & MOBILIZATION MODULE */}
@@ -2544,6 +3209,28 @@ export const BattleScene: React.FC<BattleProps> = ({ onNavigate, onAdvance, stag
                   ]);
                 };
 
+                const handleRecruitFrenchCannon = () => {
+                  if (battlePhase !== 'clash' || showStageResultModal) return;
+                  const currentGold = Number(localStorage.getItem('panipat_campaign_treasury') || '145000');
+                  if (currentGold < 5500) {
+                    alert("⚠️ TREASURY DEPLETED! Shaniwar Wada has insufficient Gold Mohurs to construct modern heavy field guns!");
+                    return;
+                  }
+                  
+                  // Deduct gold
+                  const nextGold = currentGold - 5500;
+                  localStorage.setItem('panipat_campaign_treasury', String(nextGold));
+                  
+                  setSpawnAllyType("Gardi French Cannon");
+                  setSpawnAllyTrigger(prev => prev + 1);
+                  setAlliesSummonedCount(prev => prev + 1);
+                  
+                  setLog(prev => [
+                    `🔥 [CANNON OPERATIONAL] Allocated 5,500 Gold Mohurs. Deployed a mobile Gardi-French Field Cannon into the left battery lines!`,
+                    ...prev.slice(0, 4)
+                  ]);
+                };
+
                 return (
                   <>
                     <div className="space-y-1 text-stone-300">
@@ -2581,6 +3268,21 @@ export const BattleScene: React.FC<BattleProps> = ({ onNavigate, onAdvance, stag
                         <span className="text-[8px] text-stone-300 block">3,500 GOLD MOHURS</span>
                       </button>
                     </div>
+
+                    {/* Option 3: Gardi French Field Cannon */}
+                    <button
+                      type="button"
+                      id="btn-recruit-gardi-cannon"
+                      disabled={battlePhase !== 'clash' || showStageResultModal}
+                      onClick={handleRecruitFrenchCannon}
+                      className="mt-2 w-full py-2.5 bg-gradient-to-r from-stone-900 via-[#451205]/35 to-stone-900 border border-amber-600/60 hover:border-saffron rounded-xs transition-all cursor-pointer text-center font-mono disabled:opacity-45 flex items-center justify-center gap-2"
+                    >
+                      <span className="animate-pulse text-amber-500">🔥</span>
+                      <div className="text-left">
+                        <span className="text-[9px] text-saffron uppercase font-black block leading-none">3. GARDI BRASS CANNON</span>
+                        <span className="text-[8px] text-stone-300 block uppercase tracking-tight">5,500 MOHURS • EXPLOSIVE BLASTS</span>
+                      </div>
+                    </button>
 
                     <div className="flex justify-between text-[8px] font-mono text-stone-500 uppercase border-t border-stone-900 pt-2">
                       <span>Own Recruits: <strong className="text-emerald-400">{alliesSummonedCount}</strong></span>
