@@ -84,8 +84,14 @@ Before launching active military engagements on the battlefield, enter the grand
 *   **Ganimi Kava Cavalry Raid (Holkar's Plan)**: Swift flanking maneuvers to harass and demoralize advanced enemy forces, raising friendly starting morale and expanding focus bullet stamina.
 *   **Saffron Encircled Ward (Bhau's Plan)**: Solid cohort line defense to shield forces during transitions, awarding upgraded armor tier equipment and premium adrenaline supplies.
 
-### 🎓 9. Academy Hub & Student LMS
-Includes a complete interactive **Learning Management System (LMS)** and **Academy Hub** allowing students to study historical timelines, review comprehensive interactive cartography, take quizzes, track academic milestones, and view educational resources with a persistent state engine powered by `Zustand`.
+### 🎓 9. Academy Hub & Student LMS (Shaniwar Wada Seminary)
+An immersive, academically rigorous **Learning Management System (LMS)** styled like an ancient royal parchment module:
+*   **Dual-Pathway Syllabus**: Includes 10 progressive monograph lessons segregated into *Student* and *Scholar* tracks, with local persistence tracking certification states.
+*   **Formations Playbook Sandbox**: An interactive military playground. Configure dynamic weather modifiers (Sunny, Winter Frost, Dust Storm) and deploy tactical platoons (Gardi French Artillery, Mawala Raiders, Camel Zamburaks, Rohilla Heavies) into active flanking lanes to simulate combat ratings and view real-time tactical logs.
+*   **D3.js Force-Directed Knowledge Network**: A dynamic, mathematically modeled node constellation map linking commanders, strategic milestones, and major collapses. Includes click-to-focus camera center and detailed skeuomorphic sidebars.
+*   **Unified Decision Chronicles**: Test your strategic judgment across 5 major historical forks (river crossings, gold conversions, scouting deployments) to analyze your personal tactical alignment (Saffron Guerrilla vs. Defensive Sovereign) using built-in telemetry diagnostics.
+*   **Authentic Manuscript Archive Room**: Browse and unroll detailed English translations of genuine 18th-century scrolls, encrypted letters, and sacred treaties.
+*   **Randomized Challenge Exams**: Take academic tests compiled dynamically from an on-board question warehouse to earn printable Royal Diplomas based on final scores.
 
 ### 🌐 10. Multiplayer Matchmaking Arena
 Open the **Multiplayer Matchmaking** simulator to view active rooms, regions, pings, and chat with local recruits. Enter turn-based card battles deploying unit counters against simulated live opponents to protect your campaign flanks.
