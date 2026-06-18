@@ -379,7 +379,7 @@ export const BattleCanvas: React.FC<BattleCanvasProps> = ({
     const enemyCommander = getEnemyCommanderInfo();
     const initialTargets: Combatant[] = [{
       id: 999,
-      x: width - 180,
+      x: width - 80,
       y: minGroundY + 0.85 * (maxGroundY - minGroundY),
       z: 0.85,
       hp: 350,
@@ -397,11 +397,13 @@ export const BattleCanvas: React.FC<BattleCanvasProps> = ({
     }];
 
     for (let i = 0; i < 7; i++) {
-      const z = 0.4 + (i % 4) * 0.14;
+      // Larger spacing to cover more of the screen beautifully
+      const z = 0.4 + (i % 4) * 0.12 + Math.random() * 0.05;
       const isRear = i % 2 === 1;
       initialTargets.push({
         id: i,
-        x: isRear ? (width - 60 - (i % 3) * 15) : (width - 150 - (i % 3) * 15),
+        // Spread ranks horizontally by 45px intervals instead of 15px clumps
+        x: isRear ? (width - 80 - (i % 4) * 45) : (width - 180 - (i % 4) * 45),
         y: minGroundY + z * (maxGroundY - minGroundY),
         z,
         hp: i % 4 === 3 ? 180 : 100,
@@ -418,7 +420,7 @@ export const BattleCanvas: React.FC<BattleCanvasProps> = ({
     const allyCommander = getAlliedCommanderInfo();
     const initialAllies: Combatant[] = [{
       id: 1000,
-      x: 180,
+      x: 80,
       y: minGroundY + 0.9 * (maxGroundY - minGroundY),
       z: 0.9,
       hp: 350,
@@ -436,11 +438,13 @@ export const BattleCanvas: React.FC<BattleCanvasProps> = ({
     }];
 
     for (let i = 0; i < 6; i++) {
-      const z = 0.45 + (i % 4) * 0.14;
+      // Smooth vertical and depth dispersion
+      const z = 0.45 + (i % 4) * 0.11 + Math.random() * 0.05;
       const isRear = i % 2 === 1;
       initialAllies.push({
         id: 100 + i,
-        x: isRear ? (60 + (i % 3) * 15) : (150 + (i % 3) * 15),
+        // Spaced out ranks to fill the vast vertical grid
+        x: isRear ? (80 + (i % 4) * 45) : (180 + (i % 4) * 45),
         y: minGroundY + z * (maxGroundY - minGroundY),
         z,
         hp: i % 4 === 3 ? 180 : 100,
@@ -952,15 +956,24 @@ export const BattleCanvas: React.FC<BattleCanvasProps> = ({
               let target = item.targetId ? oppositionList.find(o => o.id === item.targetId && o.hp > 0) : null;
               if (!target) {
                 let nearest: Combatant | null = null;
-                let minDistSq = Infinity;
+                let minScore = Infinity;
                 for (let idx = 0; idx < oppositionList.length; idx++) {
                   const o = oppositionList[idx];
                   if (o.hp > 0) {
+                    // Anti-Crowding Dispersed Target Selection Strategy:
+                    // Count how many of our side are already targeting this person
+                    const ourAllianceList = isEnemy ? targetsRef.current : alliedSoldiersRef.current;
+                    const targeterCount = ourAllianceList.filter(u => u.hp > 0 && u.id !== item.id && u.targetId === o.id).length;
+
                     const dx = o.x - item.x;
                     const dy = o.y - item.y;
                     const distSq = dx * dx + dy * dy;
-                    if (distSq < minDistSq) {
-                      minDistSq = distSq;
+
+                    // Add a massive virtual penalty for each existing combatant engaging this target
+                    // to encourage other soldiers to seek open/uncontested duels across the field
+                    const score = distSq + targeterCount * 80000;
+                    if (score < minScore) {
+                      minScore = score;
                       nearest = o;
                     }
                   }
@@ -972,6 +985,31 @@ export const BattleCanvas: React.FC<BattleCanvasProps> = ({
                   item.targetId = null;
                 }
               }
+
+              // Dynamic Separation Steering Forces from both Allies and Enemies to prevent cluster crowding
+              let sepX = 0;
+              let sepY = 0;
+              const separationRadius = 45 * item.z; // scaled to match perspective scale of the unit
+
+              const applyRepulsion = (other: Combatant) => {
+                if (other.id !== item.id && other.hp > 0) {
+                  const dx = item.x - other.x;
+                  const dy = item.y - other.y;
+                  const dist = Math.hypot(dx, dy);
+                  if (dist > 0 && dist < separationRadius) {
+                    const force = (separationRadius - dist) / separationRadius;
+                    sepX += (dx / dist) * force * 1.6;
+                    sepY += (dy / dist) * force * 1.2;
+                  }
+                }
+              };
+
+              alliedSoldiersRef.current.forEach(applyRepulsion);
+              targetsRef.current.forEach(applyRepulsion);
+
+              // Apply separation steering
+              item.x += sepX;
+              item.y += sepY;
 
               if (target) {
                 const stepX = target.x - item.x;
@@ -1010,6 +1048,12 @@ export const BattleCanvas: React.FC<BattleCanvasProps> = ({
                 item.x += item.vx * 0.3;
                 if (item.x < 40 || item.x > w - 40) item.vx *= -1;
               }
+
+              // Strict border bound checks utilizing canvas dimensions and 3D terrain ground layer
+              const minG = h * 0.38;
+              const maxG = h * 0.72;
+              item.x = p.constrain(item.x, 30, w - 30);
+              item.y = p.constrain(item.y, minG, maxG);
             }
           }
 
