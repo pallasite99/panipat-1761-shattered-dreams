@@ -1032,15 +1032,18 @@ export const BattleScene: React.FC<BattleProps> = ({ onNavigate, onAdvance, stag
       // 1. Decrement Battle Timer Limit (Timed Battles feature)
       setBattleTimeLeft(prev => {
         if (prev <= 1) {
-          // Time expired! Resolve battle round immediately based on current relative morale
-          const winner: 'player' | 'enemy' = marathaMorale >= durraniMorale ? 'player' : 'enemy';
+          // Time expired! Resolve battle round immediately based on current relative morale (with tactical casualty override)
+          let winner: 'player' | 'enemy' = marathaMorale >= durraniMorale ? 'player' : 'enemy';
+          if (stagePlayerCasualties < stageEnemyCasualties) {
+            winner = 'player';
+          }
           const updated = [...stageOutcomes];
           updated[currentStageIndex - 1] = winner;
           setStageOutcomes(updated);
           setShowStageResultModal(true);
 
           setLog(prevLog => [
-            `⏳ [BATTLE TIME EXPIRED] Raw battlefield exhaustion! ${winner === 'player' ? 'Our forces' : 'Enemy forces'} claimed sector dominance due to superior morale!`,
+            `⏳ [BATTLE TIME EXPIRED] Raw battlefield exhaustion! ${winner === 'player' ? 'Our forces' : 'Enemy forces'} claimed sector dominance due to superior morale & strategic casualty efficiency!`,
             ...prevLog.slice(0, 3)
           ]);
           return 0;
@@ -1294,7 +1297,7 @@ export const BattleScene: React.FC<BattleProps> = ({ onNavigate, onAdvance, stag
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [battlePhase, stageDifficulty, stage, fortWallIntegrity, activeTerrain, activeFaction, armorTier, smokeActive, difficultyMult, showStageResultModal, showBreachDialogueModal, marathaMorale, durraniMorale, currentStageIndex, stageOutcomes]);
+  }, [battlePhase, stageDifficulty, stage, fortWallIntegrity, activeTerrain, activeFaction, armorTier, smokeActive, difficultyMult, showStageResultModal, showBreachDialogueModal, marathaMorale, durraniMorale, currentStageIndex, stageOutcomes, stagePlayerCasualties, stageEnemyCasualties]);
 
   // Sync Progress & Victory criteria for the 3 stages series
   useEffect(() => {
@@ -1323,7 +1326,12 @@ export const BattleScene: React.FC<BattleProps> = ({ onNavigate, onAdvance, stag
           // Marathas should never lose Battle of Udgir
           stageWinner = 'player';
         } else {
-          stageWinner = 'enemy';
+          // Overriding victory based on tactical casualty efficiency: if we sustained fewer losses, we hold the ground and win!
+          if (stagePlayerCasualties < stageEnemyCasualties) {
+            stageWinner = 'player';
+          } else {
+            stageWinner = 'enemy';
+          }
         }
       }
     } else {
@@ -1335,7 +1343,11 @@ export const BattleScene: React.FC<BattleProps> = ({ onNavigate, onAdvance, stag
           stageWinner = 'player';
         }
       } else if (durraniMorale <= 0) {
-        stageWinner = 'enemy';
+        if (stagePlayerCasualties < stageEnemyCasualties) {
+          stageWinner = 'player';
+        } else {
+          stageWinner = 'enemy';
+        }
       }
     }
 
@@ -1351,7 +1363,7 @@ export const BattleScene: React.FC<BattleProps> = ({ onNavigate, onAdvance, stag
       
       setLog(prev => [logMsg, ...prev.slice(0, 4)]);
     }
-  }, [marathaMorale, durraniMorale, battlePhase, stageDifficulty, stage, fortWallIntegrity, activeFaction, currentStageIndex, stageOutcomes, showStageResultModal, stageDuelsWon]);
+  }, [marathaMorale, durraniMorale, battlePhase, stageDifficulty, stage, fortWallIntegrity, activeFaction, currentStageIndex, stageOutcomes, showStageResultModal, stageDuelsWon, stagePlayerCasualties, stageEnemyCasualties]);
 
   // Synchronize timeOfDay and Prahar logic with the remaining battle time
   useEffect(() => {
