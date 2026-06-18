@@ -953,25 +953,29 @@ export const BattleCanvas: React.FC<BattleCanvasProps> = ({
             } else {
               // SCATTERED DUELS: lock target of opposite side
               const oppositionList = isEnemy ? alliedSoldiersRef.current : targetsRef.current;
-              let target = item.targetId ? oppositionList.find(o => o.id === item.targetId && o.hp > 0) : null;
-              if (!target) {
+
+              // STAGGERED RE-EVALUATION ENGINES to prevent crowding under commanders
+              const shouldReevaluate = !item.targetId || (p.frameCount + (item.id % 23)) % 40 === 0;
+              let target = (!shouldReevaluate && item.targetId) ? oppositionList.find(o => o.id === item.targetId && o.hp > 0) : null;
+
+              if (shouldReevaluate || !target) {
                 let nearest: Combatant | null = null;
                 let minScore = Infinity;
+                
+                const ourAllianceList = isEnemy ? targetsRef.current : alliedSoldiersRef.current;
+
                 for (let idx = 0; idx < oppositionList.length; idx++) {
                   const o = oppositionList[idx];
                   if (o.hp > 0) {
-                    // Anti-Crowding Dispersed Target Selection Strategy:
                     // Count how many of our side are already targeting this person
-                    const ourAllianceList = isEnemy ? targetsRef.current : alliedSoldiersRef.current;
                     const targeterCount = ourAllianceList.filter(u => u.hp > 0 && u.id !== item.id && u.targetId === o.id).length;
 
                     const dx = o.x - item.x;
                     const dy = o.y - item.y;
                     const distSq = dx * dx + dy * dy;
 
-                    // Add a massive virtual penalty for each existing combatant engaging this target
-                    // to encourage other soldiers to seek open/uncontested duels across the field
-                    const score = distSq + targeterCount * 80000;
+                    // Add a massive penalty for already targeted units to disperse fight naturally
+                    const score = distSq + targeterCount * 140000;
                     if (score < minScore) {
                       minScore = score;
                       nearest = o;
@@ -983,13 +987,14 @@ export const BattleCanvas: React.FC<BattleCanvasProps> = ({
                   target = nearest;
                 } else {
                   item.targetId = null;
+                  target = null;
                 }
               }
 
-              // Dynamic Separation Steering Forces from both Allies and Enemies to prevent cluster crowding
+              // Dynamic Separation Steering forces (repulsion from allies and enemies)
               let sepX = 0;
               let sepY = 0;
-              const separationRadius = 45 * item.z; // scaled to match perspective scale of the unit
+              const separationRadius = 65 * item.z; // wider sweep for natural spacing
 
               const applyRepulsion = (other: Combatant) => {
                 if (other.id !== item.id && other.hp > 0) {
@@ -998,8 +1003,10 @@ export const BattleCanvas: React.FC<BattleCanvasProps> = ({
                   const dist = Math.hypot(dx, dy);
                   if (dist > 0 && dist < separationRadius) {
                     const force = (separationRadius - dist) / separationRadius;
-                    sepX += (dx / dist) * force * 1.6;
-                    sepY += (dy / dist) * force * 1.2;
+                    // Super strong repulsion for very close collisions
+                    const multiplier = dist < 22 ? 2.5 : 1.6;
+                    sepX += (dx / dist) * force * multiplier;
+                    sepY += (dy / dist) * force * multiplier * 0.8;
                   }
                 }
               };
@@ -1007,9 +1014,9 @@ export const BattleCanvas: React.FC<BattleCanvasProps> = ({
               alliedSoldiersRef.current.forEach(applyRepulsion);
               targetsRef.current.forEach(applyRepulsion);
 
-              // Apply separation steering
-              item.x += sepX;
-              item.y += sepY;
+              // Standard steer velocity integration
+              let desiredVx = 0;
+              let desiredVy = 0;
 
               if (target) {
                 const stepX = target.x - item.x;
@@ -1019,19 +1026,18 @@ export const BattleCanvas: React.FC<BattleCanvasProps> = ({
                   let mountFactor = 1.0;
                   if (item.type.includes('Cavalry')) mountFactor = 1.6;
                   else if (item.type.includes('Elephant')) mountFactor = 0.65;
-                  item.x += (stepX / len) * 1.15 * mountFactor;
-                  item.y += (stepY / len) * 0.55 * mountFactor;
+                  desiredVx = (stepX / len) * 1.25 * mountFactor;
+                  desiredVy = (stepY / len) * 0.55 * mountFactor;
                 } else {
-                  // Melee clashing range: jitter shake
-                  item.x += p.random(-0.35, 0.35);
+                  // Inside melee combat range
+                  desiredVx = p.random(-0.35, 0.35);
+                  desiredVy = p.random(-0.15, 0.15);
                   item.slashTimer++;
                   if (item.slashTimer > 60) {
                     item.slashTimer = 0;
-                    // Deal small relative continuous hit to opponent
                     target.hp = p.max(0, target.hp - (item.isCommander ? 15 : 7));
                     spawnHitSplatter(target.x, target.y, '#b91c1c', 0.5);
 
-                    // Add text indicator
                     textsRef.current.push({
                       x: target.x,
                       y: target.y - 12,
@@ -1044,10 +1050,24 @@ export const BattleCanvas: React.FC<BattleCanvasProps> = ({
                   }
                 }
               } else {
-                // Return to patrolling when hostile force is routed
-                item.x += item.vx * 0.3;
+                // If clean target list, wander/advance
+                desiredVx = item.vx * 0.3;
                 if (item.x < 40 || item.x > w - 40) item.vx *= -1;
               }
+
+              // Combine steering directions
+              let finalVx = desiredVx + sepX;
+              let finalVy = desiredVy + sepY;
+
+              const maxSpeed = item.type.includes('Cavalry') ? 2.4 : 1.35;
+              const speedLen = Math.hypot(finalVx, finalVy);
+              if (speedLen > maxSpeed) {
+                finalVx = (finalVx / speedLen) * maxSpeed;
+                finalVy = (finalVy / speedLen) * maxSpeed;
+              }
+
+              item.x += finalVx;
+              item.y += finalVy;
 
               // Strict border bound checks utilizing canvas dimensions and 3D terrain ground layer
               const minG = h * 0.38;
