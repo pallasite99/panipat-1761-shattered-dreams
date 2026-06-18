@@ -1086,7 +1086,9 @@ export const BattleScene: React.FC<BattleProps> = ({ onNavigate, onAdvance, stag
         formationDurraniMod *= 1.15;
       }
 
-      const marathaLoss = (Math.random() * (0.9 * stageDifficulty * (isPanipat ? 1.8 : 1) * (1 / activeTerrain.defenseModifier))) * armorReduction * damageBlocked * difficultyMult * speedFactor * formationMarathaMod;
+      const isUdgir = stage === CampaignStage.NIZAM_CAMPAIGN;
+      const marathaLossFactor = isUdgir ? 0.22 : 1.0;
+      const marathaLoss = (Math.random() * (0.9 * stageDifficulty * (isPanipat ? 1.8 : 1) * (1 / activeTerrain.defenseModifier))) * armorReduction * damageBlocked * difficultyMult * speedFactor * formationMarathaMod * marathaLossFactor;
       // Balance Durrani passive attrition symmetrically based on active difficulty scaling
       const durraniLoss = ((Math.random() * (isPanipat ? 1.05 : 0.8) * (1.1 / difficultyMult)) * stageDifficulty) * speedFactor * formationDurraniMod;
 
@@ -1126,7 +1128,9 @@ export const BattleScene: React.FC<BattleProps> = ({ onNavigate, onAdvance, stag
       // 2. Accumulate simulated casualties realistically per tick (Detailed casualties feature)
       // Horde density multiplies casualties for a grand war feels
       const casualtyScale = selectedDensity === 'horde' ? 3.2 : selectedDensity === 'cavalry' ? 1.5 : 0.8;
-      const pCas = Math.floor((marathaLoss * 46 + Math.random() * 15) * casualtyScale);
+      const isUdgirBattle = stage === CampaignStage.NIZAM_CAMPAIGN;
+      const uFactor = isUdgirBattle ? 0.20 : 1.0;
+      const pCas = Math.floor(((marathaLoss * 46 + Math.random() * 15) * uFactor) * casualtyScale);
       const eCas = Math.floor((durraniLoss * 49 + Math.random() * 18) * casualtyScale);
       setStagePlayerCasualties(prev => prev + pCas);
       setStageEnemyCasualties(prev => prev + eCas);

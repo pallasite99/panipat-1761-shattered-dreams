@@ -60,7 +60,9 @@ Choose your faction and general, each bringing unique starting stats, resources,
 	*   **Najib-ud-Daula**: Rohilla chieftain. Secured the eastern riverbanks. *(Diplomatic Edge bonus)*
 
 ### ⚔️ 3. Battle Canvas & Unit Tactics
-Command active battlefield engagements using the high-fidelity **Battle Canvas**. Draw, reposition, and deploy your troop types (Infantry, Cavalry, and French-discipline Artillery squares) on a real-time grid system while monitoring troop stamina, ammunition, and unit health.
+Command active battlefield engagements using the high-fidelity **Battle Canvas**:
+*   **Tactical Troop Deployment**: Draw, reposition, and deploy your troop types (Infantry, Cavalry, and French-discipline Artillery squares) on a real-time grid system while monitoring troop stamina, ammunition, and unit health.
+*   **First-Person Cannon Blasting**: Click anywhere on the open ground during real-time combat to fire heavy field brass cannons manually! Fires high-caliber cannonballs with realistic recoil kickback animations, screen shake shakes, fire-flash layers, custom splash tracers, and high-impact ground explosions to disintegrate defensive lines.
 
 ### 🎯 4. Military Mini-Games & Simulators
 *   **Artillery Calibration**: Adjust elevation, powder charge, and windage factors using an interactive HTML5 `<canvas>` simulation to calibrate brass cannons and maximize impact against incoming lines.
@@ -101,6 +103,7 @@ Keep track of the strategic status via a continuous scrolling newspaper marquee 
 
 ### 🏆 12. Udgir Siege Victory & Shaniwar Wada Celebrations Visualizer
 Following the decisive victory over the Nizam of Hyderabad at the Siege of Udgir, experience the celebratory atmosphere at the Shaniwar Wada palace in Pune:
+*   **Triumphant Walking Generals Procession**: Watch majestic, custom-dressed generals (**Sadashivrao Bhau**, **Ibrahim Khan Gardi**, **Malharrao Holkar**, and **Shamsher Bahadur**) marching dynamically with hand-raised weapons, talwar swords, and French rapiers through Shaniwar Wada's Delhi Gate, complete with visual titles, role overlays, and dynamic entry loops.
 *   **Interactive Sky & Rockets**: Click the night sky above the basalt stone walls of Delhi Gate to trigger multi-colored victory rocket firework bursts.
 *   **Grand Dhol-Tasha Drums**: Beat the ceremonial Nagada drums to send visual shockwaves across the palace court and increase the crowd's celebration fever levels.
 *   **Victory Procession**: Witness the caparisoned imperial elephant marching proudly through the wooden spiked palace doors carrying the golden howdah and standard bearer.

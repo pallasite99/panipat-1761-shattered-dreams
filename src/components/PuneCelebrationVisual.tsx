@@ -63,6 +63,7 @@ export const PuneCelebrationVisual: React.FC = () => {
       let fragments: FireworkParticle[] = [];
       let money: FallingCoin[] = [];
       let ripples: DrumRipple[] = [];
+      let generals: any[] = [];
 
       // Elephant position & state
       let elephantX = 200;
@@ -101,6 +102,14 @@ export const PuneCelebrationVisual: React.FC = () => {
         for (let i = 0; i < 25; i++) {
           money.push(createFallingItem(p.random(w), p.random(-100, 0)));
         }
+
+        // Initialize our majestic Maratha generals procession heading to Ganesh Darbar
+        generals = [
+          { name: "Sadashivrao Bhau", role: "Generalissimo", outfitColor: "#ea580c", turbanColor: "#fbbf24", x: -w * 0.05, y: h - 22, speed: 0.85, opacity: 255, status: 'walking', initX: -w * 0.05 },
+          { name: "Ibrahim Khan Gardi", role: "Artillery Master", outfitColor: "#1d4ed8", turbanColor: "#1e293b", x: -w * 0.22, y: h - 22, speed: 0.88, opacity: 255, status: 'walking', initX: -w * 0.22 },
+          { name: "Malharrao Holkar", role: "Cavalry General", outfitColor: "#f97316", turbanColor: "#fcd34d", x: -w * 0.39, y: h - 22, speed: 0.81, opacity: 255, status: 'walking', initX: -w * 0.39 },
+          { name: "Shamsher Bahadur", role: "Peshwa Brother", outfitColor: "#991b1b", turbanColor: "#fb923c", x: -w * 0.56, y: h - 22, speed: 0.83, opacity: 255, status: 'walking', initX: -w * 0.56 }
+        ];
       };
 
       p.draw = () => {
@@ -239,6 +248,9 @@ export const PuneCelebrationVisual: React.FC = () => {
         p.strokeWeight(1.2);
         p.rect(w * 0.5 - gateW * 0.22, h - gateH * 0.68, gateW * 0.04, gateH * 0.68);
         p.rect(w * 0.5 + gateW * 0.18, h - gateH * 0.68, gateW * 0.04, gateH * 0.68);
+
+        // Render our brave generals marching majestically towards Ganesh Darbar inside Shaniwar Wada
+        drawGeneralsProcession(p, w, h, gateW, gateH);
 
         // 7. MULTIPLE DRAPING SAFFRON STANDARDS AND ROYAL BANNERS FLUTTERING
         drawBannerFlag(p, gateX + 25, h - gateH * 0.7, h * 0.1, p.frameCount * 0.04);
@@ -386,9 +398,18 @@ export const PuneCelebrationVisual: React.FC = () => {
           }
         }
 
-        // Auto launch ambient fireworks randomly
-        if (p.frameCount % 90 === 0 && fireworks.length < 3) {
-          triggerLaunch(p.random(w * 0.15, w * 0.85), p.random(h * 0.08, h * 0.4));
+        // Autonomous, zero-action auto play system:
+        // Automatically beat the grand dhol-tasha drums every 115 frames (~1.9s)
+        // This launches extra fireworks, spawns circular dhol shockwave ripples, and increases celebration stats automatically!
+        if (p.frameCount % 115 === 0) {
+          if (onDrumBeatRef.current) {
+            onDrumBeatRef.current();
+          }
+        }
+
+        // Ambient automatic high-sky fireworks
+        if (p.frameCount % 75 === 0 && fireworks.length < 4) {
+          triggerLaunch(p.random(w * 0.12, w * 0.88), p.random(h * 0.08, h * 0.38));
         }
 
         // Draw and update active sparkling fragments
@@ -794,6 +815,156 @@ export const PuneCelebrationVisual: React.FC = () => {
         p.fill('#78350f');
         p.ellipse(rightDrumX - dW * 0.5, drumY, dW * 0.05, dH * 0.3);
         p.ellipse(rightDrumX + dW * 0.5, drumY, dW * 0.05, dH * 0.3);
+      }
+
+      function drawGeneralsProcession(p: p5, w: number, h: number, gateW: number, gateH: number) {
+        if (!generals || generals.length === 0) return;
+
+        generals.forEach((g, idx) => {
+          // Setup properties safely
+          if (g.x === undefined) {
+            g.x = g.initX;
+          }
+
+          // Automated walking state machine
+          if (g.status === 'walking') {
+            g.x += g.speed * 0.95;
+            g.y = h - 22 + p.sin(p.frameCount * 0.08 + idx * 3) * 1.5;
+            
+            // Once they reach the grand entrance, they turn into the corridor
+            if (g.x >= w * 0.5 + (idx - 1.5) * 18) {
+              g.status = 'entering';
+            }
+          } else if (g.status === 'entering') {
+            g.y -= 0.65; // proceed upwards inside the gatehouse to show depth walk
+            g.x += p.sin(p.frameCount * 0.05 + idx) * 0.18; // slight body sway
+            
+            // Recede and fade within dark castle interiors
+            const fadeStart = h - 22;
+            const fadeEnd = h - gateH * 0.72; // gate height threshold
+            g.opacity = p.map(g.y, fadeStart, fadeEnd, 255, 0);
+            if (g.opacity < 0) g.opacity = 0;
+
+            if (g.y <= fadeEnd || g.opacity === 0) {
+              // Recycled loop of heroes: start again from offscreen left
+              g.x = -w * 0.12 - p.random(15, 75);
+              g.y = h - 22;
+              g.status = 'walking';
+              g.opacity = 255;
+            }
+          }
+
+          // Only draw if reasonably on visual board space
+          if (g.x < -15) return;
+
+          p.push();
+          p.translate(g.x, g.y);
+
+          // Body sway and leg swings
+          const walkFactor = p.frameCount * 0.11 + idx * 7.5;
+          const legSway = p.sin(walkFactor) * 3.8;
+          const armSway = p.cos(walkFactor) * 2.8;
+
+          // Tiny dark projection shadow below them
+          p.fill(0, 0, 0, p.map(g.opacity, 0, 255, 0, 55));
+          p.noStroke();
+          p.ellipse(0, 4.5, 13, 3.8);
+
+          // Color helper for variable alpha channels
+          const getHexAlphaCol = (hex: string, val: number) => {
+            const raw = p.color(hex);
+            return p.color(p.red(raw), p.green(raw), p.blue(raw), val);
+          };
+
+          const cOutfit = getHexAlphaCol(g.outfitColor, g.opacity);
+          const cTurban = getHexAlphaCol(g.turbanColor, g.opacity);
+          const cSkin = getHexAlphaCol('#fed7aa', g.opacity);
+          const cGold = getHexAlphaCol('#fbbf24', g.opacity);
+          const cSteel = getHexAlphaCol('#94a3b8', g.opacity);
+
+          // 1. Drawing hanging legs
+          p.stroke(cOutfit);
+          p.strokeWeight(2.3);
+          p.line(-2, 0, -2 + legSway * 0.45, 4.5);
+          p.line(2, 0, 2 - legSway * 0.45, 4.5);
+
+          // 2. Character body torso
+          p.noStroke();
+          p.fill(cOutfit);
+          p.rect(-4.5, -10.5, 9, 10.5, 1.8);
+
+          // Orange Sovereign sash wrap
+          p.fill(getHexAlphaCol('#f97316', g.opacity));
+          p.rect(-5, -4, 10, 1.8);
+
+          // 3. Arms & Triumphant Weapon raise
+          p.stroke(cOutfit);
+          p.strokeWeight(1.6);
+          p.line(-4.5, -8.5, -6.8 - armSway * 0.25, -3.5); // swinging left arm
+          p.line(4.5, -8.5, 7.8 + armSway * 0.22, -10.5); // raised weapon arm
+
+          // Draw shiny weapon
+          p.stroke(cSteel);
+          p.strokeWeight(1);
+          if (g.name === "Ibrahim Khan Gardi") {
+            // French officer rapier
+            p.line(7.8 + armSway * 0.3, -10.5, 13.5, -17);
+            p.stroke(cGold);
+            p.strokeWeight(1.5);
+            p.point(7.8 + armSway * 0.3, -10.5);
+          } else {
+            // Peshwa talwar sword curve
+            p.noFill();
+            p.strokeWeight(1);
+            p.arc(9.8, -14.5, 7.5, 7.5, p.PI + p.HALF_PI, p.TWO_PI);
+            p.stroke(cGold);
+            p.strokeWeight(1.3);
+            p.point(7.8 + armSway * 0.3, -10.5);
+          }
+
+          // 4. Face & mustache/beard details
+          p.noStroke();
+          p.fill(cSkin);
+          p.ellipse(0, -14, 6, 6.5);
+
+          p.stroke(getHexAlphaCol('#1e293b', g.opacity * 0.75));
+          p.strokeWeight(0.9);
+          if (g.name !== "Ibrahim Khan Gardi") {
+            p.line(-1.3, -13.2, 1.3, -13.2); // mustache
+          } else {
+            p.point(0, -11.5); // imperial point beard
+          }
+
+          // 5. Turban
+          p.noStroke();
+          p.fill(cTurban);
+          if (g.name === "Ibrahim Khan Gardi") {
+            p.rect(-3, -20, 6, 4, 1);
+            p.fill(cGold);
+            p.rect(-0.8, -20, 1.6, 4);
+          } else {
+            p.ellipse(0, -17.5, 8.2, 3.5);
+            p.fill(getHexAlphaCol('#d97706', g.opacity));
+            p.ellipse(0, -18.7, 3.8, 1.5);
+          }
+
+          // 6. Character label text (No action required to see who is walking!)
+          p.noStroke();
+          p.textAlign(p.CENTER, p.BOTTOM);
+
+          const sizeMult = h * 0.021;
+          const roleS = sizeMult < 6 ? 6 : sizeMult;
+          p.fill(getHexAlphaCol('#f59e0b', g.opacity * 0.9));
+          p.textSize(roleS);
+          p.text(g.role.toUpperCase(), 0, -25);
+
+          const nameS = (sizeMult * 1.22) < 7.5 ? 7.5 : (sizeMult * 1.22);
+          p.fill(getHexAlphaCol('#ffffff', g.opacity));
+          p.textSize(nameS);
+          p.text(g.name, 0, -25 + 6.5);
+
+          p.pop();
+        });
       }
 
       // Handle window responsive adjustments

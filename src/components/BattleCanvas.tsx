@@ -1531,19 +1531,22 @@ export const BattleCanvas: React.FC<BattleCanvasProps> = ({
         p.line(lx, ly + 9, lx, ly + 20);
 
         // Check locks on target list
-        let focused = false;
+        let meleeFocused = false;
         targetsRef.current.forEach(t => {
-          if (t.hp > 0 && p.dist(t.x, t.y, lx, ly) < (28 * t.z + 18)) {
-            focused = true;
+          if (t.hp > 0 && p.dist(t.x, t.y, lx, ly) < (26 * t.z + 24)) {
+            meleeFocused = true;
           }
         });
 
-        if (focused) {
-          p.textAlign(p.LEFT, p.CENTER);
-          p.textSize(8);
-          p.noStroke();
+        p.textAlign(p.LEFT, p.CENTER);
+        p.textSize(8);
+        p.noStroke();
+        if (meleeFocused) {
           p.fill('#ef4444');
-          p.text("TARGET LCK - CRITICAL", lx + 18, ly);
+          p.text("SWORD RANGE - CLICK TO SLASH", lx + 18, ly);
+        } else {
+          p.fill('#efa600');
+          p.text("CANNON FIRE LOCK - CLICK TO BLAST", lx + 18, ly);
         }
       }
 
@@ -1864,14 +1867,22 @@ export const BattleCanvas: React.FC<BattleCanvasProps> = ({
     });
 
     if (!hitAny) {
+      // Manual Cannon Fire targets coordinates!
+      triggerCannonball(p.width * 0.15, p.height - 40, clickX, clickY);
+
+      // Trigger visual cannon kickback recoil and screen shake
+      setCannonRecoil(1);
+      setTimeout(() => setCannonRecoil(0), 450);
+      shakeRef.current = p.min(shakeRef.current + 18, 28);
+
       textsRef.current.push({
         x: clickX,
-        y: clickY - 10,
-        text: 'SWISH',
-        alpha: 150,
-        color: '#a8a29e',
-        scale: 0.8,
-        vy: -1
+        y: clickY - 12,
+        text: '🔥 CANNON BLAST!!',
+        alpha: 255,
+        color: '#f59e0b',
+        scale: 1.15,
+        vy: -1.6
       });
     }
   };
