@@ -798,6 +798,69 @@ export const BattleCanvas: React.FC<BattleCanvasProps> = ({
           p.rect(bx, wallY - 8, battlementW, 8);
         }
 
+        // Sneaky Maratha climbers scaling the wings of the fortress walls
+        const scaleXCoords = [w * 0.12, w * 0.28, w * 0.72, w * 0.88];
+        scaleXCoords.forEach((lx, idx) => {
+          // Draw wooden scaling ladders
+          p.stroke('#4a3225');
+          p.strokeWeight(1.8);
+          p.line(lx - 3.5, horizon, lx - 3.5, wallY + 4);
+          p.line(lx + 3.5, horizon, lx + 3.5, wallY + 4);
+          
+          // Ladder rungs
+          p.stroke('#362217');
+          p.strokeWeight(1);
+          for (let ry = wallY + 8; ry < horizon; ry += 7) {
+            p.line(lx - 3.5, ry, lx + 3.5, ry);
+          }
+
+          // Render individual scaling climbers
+          for (let c = 0; c < 2; c++) {
+            const cycleTime = 13000; // milliseconds for a full climb
+            const offset = idx * 3000 + c * 6500;
+            const progress = ((time + offset) % cycleTime) / cycleTime; // 0 to 1
+            
+            // Let them hide at the bottom, scale up, then sneak into the battlement
+            if (progress < 0.15 || progress > 0.85) continue;
+            
+            const climbProgress = (progress - 0.15) / 0.7; // mapped 0 to 1
+            const cy = horizon - climbProgress * (wallHeight - 12);
+            
+            p.noStroke();
+            // Tiny Maratha Saffron Outfit (body)
+            p.fill('#ea580c');
+            p.ellipse(lx, cy, 6, 8);
+            
+            // Gold Turban (head)
+            p.fill('#eab308'); 
+            p.ellipse(lx, cy - 4.5, 4.5, 4.5);
+            
+            // Arm/leg climbing kinematics with relative sway
+            p.stroke('#ea580c');
+            p.strokeWeight(1.2);
+            const climbSway = p.sin(time * 0.016 + idx * 5) * 2;
+            // Left appendages
+            p.line(lx, cy - 2, lx - 4.5, cy - 3 + climbSway);
+            p.line(lx, cy + 2, lx - 4.5, cy + 3.5 - climbSway);
+            // Right appendages
+            p.line(lx, cy - 2, lx + 4.5, cy - 3 - climbSway);
+            p.line(lx, cy + 2, lx + 4.5, cy + 3.5 + climbSway);
+            
+            // Curved sword bundle strapped on back (diagonal steel gray line)
+            p.stroke('#64748b');
+            p.strokeWeight(1);
+            p.line(lx - 3, cy + 3.5, lx + 3, cy - 3.55);
+
+            // Shimmering saffron turban sash tail flutter
+            p.stroke('#f97316');
+            p.strokeWeight(1);
+            const flutterAmt = p.sin(time * 0.024 + idx * 4) * 2;
+            p.line(lx - 1, cy - 4.5, lx - 6, cy - 5 + flutterAmt);
+          }
+        });
+
+        p.noStroke(); // reset stroke state to prevent leakage to gatehouse drawings
+
         // Gatehouse arched gates
         const gateW = w * 0.22;
         const gateX = w * 0.5 - gateW * 0.5;
