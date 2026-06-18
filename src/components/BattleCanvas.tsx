@@ -76,6 +76,8 @@ interface Combatant {
   commanderColor?: string;
   boboffset: number;
   slashTimer: number;
+  division?: 'left' | 'center' | 'right' | 'vanguard';
+  divisionName?: string;
 }
 
 interface BattleCanvasProps {
@@ -377,52 +379,18 @@ export const BattleCanvas: React.FC<BattleCanvasProps> = ({
       : ['Pashtun Ghazi swordsman', 'Durrani Elite Cavalry', 'Camel Swivel Zamburak', 'Durrani War Elephant'];
 
     const enemyCommander = getEnemyCommanderInfo();
-    const initialTargets: Combatant[] = [{
-      id: 999,
-      x: width - 80,
-      y: minGroundY + 0.85 * (maxGroundY - minGroundY),
-      z: 0.85,
-      hp: 350,
-      maxHp: 350,
-      vx: -0.3,
-      type: enemyCommander.name,
-      shieldActive: true,
-      isCommander: true,
-      commanderName: enemyCommander.name,
-      commanderRole: enemyCommander.role,
-      commanderMount: enemyCommander.mount,
-      commanderColor: enemyCommander.color,
-      boboffset: 0,
-      slashTimer: 0
-    }];
-
-    for (let i = 0; i < 7; i++) {
-      // Larger spacing to cover more of the screen beautifully
-      const z = 0.4 + (i % 4) * 0.12 + Math.random() * 0.05;
-      const isRear = i % 2 === 1;
-      initialTargets.push({
-        id: i,
-        // Spread ranks horizontally by 45px intervals instead of 15px clumps
-        x: isRear ? (width - 80 - (i % 4) * 45) : (width - 180 - (i % 4) * 45),
-        y: minGroundY + z * (maxGroundY - minGroundY),
-        z,
-        hp: i % 4 === 3 ? 180 : 100,
-        maxHp: i % 4 === 3 ? 180 : 100,
-        vx: (i % 4 === 3 ? 0.22 : 0.35 + Math.random() * 0.5) * (i % 2 === 0 ? 1 : -1),
-        type: targetTypes[i % 4] || 'Hostile Combatant',
-        shieldActive: i % 2 === 0,
-        boboffset: Math.random() * Math.PI,
-        slashTimer: 0
-      });
-    }
-    targetsRef.current = initialTargets;
-
     const allyCommander = getAlliedCommanderInfo();
-    const initialAllies: Combatant[] = [{
+
+    const initialTargets: Combatant[] = [];
+    const initialAllies: Combatant[] = [];
+
+    // --- 1. CENTER COMMAND DIVISION (मुख्य मध्य विभाग) ---
+    // Allied Center Commander (e.g. Sadashivrao Bhau)
+    initialAllies.push({
       id: 1000,
       x: 80,
-      y: minGroundY + 0.9 * (maxGroundY - minGroundY),
-      z: 0.9,
+      y: minGroundY + 0.52 * (maxGroundY - minGroundY),
+      z: 0.65,
       hp: 350,
       maxHp: 350,
       vx: 0.3,
@@ -434,28 +402,193 @@ export const BattleCanvas: React.FC<BattleCanvasProps> = ({
       commanderMount: allyCommander.mount,
       commanderColor: allyCommander.color,
       boboffset: 0,
-      slashTimer: 0
-    }];
+      slashTimer: 0,
+      division: 'center',
+      divisionName: 'Center Division / मुख्य मध्य विभाग'
+    });
 
-    for (let i = 0; i < 6; i++) {
-      // Smooth vertical and depth dispersion
-      const z = 0.45 + (i % 4) * 0.11 + Math.random() * 0.05;
+    // Enemy Center Commander (e.g. Ahmad Shah Durrani)
+    initialTargets.push({
+      id: 999,
+      x: width - 80,
+      y: minGroundY + 0.52 * (maxGroundY - minGroundY),
+      z: 0.65,
+      hp: 350,
+      maxHp: 350,
+      vx: -0.3,
+      type: enemyCommander.name,
+      shieldActive: true,
+      isCommander: true,
+      commanderName: enemyCommander.name,
+      commanderRole: enemyCommander.role,
+      commanderMount: enemyCommander.mount,
+      commanderColor: enemyCommander.color,
+      boboffset: 0,
+      slashTimer: 0,
+      division: 'center',
+      divisionName: 'Center Division / मुख्य मध्य विभाग'
+    });
+
+    // Center Soldiers (3 on each side)
+    for (let i = 0; i < 3; i++) {
+      const z = 0.58 + i * 0.06 + Math.random() * 0.02;
       const isRear = i % 2 === 1;
+      
+      // Allies
       initialAllies.push({
         id: 100 + i,
-        // Spaced out ranks to fill the vast vertical grid
-        x: isRear ? (80 + (i % 4) * 45) : (180 + (i % 4) * 45),
-        y: minGroundY + z * (maxGroundY - minGroundY),
+        x: isRear ? 60 + i * 40 : 140 + i * 40,
+        y: minGroundY + (0.44 + i * 0.08) * (maxGroundY - minGroundY),
         z,
-        hp: i % 4 === 3 ? 180 : 100,
-        maxHp: i % 4 === 3 ? 180 : 100,
-        vx: (i % 4 === 3 ? 0.22 : 0.42 + Math.random() * 0.4) * (i % 2 === 0 ? 1 : -1),
-        type: allyTypes[i % 4] || 'Allied Soldier',
+        hp: i === 2 ? 180 : 100,
+        maxHp: i === 2 ? 180 : 100,
+        vx: 0.35 + Math.random() * 0.3,
+        type: allyTypes[i % allyTypes.length],
         shieldActive: false,
         boboffset: Math.random() * Math.PI,
-        slashTimer: 0
+        slashTimer: 0,
+        division: 'center',
+        divisionName: 'Center Division / मुख्य मध्य विभाग'
+      });
+
+      // Enemies
+      initialTargets.push({
+        id: 10 + i,
+        x: isRear ? width - 60 - i * 40 : width - 140 - i * 40,
+        y: minGroundY + (0.44 + i * 0.08) * (maxGroundY - minGroundY),
+        z,
+        hp: i === 2 ? 180 : 100,
+        maxHp: i === 2 ? 180 : 100,
+        vx: -(0.35 + Math.random() * 0.3),
+        type: targetTypes[i % targetTypes.length],
+        shieldActive: i % 2 === 0,
+        boboffset: Math.random() * Math.PI,
+        slashTimer: 0,
+        division: 'center',
+        divisionName: 'Center Division / मुख्य मध्य विभाग'
       });
     }
+
+    // --- 2. LEFT FLANK (वाम विभाग - North Lane/Far) ---
+    for (let i = 0; i < 3; i++) {
+      const z = 0.40 + i * 0.05 + Math.random() * 0.02;
+      const isRear = i % 2 === 1;
+
+      // Allies
+      initialAllies.push({
+        id: 200 + i,
+        x: isRear ? 50 + i * 38 : 130 + i * 38,
+        y: minGroundY + (0.06 + i * 0.08) * (maxGroundY - minGroundY),
+        z,
+        hp: 100,
+        maxHp: 100,
+        vx: 0.4 + Math.random() * 0.3,
+        type: allyTypes[i === 1 ? 2 : 0], // blend in cavalry
+        shieldActive: false,
+        boboffset: Math.random() * Math.PI,
+        slashTimer: 0,
+        division: 'left',
+        divisionName: 'Left Flank / वाम पार्श्व विभाग'
+      });
+
+      // Enemies
+      initialTargets.push({
+        id: 20 + i,
+        x: isRear ? width - 50 - i * 38 : width - 130 - i * 38,
+        y: minGroundY + (0.06 + i * 0.08) * (maxGroundY - minGroundY),
+        z,
+        hp: 100,
+        maxHp: 100,
+        vx: -(0.4 + Math.random() * 0.3),
+        type: targetTypes[i === 1 ? 1 : 0],
+        shieldActive: i % 2 === 0,
+        boboffset: Math.random() * Math.PI,
+        slashTimer: 0,
+        division: 'left',
+        divisionName: 'Left Flank / वाम पार्श्व विभाग'
+      });
+    }
+
+    // --- 3. RIGHT FLANK (दक्षिण विभाग - South Lane/Near) ---
+    for (let i = 0; i < 3; i++) {
+      const z = 0.78 + i * 0.05 + Math.random() * 0.02;
+      const isRear = i % 2 === 1;
+
+      // Allies
+      initialAllies.push({
+        id: 300 + i,
+        x: isRear ? 55 + i * 38 : 135 + i * 38,
+        y: minGroundY + (0.72 + i * 0.07) * (maxGroundY - minGroundY),
+        z,
+        hp: 120,
+        maxHp: 120,
+        vx: 0.38 + Math.random() * 0.25,
+        type: allyTypes[i === 1 ? 2 : 1],
+        shieldActive: true,
+        boboffset: Math.random() * Math.PI,
+        slashTimer: 0,
+        division: 'right',
+        divisionName: 'Right Flank / दक्षिण पार्श्व विभाग'
+      });
+
+      // Enemies
+      initialTargets.push({
+        id: 30 + i,
+        x: isRear ? width - 55 - i * 38 : width - 135 - i * 38,
+        y: minGroundY + (0.72 + i * 0.07) * (maxGroundY - minGroundY),
+        z,
+        hp: 120,
+        maxHp: 120,
+        vx: -(0.38 + Math.random() * 0.25),
+        type: targetTypes[i === 1 ? 1 : 2],
+        shieldActive: false,
+        boboffset: Math.random() * Math.PI,
+        slashTimer: 0,
+        division: 'right',
+        divisionName: 'Right Flank / दक्षिण पार्श्व विभाग'
+      });
+    }
+
+    // --- 4. CAVALRY VANGUARD (अग्रगामी दल - Speed Units) ---
+    for (let i = 0; i < 2; i++) {
+      const z = 0.52 + i * 0.15 + Math.random() * 0.02;
+
+      // Allies (Rushing fast vanguard horse riders)
+      initialAllies.push({
+        id: 400 + i,
+        x: 180 + i * 45,
+        y: minGroundY + (0.33 + i * 0.32) * (maxGroundY - minGroundY),
+        z,
+        hp: 130,
+        maxHp: 130,
+        vx: 0.65 + Math.random() * 0.3,
+        type: allyTypes[2], // Cavalry
+        shieldActive: false,
+        boboffset: Math.random() * Math.PI,
+        slashTimer: 0,
+        division: 'vanguard',
+        divisionName: 'Cavalry Vanguard / अग्रगामी दल'
+      });
+
+      // Enemies
+      initialTargets.push({
+        id: 40 + i,
+        x: width - 180 - i * 45,
+        y: minGroundY + (0.33 + i * 0.32) * (maxGroundY - minGroundY),
+        z,
+        hp: 130,
+        maxHp: 130,
+        vx: -(0.65 + Math.random() * 0.3),
+        type: targetTypes[1], // Cavalry
+        shieldActive: false,
+        boboffset: Math.random() * Math.PI,
+        slashTimer: 0,
+        division: 'vanguard',
+        divisionName: 'Cavalry Vanguard / अग्रगामी दल'
+      });
+    }
+
+    targetsRef.current = initialTargets;
     alliedSoldiersRef.current = initialAllies;
     battleModeRef.current = 'marching';
   };
@@ -491,6 +624,8 @@ export const BattleCanvas: React.FC<BattleCanvasProps> = ({
         for (let i = 0; i < spawnCount; i++) {
           const id = 10000 + Math.floor(Math.random() * 9000);
           const z = 0.45 + Math.random() * 0.45;
+          const div: 'left' | 'center' | 'right' = z < 0.54 ? 'left' : z > 0.76 ? 'right' : 'center';
+          const divName = div === 'left' ? 'Left Flank / वाम पार्श्व विभाग' : div === 'right' ? 'Right Flank / दक्षिण पार्श्व विभाग' : 'Center Division / मुख्य मध्य विभाग';
           arr.push({
             id,
             x: 40 + Math.random() * 80,
@@ -502,7 +637,9 @@ export const BattleCanvas: React.FC<BattleCanvasProps> = ({
             type: spawnAllyType || 'Royal Guard Vanguard',
             shieldActive: false,
             boboffset: Math.random() * Math.PI,
-            slashTimer: 0
+            slashTimer: 0,
+            division: div,
+            divisionName: divName
           });
         }
         alliedSoldiersRef.current = arr;
@@ -529,6 +666,8 @@ export const BattleCanvas: React.FC<BattleCanvasProps> = ({
         for (let i = 0; i < spawnCount; i++) {
           const id = 20000 + Math.floor(Math.random() * 9000);
           const z = 0.4 + Math.random() * 0.5;
+          const div: 'left' | 'center' | 'right' = z < 0.54 ? 'left' : z > 0.76 ? 'right' : 'center';
+          const divName = div === 'left' ? 'Left Flank / वाम पार्श्व विभाग' : div === 'right' ? 'Right Flank / दक्षिण पार्श्व विभाग' : 'Center Division / मुख्य मध्य विभाग';
           arr.push({
             id,
             x: pW - 120 + Math.random() * 60,
@@ -540,7 +679,9 @@ export const BattleCanvas: React.FC<BattleCanvasProps> = ({
             type: spawnEnemyType || 'Afghan Heavy Ghazi',
             shieldActive: Math.random() > 0.5,
             boboffset: Math.random() * Math.PI,
-            slashTimer: 0
+            slashTimer: 0,
+            division: div,
+            divisionName: divName
           });
         }
         targetsRef.current = arr;
@@ -768,6 +909,35 @@ export const BattleCanvas: React.FC<BattleCanvasProps> = ({
           p.vertex(px + 3, yPos);
           p.endShape(p.CLOSE);
         }
+
+        // --- DYNAMIC STRATEGIC WINGS GROUND LABELS ---
+        p.push();
+        p.textAlign(p.CENTER, p.CENTER);
+        p.textFont('Georgia');
+        p.textStyle(p.BOLD);
+
+        // LEFT WING (FAR DEPTH NORTH LANE)
+        p.textSize(10);
+        p.fill('rgba(239, 68, 68, 0.08)'); // subtle crimson
+        p.text("◀◀ LEFT FLANK • वाम बाजू ▶▶", w * 0.5, horizon + (h - horizon) * 0.18);
+
+        // CENTER COLUMN
+        p.textSize(12);
+        p.fill('rgba(245, 158, 11, 0.12)'); // royal orange
+        p.text("🛡️ CENTER MAIN COLUMN • मुख्य मध्य विभाग 🛡️", w * 0.5, horizon + (h - horizon) * 0.5);
+
+        // RIGHT WING (NEAR DEPTH SOUTH LANE)
+        p.textSize(10);
+        p.fill('rgba(59, 130, 246, 0.09)'); // azure blue
+        p.text("◀◀ RIGHT FLANK • दक्षिण बाजू ▶▶", w * 0.5, horizon + (h - horizon) * 0.84);
+
+        // VANGUARD CAVALRY OUTPOSTS
+        p.textSize(8);
+        p.fill('rgba(168, 85, 247, 0.09)'); // elegant violet
+        p.text("🏇 CAVALRY VANGUARD • अग्र आगामी पथक", w * 0.28, horizon + (h - horizon) * 0.35);
+        p.text("🏇 CAVALRY VANGUARD • अग्र आगामी पथक", w * 0.72, horizon + (h - horizon) * 0.35);
+
+        p.pop();
       }
 
       function drawFortressWalls(p: p5, w: number, h: number, horizon: number, time: number, s: any) {
@@ -1043,44 +1213,50 @@ export const BattleCanvas: React.FC<BattleCanvasProps> = ({
               item.x += isEnemy ? -1.2 : 1.2;
             } else {
               // SCATTERED DUELS: lock target of opposite side
-              const oppositionList = isEnemy ? alliedSoldiersRef.current : targetsRef.current;
-
-              // STAGGERED RE-EVALUATION ENGINES to prevent crowding under commanders
-              const shouldReevaluate = !item.targetId || (p.frameCount + (item.id % 23)) % 40 === 0;
-              let target = (!shouldReevaluate && item.targetId) ? oppositionList.find(o => o.id === item.targetId && o.hp > 0) : null;
-
-              if (shouldReevaluate || !target) {
-                let nearest: Combatant | null = null;
-                let minScore = Infinity;
-                
-                const ourAllianceList = isEnemy ? targetsRef.current : alliedSoldiersRef.current;
-
-                for (let idx = 0; idx < oppositionList.length; idx++) {
-                  const o = oppositionList[idx];
-                  if (o.hp > 0) {
-                    // Count how many of our side are already targeting this person
-                    const targeterCount = ourAllianceList.filter(u => u.hp > 0 && u.id !== item.id && u.targetId === o.id).length;
-
-                    const dx = o.x - item.x;
-                    const dy = o.y - item.y;
-                    const distSq = dx * dx + dy * dy;
-
-                    // Add a massive penalty for already targeted units to disperse fight naturally and pair off 1-on-1
-                    const score = distSq + (targeterCount > 0 ? 300000 + targeterCount * 150000 : 0);
-                    if (score < minScore) {
-                      minScore = score;
-                      nearest = o;
-                    }
-                  }
-                }
-                if (nearest) {
-                  item.targetId = nearest.id;
-                  target = nearest;
-                } else {
-                  item.targetId = null;
-                  target = null;
-                }
-              }
+               const oppositionList = isEnemy ? alliedSoldiersRef.current : targetsRef.current;
+ 
+               // STAGGERED RE-EVALUATION ENGINES to prevent crowding under commanders
+               const shouldReevaluate = !item.targetId || (p.frameCount + (item.id % 23)) % 40 === 0;
+               let target = (!shouldReevaluate && item.targetId) ? oppositionList.find(o => o.id === item.targetId && o.hp > 0) : null;
+ 
+               if (shouldReevaluate || !target) {
+                 let nearest: Combatant | null = null;
+                 let minScore = Infinity;
+                 
+                 const ourAllianceList = isEnemy ? targetsRef.current : alliedSoldiersRef.current;
+ 
+                 // Segment targeting lookup. Prioritize enemies in the local division.
+                 let candidates = oppositionList.filter(o => o.hp > 0 && o.division === item.division);
+                 if (candidates.length === 0) {
+                   candidates = oppositionList.filter(o => o.hp > 0);
+                 }
+ 
+                 for (let idx = 0; idx < candidates.length; idx++) {
+                   const o = candidates[idx];
+                   if (o.hp > 0) {
+                     // Count how many of our side are already targeting this person
+                     const targeterCount = ourAllianceList.filter(u => u.hp > 0 && u.id !== item.id && u.targetId === o.id).length;
+ 
+                     const dx = o.x - item.x;
+                     const dy = o.y - item.y;
+                     const distSq = dx * dx + dy * dy;
+ 
+                     // Add a massive penalty for already targeted units to disperse fight naturally and pair off 1-on-1
+                     const score = distSq + (targeterCount > 0 ? 300000 + targeterCount * 150000 : 0);
+                     if (score < minScore) {
+                       minScore = score;
+                       nearest = o;
+                     }
+                   }
+                 }
+                 if (nearest) {
+                   item.targetId = nearest.id;
+                   target = nearest;
+                 } else {
+                   item.targetId = null;
+                   target = null;
+                 }
+               }
 
               // Dynamic Separation Steering forces (repulsion from allies and enemies)
               let sepX = 0;
@@ -1538,6 +1714,29 @@ export const BattleCanvas: React.FC<BattleCanvasProps> = ({
           }
         });
 
+        // High-fidelity holographic target card HUD when hovering over any unit (ally or enemy)
+        let hoveredUnit: Combatant | null = null;
+        let isHoveredEnemy = false;
+
+        // Check enemies first
+        for (const t of targetsRef.current) {
+          if (t.hp > 0 && p.dist(t.x, t.y, lx, ly) < (25 * t.z + 24)) {
+            hoveredUnit = t;
+            isHoveredEnemy = true;
+            break;
+          }
+        }
+        // Then check allies
+        if (!hoveredUnit) {
+          for (const a of alliedSoldiersRef.current) {
+            if (a.hp > 0 && p.dist(a.x, a.y, lx, ly) < (25 * a.z + 24)) {
+              hoveredUnit = a;
+              isHoveredEnemy = false;
+              break;
+            }
+          }
+        }
+
         p.textAlign(p.LEFT, p.CENTER);
         p.textSize(8);
         p.noStroke();
@@ -1547,6 +1746,42 @@ export const BattleCanvas: React.FC<BattleCanvasProps> = ({
         } else {
           p.fill('#efa600');
           p.text("CANNON FIRE LOCK - CLICK TO BLAST", lx + 18, ly);
+        }
+
+        // Draw HUD overlay card
+        if (hoveredUnit) {
+          const divName = hoveredUnit.divisionName || (hoveredUnit.division === 'left' ? 'Left Flank / वाम विभाग' : hoveredUnit.division === 'right' ? 'Right Flank / उजवी बाजू' : hoveredUnit.division === 'vanguard' ? 'Cavalry Vanguard' : 'Center Column / मुख्य दल');
+          p.push();
+          p.translate(lx + 15, ly - 62);
+          
+          // Transparent deep slate background box
+          p.stroke(isHoveredEnemy ? '#f87171' : '#60a5fa');
+          p.strokeWeight(1.5);
+          p.fill('rgba(15, 23, 42, 0.9)');
+          p.rect(0, 0, 168, 48, 4);
+
+          // Header Name
+          p.noStroke();
+          p.fill('#ffffff');
+          p.textSize(9);
+          p.textFont('monospace');
+          p.textStyle(p.BOLD);
+          p.text(hoveredUnit.isCommander ? (hoveredUnit.commanderName || "COMMANDER") : hoveredUnit.type, 8, 14);
+
+          // Division
+          p.fill(isHoveredEnemy ? '#fca5a5' : '#93c5fd');
+          p.textSize(8);
+          p.textStyle(p.NORMAL);
+          p.text(`🚩 ${divName}`, 8, 26);
+
+          // HP Bar
+          p.fill('rgba(255, 255, 255, 0.15)');
+          p.rect(8, 35, 152, 4);
+          p.fill(isHoveredEnemy ? '#ef4444' : '#22c55e');
+          const percent = hoveredUnit.hp / hoveredUnit.maxHp;
+          p.rect(8, 35, 152 * percent, 4);
+
+          p.pop();
         }
       }
 
