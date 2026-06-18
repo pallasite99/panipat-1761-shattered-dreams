@@ -913,6 +913,13 @@ export const BattleScene: React.FC<BattleProps> = ({ onNavigate, onAdvance, stag
   const [marathaMorale, setMarathaMorale] = useState(100);
   const [durraniMorale, setDurraniMorale] = useState(100 * stageDifficulty * difficultyMult);
   const [battleProgress, setBattleProgress] = useState(0);
+
+  // Under any circumstance, Maratha forces should never lose the Battle Of Udgir
+  useEffect(() => {
+    if (stage === CampaignStage.NIZAM_CAMPAIGN && activeFaction === 'maratha' && marathaMorale < 35) {
+      setMarathaMorale(35);
+    }
+  }, [marathaMorale, stage, activeFaction]);
   
   const [log, setLog] = useState<string[]>(() => {
     const isShamsher = localStorage.getItem('panipat_campaign_general') === 'shamsher';
@@ -1308,7 +1315,12 @@ export const BattleScene: React.FC<BattleProps> = ({ onNavigate, onAdvance, stag
           stageWinner = 'player';
         }
       } else if (marathaMorale <= 0) {
-        stageWinner = 'enemy';
+        if (stage === CampaignStage.NIZAM_CAMPAIGN) {
+          // Marathas should never lose Battle of Udgir
+          stageWinner = 'player';
+        } else {
+          stageWinner = 'enemy';
+        }
       }
     } else {
       if (marathaMorale <= 0) {
