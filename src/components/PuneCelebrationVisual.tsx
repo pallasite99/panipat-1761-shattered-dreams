@@ -55,6 +55,7 @@ export const PuneCelebrationVisual: React.FC = () => {
 
   // Shared ref triggers to push interactions straight to the p5 canvas context
   const onDrumBeatRef = useRef<(() => void) | null>(null);
+  const onLaunchRocketRef = useRef<((tx: number, ty: number) => void) | null>(null);
 
   useEffect(() => {
     const sketch = (p: p5) => {
@@ -341,6 +342,10 @@ export const PuneCelebrationVisual: React.FC = () => {
         });
         setCelebrationPower(p => Math.min(200, p + 6));
       }
+
+      onLaunchRocketRef.current = (tx: number, ty: number) => {
+        triggerLaunch(tx, ty);
+      };
 
       function updateFireworksAndSparks(p: p5, w: number, h: number) {
         // Update Rockets
@@ -818,6 +823,14 @@ export const PuneCelebrationVisual: React.FC = () => {
     }
   };
 
+  const handleCanvasClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!containerRef.current || !onLaunchRocketRef.current) return;
+    const rect = containerRef.current.getBoundingClientRect();
+    const mx = e.clientX - rect.left;
+    const my = e.clientY - rect.top;
+    onLaunchRocketRef.current(mx, my);
+  };
+
   return (
     <div className="flex flex-col gap-4">
       {/* Visual Canvas Panel */}
@@ -834,7 +847,11 @@ export const PuneCelebrationVisual: React.FC = () => {
         </div>
 
         {/* This div receives the p5 canvas */}
-        <div ref={containerRef} className="w-full h-full relative z-10 cursor-crosshair overflow-hidden" />
+        <div 
+          ref={containerRef} 
+          onClick={handleCanvasClick}
+          className="w-full h-full relative z-10 cursor-crosshair overflow-hidden" 
+        />
 
         {/* Shaniwar Wada Signet overlay bottom left */}
         <div className="absolute bottom-3 left-3 z-20 bg-stone-950/90 border border-[#8B5E3C]/40 px-3 py-2 rounded-xs pointer-events-none">

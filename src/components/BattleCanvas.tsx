@@ -474,49 +474,77 @@ export const BattleCanvas: React.FC<BattleCanvasProps> = ({
     if (spawnAllyTrigger > prevSpawnAllyTrigger.current) {
       const qty = spawnAllyTrigger - prevSpawnAllyTrigger.current;
       prevSpawnAllyTrigger.current = spawnAllyTrigger;
-      const arr = [...alliedSoldiersRef.current];
-      for (let i = 0; i < qty; i++) {
-        const id = 10000 + Math.floor(Math.random() * 9000);
-        const z = 0.45 + Math.random() * 0.45;
-        arr.push({
-          id,
-          x: 40 + Math.random() * 80,
-          y: 200 + z * 100,
-          z,
-          hp: 150,
-          maxHp: 150,
-          vx: 0.5 + Math.random() * 0.3,
-          type: spawnAllyType || 'Royal Guard Vanguard',
-          shieldActive: false,
-          boboffset: Math.random() * Math.PI,
-          slashTimer: 0
-        });
+
+      const liveAllies = alliedSoldiersRef.current.filter(a => a.hp > 0);
+      const liveCount = liveAllies.length;
+      const maxLiveCap = 7;
+      const allowedToSpawn = Math.max(0, maxLiveCap - liveCount);
+      const spawnCount = Math.min(qty, allowedToSpawn);
+
+      if (spawnCount > 0) {
+        const pW = p5InstanceRef.current?.width || 800;
+        const pH = p5InstanceRef.current?.height || 400;
+        const minGroundY = pH * 0.38;
+        const maxGroundY = pH * 0.72;
+
+        const arr = [...alliedSoldiersRef.current];
+        for (let i = 0; i < spawnCount; i++) {
+          const id = 10000 + Math.floor(Math.random() * 9000);
+          const z = 0.45 + Math.random() * 0.45;
+          arr.push({
+            id,
+            x: 40 + Math.random() * 80,
+            y: minGroundY + z * (maxGroundY - minGroundY),
+            z,
+            hp: 150,
+            maxHp: 150,
+            vx: 0.5 + Math.random() * 0.3,
+            type: spawnAllyType || 'Royal Guard Vanguard',
+            shieldActive: false,
+            boboffset: Math.random() * Math.PI,
+            slashTimer: 0
+          });
+        }
+        alliedSoldiersRef.current = arr;
       }
-      alliedSoldiersRef.current = arr;
     }
 
     if (spawnEnemyTrigger > prevSpawnEnemyTrigger.current) {
       const qty = spawnEnemyTrigger - prevSpawnEnemyTrigger.current;
       prevSpawnEnemyTrigger.current = spawnEnemyTrigger;
-      const arr = [...targetsRef.current];
-      for (let i = 0; i < qty; i++) {
-        const id = 20000 + Math.floor(Math.random() * 9000);
-        const z = 0.4 + Math.random() * 0.5;
-        arr.push({
-          id,
-          x: 720 + Math.random() * 60,
-          y: 200 + z * 100,
-          z,
-          hp: 140,
-          maxHp: 140,
-          vx: -(0.48 + Math.random() * 0.35),
-          type: spawnEnemyType || 'Afghan Heavy Ghazi',
-          shieldActive: Math.random() > 0.5,
-          boboffset: Math.random() * Math.PI,
-          slashTimer: 0
-        });
+
+      const liveHostiles = targetsRef.current.filter(t => t.hp > 0);
+      const liveCount = liveHostiles.length;
+      const maxLiveCap = 7;
+      const allowedToSpawn = Math.max(0, maxLiveCap - liveCount);
+      const spawnCount = Math.min(qty, allowedToSpawn);
+
+      if (spawnCount > 0) {
+        const pW = p5InstanceRef.current?.width || 800;
+        const pH = p5InstanceRef.current?.height || 400;
+        const minGroundY = pH * 0.38;
+        const maxGroundY = pH * 0.72;
+
+        const arr = [...targetsRef.current];
+        for (let i = 0; i < spawnCount; i++) {
+          const id = 20000 + Math.floor(Math.random() * 9000);
+          const z = 0.4 + Math.random() * 0.5;
+          arr.push({
+            id,
+            x: pW - 120 + Math.random() * 60,
+            y: minGroundY + z * (maxGroundY - minGroundY),
+            z,
+            hp: 140,
+            maxHp: 140,
+            vx: -(0.48 + Math.random() * 0.35),
+            type: spawnEnemyType || 'Afghan Heavy Ghazi',
+            shieldActive: Math.random() > 0.5,
+            boboffset: Math.random() * Math.PI,
+            slashTimer: 0
+          });
+        }
+        targetsRef.current = arr;
       }
-      targetsRef.current = arr;
     }
   }, [spawnAllyTrigger, spawnEnemyTrigger, spawnAllyType, spawnEnemyType, phase]);
 
@@ -974,8 +1002,8 @@ export const BattleCanvas: React.FC<BattleCanvasProps> = ({
                     const dy = o.y - item.y;
                     const distSq = dx * dx + dy * dy;
 
-                    // Add a massive penalty for already targeted units to disperse fight naturally
-                    const score = distSq + targeterCount * 140000;
+                    // Add a massive penalty for already targeted units to disperse fight naturally and pair off 1-on-1
+                    const score = distSq + (targeterCount > 0 ? 300000 + targeterCount * 150000 : 0);
                     if (score < minScore) {
                       minScore = score;
                       nearest = o;
