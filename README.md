@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="public/readme_banner.png" alt="Panipat 1761: Shattered Dreams Banner" width="100%" style="border-radius: 8px; margin-bottom: 20px;" />
+  <img src="public/readme_banner.jpg" alt="Panipat 1761: Shattered Dreams Banner" width="100%" style="border-radius: 8px; margin-bottom: 20px;" />
 
   # ⚔️ Panipat: 1761
   ### *A Cinematic, Skeuomorphic Strategy Simulation of the Third Battle of Panipat*
