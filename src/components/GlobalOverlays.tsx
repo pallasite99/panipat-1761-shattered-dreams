@@ -89,7 +89,7 @@ export const HelpOverlay: React.FC<OverlayProps> = ({ isOpen, onClose }) => {
 
 import { panipatAudioEngine } from '../utils/audioSystem';
 
-export const SettingsOverlay: React.FC<OverlayProps> = ({ isOpen, onClose }) => {
+export const SettingsOverlay: React.FC<OverlayProps & { onSaveLoad?: () => void }> = ({ isOpen, onClose, onSaveLoad }) => {
   const [vol, setVol] = React.useState(() => panipatAudioEngine.getVolume());
   const [campaignTrack, setCampaignTrack] = React.useState(() => panipatAudioEngine.getCampaignTrack());
   const [battleTrack, setBattleTrack] = React.useState(() => panipatAudioEngine.getBattleTrack());
@@ -158,6 +158,26 @@ export const SettingsOverlay: React.FC<OverlayProps> = ({ isOpen, onClose }) => 
               </div>
 
               <div className="space-y-8">
+                 {/* CAMPAIGN SAVE LOAD SHORTCUT BUTTON */}
+                 {onSaveLoad && (
+                    <div className="p-4 border border-[#8B5E3C] bg-stone-950/65 rounded-sm flex flex-col sm:flex-row items-center justify-between gap-4">
+                       <div className="text-left">
+                          <p className="text-xs text-white uppercase font-black tracking-widest">💾 Campaign Registry Center</p>
+                          <p className="text-[9px] text-stone-500 uppercase font-bold tracking-widest mt-1">Manage, load progress slots, or import and export saves</p>
+                       </div>
+                       <button
+                          type="button"
+                          onClick={() => {
+                             onClose();
+                             onSaveLoad();
+                          }}
+                          className="px-6 py-2 bg-gradient-to-r from-saffron to-amber-650 hover:from-amber-400 hover:to-amber-500 text-stone-950 font-mono text-[10px] font-black uppercase tracking-widest rounded-xs cursor-pointer shadow-md transition-all active:scale-95"
+                       >
+                          Open Registry Desk
+                       </button>
+                    </div>
+                 )}
+
                  {/* 1. MASTER VOLUME */}
                  <div className="flex flex-col gap-3">
                     <div className="flex justify-between items-center">

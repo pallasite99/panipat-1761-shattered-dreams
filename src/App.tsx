@@ -22,15 +22,19 @@ import { HelpOverlay, SettingsOverlay } from './components/GlobalOverlays';
 import { BattleLogOverlay } from './components/BattleLogOverlay';
 import { FeedbackWidget } from './components/FeedbackWidget';
 import { panipatAudioEngine } from './utils/audioSystem';
+import { CampaignSaveLoad } from './components/CampaignSaveLoad';
 
 export default function App() {
   const [currentScreen, setCurrentScreen] = useState<Screen>(Screen.MAIN_MENU);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [campaignStage, setCampaignStage] = useState<CampaignStage>(CampaignStage.NIZAM_CAMPAIGN);
+  const [campaignStage, setCampaignStage] = useState<CampaignStage>(() => {
+    return (localStorage.getItem('panipat_campaign_stage') as CampaignStage) || CampaignStage.NIZAM_CAMPAIGN;
+  });
   const [audioStarted, setAudioStarted] = useState(false);
   const [isHelpOpen, setIsHelpOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isBattleLogOpen, setIsBattleLogOpen] = useState(false);
+  const [isSaveLoadOpen, setIsSaveLoadOpen] = useState(false);
 
   React.useEffect(() => {
     localStorage.setItem('panipat_campaign_stage', campaignStage);
@@ -72,6 +76,7 @@ export default function App() {
       onHelp: () => setIsHelpOpen(true),
       onSettings: () => setIsSettingsOpen(true),
       onShowBattleLog: () => setIsBattleLogOpen(true),
+      onSaveLoad: () => setIsSaveLoadOpen(true),
     };
 
     switch (currentScreen) {
@@ -131,6 +136,15 @@ export default function App() {
       <HelpOverlay isOpen={isHelpOpen} onClose={() => setIsHelpOpen(false)} />
       <SettingsOverlay isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
       <BattleLogOverlay isOpen={isBattleLogOpen} onClose={() => setIsBattleLogOpen(false)} campaignStage={campaignStage} />
+      <CampaignSaveLoad 
+        isOpen={isSaveLoadOpen} 
+        onClose={() => setIsSaveLoadOpen(false)} 
+        onLoadSuccess={(loadedStage) => {
+          setCampaignStage(loadedStage);
+          handleNavigate(Screen.STRATEGIC_MAP);
+        }}
+        allowSave={currentScreen !== Screen.MAIN_MENU}
+      />
       <FeedbackWidget currentScreen={currentScreen} />
     </div>
   );

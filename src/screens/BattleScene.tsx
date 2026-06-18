@@ -1113,10 +1113,6 @@ export const BattleScene: React.FC<BattleProps> = ({ onNavigate, onAdvance, stag
       
       setDurraniMorale(prev => {
         const next = Math.max(0, prev - rawDurraniLoss);
-        if (next <= 0 && stageDuelsWon === 0 && activeFaction === 'maratha') {
-          // Compulsory talwar duel is required! Display notice
-          return 1; // Keep pegged at 1 until they win the close combat duel
-        }
         return next;
       });
 
@@ -1307,9 +1303,6 @@ export const BattleScene: React.FC<BattleProps> = ({ onNavigate, onAdvance, stag
       if (durraniMorale <= 0) {
         if (isSiege && fortWallIntegrity > 0) {
           // The battle is never-ending even if strength is 0, until walls break!
-          stageWinner = null;
-        } else if (stageDuelsWon === 0) {
-          // Block round victory if the player hasn't completed their compulsory sword duel
           stageWinner = null;
         } else {
           stageWinner = 'player';
@@ -3060,16 +3053,16 @@ export const BattleScene: React.FC<BattleProps> = ({ onNavigate, onAdvance, stag
                             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-orange-400 opacity-75"></span>
                             <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-saffron"></span>
                           </span>
-                          {stageDuelsWon > 0 ? "★ COMMANDER DUEL: SECURED" : "⭐ COMPULSORY COMMANDER SECURED DUEL"}
+                          {stageDuelsWon > 0 ? "★ COMMANDER DUEL: VICTORY" : "⭐ HIGH-REWARD COMMANDER DUEL (OPTIONAL)"}
                         </h4>
                         <h5 className="text-[13px] font-serif font-black text-white leading-tight uppercase mt-1">
                           ⚔️ Dueling Sardar Jahan Khan (Close Combat)
                         </h5>
                         <p className="text-[10.5px] text-stone-300 mt-1 leading-snug font-sans">
                           {stageDuelsWon > 0 ? (
-                            <span className="text-emerald-400 font-bold">✓ Enemy commander Ahmad Shah's top general Jahan Khan has been slain in single sword-play! Afghan core center broken!</span>
+                            <span className="text-emerald-400 font-bold">✓ Enemy commander Jahan Khan has been slain in single combat! Afghan core center broken; colossal morale damage inflicted!</span>
                           ) : (
-                            <span className="text-amber-300 font-medium">⚠️ YOU MUST WIN THIS DUEL: The battle cannot end with victory unless you personally cross steel with their vanguard chief and defeat him!</span>
+                            <span className="text-amber-300 font-medium">⚠️ STRATEGIC OPPORTUNITY: Slay their vanguard chief in a direct talwar clash to instantly crack enemy morale and secure easy victory!</span>
                           )}
                         </p>
                       </div>
@@ -3088,7 +3081,7 @@ export const BattleScene: React.FC<BattleProps> = ({ onNavigate, onAdvance, stag
                         }}
                         className="w-full mt-3 py-2 bg-gradient-to-r from-saffron to-[#9a3412] hover:from-[#f59e0b] hover:to-[#b45308] disabled:opacity-40 text-stone-950 font-mono text-[9px] font-black uppercase tracking-wider border border-[#fed7aa] rounded-xs cursor-pointer flex items-center justify-center gap-1.5 shadow-md transition-all active:scale-[0.98]"
                       >
-                        ⚔️ ENTER COMPULSORY SWORD DUEL
+                        ⚔️ CHALLENGE PASHTUN GENERAL (DUEL)
                       </button>
                     ) : (
                       <div className="w-full mt-3 py-1.5 bg-emerald-950 border border-emerald-500/30 text-emerald-400 text-center font-mono text-[9px] uppercase tracking-wider rounded-xs">

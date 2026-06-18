@@ -241,7 +241,8 @@ export const MainMenu: React.FC<{
   setCampaignStage: (s: CampaignStage) => void;
   onHelp?: () => void;
   onSettings?: () => void;
-}> = ({ onNavigate, setCampaignStage, onHelp, onSettings }) => {
+  onSaveLoad?: () => void;
+}> = ({ onNavigate, setCampaignStage, onHelp, onSettings, onSaveLoad }) => {
   const [appState, setAppState] = useState<'intro' | 'assets' | 'story' | 'faction' | 'general' | 'menu'>('intro');
   const [devMode, setDevMode] = useState(false);
   const [faction, setFaction] = useState<'maratha' | 'durrani' | null>(null);
@@ -294,6 +295,19 @@ export const MainMenu: React.FC<{
                       <span className="text-red-650 font-serif text-3xl uppercase tracking-widest font-bold">Durrani Empire</span>
                   </motion.button>
               </div>
+
+              {onSaveLoad && (
+                <div className="mt-12 flex flex-col items-center gap-2">
+                  <span className="text-[10px] text-stone-500 uppercase tracking-widest font-mono">Or restore a previously saved campaign</span>
+                  <button
+                    type="button"
+                    onClick={onSaveLoad}
+                    className="px-6 py-2.5 bg-stone-900 hover:bg-stone-850 border border-stone-800 hover:border-saffron text-saffron font-mono text-[10px] font-black uppercase tracking-widest rounded-sm transition-all duration-200 cursor-pointer shadow-lg flex items-center gap-2"
+                  >
+                    📂 Load Saved Campaign
+                  </button>
+                </div>
+              )}
           </div>
       )
   }
