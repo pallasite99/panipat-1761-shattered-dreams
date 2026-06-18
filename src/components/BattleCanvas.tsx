@@ -1322,6 +1322,30 @@ export const BattleCanvas: React.FC<BattleCanvasProps> = ({
                 if (item.x < 40 || item.x > w - 40) item.vx *= -1;
               }
 
+              // Define strict discrete vertical lane bounds for each of the 4 divisions (preventing clumping completely)
+              const minG = h * 0.38;
+              const maxG = h * 0.72;
+              let laneMin = minG;
+              let laneMax = maxG;
+              if (item.division === 'left') {
+                laneMin = minG;
+                laneMax = minG + 0.22 * (maxG - minG);
+              } else if (item.division === 'vanguard') {
+                laneMin = minG + 0.25 * (maxG - minG);
+                laneMax = minG + 0.52 * (maxG - minG);
+              } else if (item.division === 'center') {
+                laneMin = minG + 0.40 * (maxG - minG);
+                laneMax = minG + 0.70 * (maxG - minG);
+              } else if (item.division === 'right') {
+                laneMin = minG + 0.75 * (maxG - minG);
+                laneMax = maxG;
+              }
+              const laneCenter = (laneMin + laneMax) / 2;
+
+              // Gentle spring force back to designated tactical lane centering
+              const lanePull = (laneCenter - item.y) * 0.12;
+              sepY += lanePull;
+
               // Combine steering directions
               let finalVx = desiredVx + sepX;
               let finalVy = desiredVy + sepY;
@@ -1336,11 +1360,9 @@ export const BattleCanvas: React.FC<BattleCanvasProps> = ({
               item.x += finalVx;
               item.y += finalVy;
 
-              // Strict border bound checks utilizing canvas dimensions and 3D terrain ground layer
-              const minG = h * 0.38;
-              const maxG = h * 0.72;
+              // Strict border and tactical division bounding
               item.x = p.constrain(item.x, 30, w - 30);
-              item.y = p.constrain(item.y, minG, maxG);
+              item.y = p.constrain(item.y, laneMin, laneMax);
             }
           }
 
