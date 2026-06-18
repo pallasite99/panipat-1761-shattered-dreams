@@ -3268,31 +3268,22 @@ export const StrategicMap: React.FC<{
                   <div className="space-y-6">
                     {activeFaction === "maratha" ? (
                       <>
-                        <div className="text-center space-y-1.5">
-                          <span className="px-3 py-1 bg-gradient-to-r from-amber-500 to-saffron text-stone-950 font-mono font-black text-[9.5px] tracking-widest uppercase rounded-xs">
-                            🏆 TRIUMPH AT UDGIR CELEBRATED
+                        <div className="text-center space-y-1">
+                          <span className="px-2.5 py-0.5 bg-gradient-to-r from-amber-500 to-saffron text-stone-950 font-mono font-black text-[8.5px] tracking-widest uppercase rounded-xs">
+                            🏆 DECCAN CONQUEST CELEBRATED
                           </span>
-                          <h3 className="font-serif text-2xl md:text-3xl text-white uppercase tracking-wide">
-                            Pune Rejoices the Deccan Conquest!
+                          <h3 className="font-serif text-xl md:text-2xl text-white uppercase tracking-wide">
+                            Pune Rejoices at Shaniwar Wada!
                           </h3>
-                          <p className="text-stone-300 font-sans text-xs max-w-xl mx-auto leading-relaxed">
-                            Following your grand victory over the Hyderabad Nizam at Udgiri, Shaniwar Wada Palace erupts in royal saffron celebrations. Secure tribute chests, hear the victory drums, and rejoice before entering the campaign planning room!
-                          </p>
                         </div>
 
                         {/* Interactive Celebration Component */}
                         <PuneCelebrationVisual />
-
-                        <div className="h-px bg-stone-800 my-4" />
-
-                        <p className="text-stone-300 font-serif italic text-xs leading-relaxed text-center">
-                          "Sadashivrao Bhau, as state financier and de-facto generalissimo, you stand before the Peshwa's court. Debts from recent campaigns reach 15 Lakh Mohurs, yet the threat of Ahmad Shah Abdali's northern league looms near. You must negotiate your command, your tactical path, and your financial war reserves before the grand army departs Pune."
-                        </p>
                       </>
                     ) : (
                       <>
-                        <p className="text-stone-300 font-serif italic text-sm md:text-base leading-relaxed">
-                          Ahmad Shah Durrani, sovereign monarch of Afghanistan, you assemble the grand durbar of Pashtun, Rohilla, and Baloch emirs. While previous Delhi raids yielded immense silver treasury, Maratha expansion threatens your eastern borders. Command loyalty, secure reserves, and map your path now.
+                        <p className="text-stone-300 font-serif italic text-xs leading-relaxed text-center">
+                          Ahmad Shah Durrani, assemble the Afghan Durbar. Secure tribal alliances and map your grand march across the Indus.
                         </p>
                       </>
                     )}
