@@ -591,7 +591,18 @@ export const BattleCanvas: React.FC<BattleCanvasProps> = ({
     targetsRef.current = initialTargets;
     alliedSoldiersRef.current = initialAllies;
     battleModeRef.current = 'marching';
+    deadAlliesRef.current.clear();
+    deadEnemiesRef.current.clear();
+    registeredShoutsRef.current.clear();
   };
+
+  useEffect(() => {
+    if (phase === 'initial') {
+      const w = containerRef.current?.clientWidth || 800;
+      const h = containerRef.current?.clientHeight || 480;
+      resetToFormations(w, h);
+    }
+  }, [phase, stage]);
 
   // Watch reinforcement triggers to execute real-time additions of veterans
   const prevSpawnAllyTrigger = useRef(0);
@@ -709,6 +720,8 @@ export const BattleCanvas: React.FC<BattleCanvasProps> = ({
           for (let i = canvases.length - 1; i >= 0; i--) {
             canvases[i].remove();
           }
+          canvasWidth = containerRef.current.clientWidth || 800;
+          canvasHeight = containerRef.current.clientHeight || 480;
         }
         const canvas = p.createCanvas(canvasWidth, canvasHeight);
         canvas.parent(containerRef.current!);
@@ -733,7 +746,7 @@ export const BattleCanvas: React.FC<BattleCanvasProps> = ({
           });
         }
 
-        // Initialize entities
+        // Initialize entities with true client parent coordinates
         resetToFormations(p.width, p.height);
       };
 
@@ -1257,12 +1270,12 @@ export const BattleCanvas: React.FC<BattleCanvasProps> = ({
                    target = null;
                  }
                }
-
+ 
               // Dynamic Separation Steering forces (repulsion from allies and enemies)
               let sepX = 0;
               let sepY = 0;
               const separationRadius = 65 * item.z; // wider sweep for natural spacing
-
+ 
               const applyRepulsion = (other: Combatant) => {
                 if (other.id !== item.id && other.hp > 0) {
                   const dx = item.x - other.x;
@@ -1277,14 +1290,14 @@ export const BattleCanvas: React.FC<BattleCanvasProps> = ({
                   }
                 }
               };
-
+ 
               alliedSoldiersRef.current.forEach(applyRepulsion);
               targetsRef.current.forEach(applyRepulsion);
-
+ 
               // Standard steer velocity integration
               let desiredVx = 0;
               let desiredVy = 0;
-
+ 
               if (target) {
                 const stepX = target.x - item.x;
                 const stepY = target.y - item.y;
@@ -1304,7 +1317,7 @@ export const BattleCanvas: React.FC<BattleCanvasProps> = ({
                     item.slashTimer = 0;
                     target.hp = p.max(0, target.hp - (item.isCommander ? 15 : 7));
                     spawnHitSplatter(target.x, target.y, '#b91c1c', 0.5);
-
+ 
                     textsRef.current.push({
                       x: target.x,
                       y: target.y - 12,
@@ -1321,7 +1334,7 @@ export const BattleCanvas: React.FC<BattleCanvasProps> = ({
                 desiredVx = item.vx * 0.3;
                 if (item.x < 40 || item.x > w - 40) item.vx *= -1;
               }
-
+ 
               // Define strict discrete vertical lane bounds for each of the 4 divisions (preventing clumping completely)
               const minG = h * 0.38;
               const maxG = h * 0.72;
@@ -1341,30 +1354,48 @@ export const BattleCanvas: React.FC<BattleCanvasProps> = ({
                 laneMax = maxG;
               }
               const laneCenter = (laneMin + laneMax) / 2;
-
+ 
               // Gentle spring force back to designated tactical lane centering
               const lanePull = (laneCenter - item.y) * 0.12;
               sepY += lanePull;
-
+ 
               // Combine steering directions
               let finalVx = desiredVx + sepX;
               let finalVy = desiredVy + sepY;
-
+ 
               const maxSpeed = item.type.includes('Cavalry') ? 2.4 : 1.35;
               const speedLen = Math.hypot(finalVx, finalVy);
               if (speedLen > maxSpeed) {
                 finalVx = (finalVx / speedLen) * maxSpeed;
                 finalVy = (finalVy / speedLen) * maxSpeed;
               }
-
+ 
               item.x += finalVx;
               item.y += finalVy;
-
-              // Strict border and tactical division bounding
-              item.x = p.constrain(item.x, 30, w - 30);
-              item.y = p.constrain(item.y, laneMin, laneMax);
             }
           }
+ 
+          // Strict boundaries and vertical lane alignments kept robust across all phases and modes
+          const minG = h * 0.38;
+          const maxG = h * 0.72;
+          let laneMin = minG;
+          let laneMax = maxG;
+          if (item.division === 'left') {
+            laneMin = minG;
+            laneMax = minG + 0.22 * (maxG - minG);
+          } else if (item.division === 'vanguard') {
+            laneMin = minG + 0.25 * (maxG - minG);
+            laneMax = minG + 0.52 * (maxG - minG);
+          } else if (item.division === 'center') {
+            laneMin = minG + 0.40 * (maxG - minG);
+            laneMax = minG + 0.70 * (maxG - minG);
+          } else if (item.division === 'right') {
+            laneMin = minG + 0.75 * (maxG - minG);
+            laneMax = maxG;
+          }
+ 
+          item.x = p.constrain(item.x, 30, w - 30);
+          item.y = p.constrain(item.y, laneMin, laneMax);
 
           // DRAW VISUAL NODE
           const zScale = item.z;
@@ -2014,9 +2045,25 @@ export const BattleCanvas: React.FC<BattleCanvasProps> = ({
     // Window resize handler mapping
     const handleResize = () => {
       if (p5InstanceRef.current && containerRef.current) {
+        const oldW = p5InstanceRef.current.width || 800;
+        const oldH = p5InstanceRef.current.height || 480;
         const w = containerRef.current.clientWidth || 800;
         const h = containerRef.current.clientHeight || 480;
-        p5InstanceRef.current.resizeCanvas(w, h);
+        
+        if (oldW !== w || oldH !== h) {
+          const ratioX = w / oldW;
+          const ratioY = h / oldH;
+          
+          alliedSoldiersRef.current.forEach(item => {
+            item.x *= ratioX;
+            item.y *= ratioY;
+          });
+          targetsRef.current.forEach(item => {
+            item.x *= ratioX;
+            item.y *= ratioY;
+          });
+          p5InstanceRef.current.resizeCanvas(w, h);
+        }
       }
     };
 
