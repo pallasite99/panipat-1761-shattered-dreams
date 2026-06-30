@@ -67,26 +67,26 @@ Take direct command of battlefields using an interactive military canvas:
 ## 🎓 Shaniwar Wada Seminary (Student LMS) — *COMING SOON!*
 
 <div align="center">
-  <div style="background-color: #12100e; border: 2px solid #D97706; padding: 24px; border-radius: 8px; margin: 20px 0; max-width: 90%; text-align: left;">
-    <h3 style="color: #F59E0B; margin-top: 0; font-family: 'Georgia', serif; letter-spacing: 0.05em; text-transform: uppercase;">🎓 The Academy Hub & Student LMS</h3>
-    <p style="color: #d1d5db; font-size: 14px; line-height: 1.6;">
-      Prepare to step inside the hallowed, basalt-hewn chambers of the <strong>Shaniwar Wada Seminary</strong>. Designed for educators, historians, and students alike, this upcoming <strong>Learning Management System (LMS)</strong> is a state-of-the-art academic center wrapped in a beautiful, skeuomorphic, royal parchment aesthetic. It bridges interactive historical gameplay with academic curricula to deliver a learning experience like no other.
-    </p>
-    
-    <h4 style="color: #F59E0B; font-size: 13px; text-transform: uppercase; margin-bottom: 8px;">✨ Key Academy Features Included in the Syllabus:</h4>
-    <ul style="color: #9ca3af; font-size: 13px; line-height: 1.5; padding-left: 20px; margin-bottom: 16px;">
-      <li>📖 <strong>Dual-Pathway Interactive Syllabus</strong>: Ten masterclasses split across <em>Student</em> (core history & military strategies) and <em>Scholar</em> (deep geopolitical studies, archival letters) tracks, with local persistent learning states.</li>
-      <li>🕸️ <strong>D3.js Force-Directed Knowledge Network</strong>: A magnificent, mathematically modeled dynamic constellation connecting historical commanders, strategic treaties, and military maneuvers. Click to focus nodes and uncover raw biographies.</li>
-      <li>♟️ <strong>Formations Playbook Sandbox</strong>: A physical playground sandbox. Configure active weather conditions (Sunny, Winter Frost, Choking Dust Storms) and deploy elite historical brigades to instantly simulate military strength, army cohesion, and flanking advantages.</li>
-      <li>⚖️ <strong>Unified Decision Chronicles</strong>: Confront 5 major, non-linear historical forks (such as the Yamuna river crossings and bullion treasury liquidations). Analyze your tactical alignment through real-time telemetry diagnostics (Guerrilla Vanguard vs. Consolidated Imperialist).</li>
-      <li>📜 <strong>Authentic Manuscript Archives</strong>: Unroll and review detailed English translations of actual 18th-century diplomatic scrolls, intercepted letters, and sacred peace treaties.</li>
-      <li>🏆 <strong>Dynamic Certification Exams</strong>: Test your historical knowledge with randomized challenge questions pulled from an onboard academic warehouse to earn a printable, customizable <strong>Royal Seminary Diploma</strong> bearing the Grand Peshwa Seal.</li>
-    </ul>
-    
-    <div style="border-top: 1px solid #2d261e; padding-top: 12px; font-size: 12px; color: #F59E0B; text-align: center; font-weight: bold; letter-spacing: 0.1em; text-transform: uppercase;">
-      🛡️ Transforming History from a Static Text into an Active, Tactical Playground
-    </div>
-  </div>
+<div style="background-color: #12100e; border: 2px solid #D97706; padding: 24px; border-radius: 8px; margin: 20px 0; max-width: 90%; text-align: left;">
+<h3 style="color: #F59E0B; margin-top: 0; font-family: 'Georgia', serif; letter-spacing: 0.05em; text-transform: uppercase;">🎓 The Academy Hub & Student LMS</h3>
+<p style="color: #d1d5db; font-size: 14px; line-height: 1.6;">
+Prepare to step inside the hallowed, basalt-hewn chambers of the <strong>Shaniwar Wada Seminary</strong>. Designed for educators, historians, and students alike, this upcoming <strong>Learning Management System (LMS)</strong> is a state-of-the-art academic center wrapped in a beautiful, skeuomorphic, royal parchment aesthetic. It bridges interactive historical gameplay with academic curricula to deliver a learning experience like no other.
+</p>
+
+<h4 style="color: #F59E0B; font-size: 13px; text-transform: uppercase; margin-bottom: 8px;">✨ Key Academy Features Included in the Syllabus:</h4>
+<ul style="color: #9ca3af; font-size: 13px; line-height: 1.5; padding-left: 20px; margin-bottom: 16px;">
+<li>📖 <strong>Dual-Pathway Interactive Syllabus</strong>: Ten masterclasses split across <em>Student</em> (core history & military strategies) and <em>Scholar</em> (deep geopolitical studies, archival letters) tracks, with local persistent learning states.</li>
+<li>🕸️ <strong>D3.js Force-Directed Knowledge Network</strong>: A magnificent, mathematically modeled dynamic constellation connecting historical commanders, strategic treaties, and military maneuvers. Click to focus nodes and uncover raw biographies.</li>
+<li>♟️ <strong>Formations Playbook Sandbox</strong>: A physical playground sandbox. Configure active weather conditions (Sunny, Winter Frost, Choking Dust Storms) and deploy elite historical brigades to instantly simulate military strength, army cohesion, and flanking advantages.</li>
+<li>⚖️ <strong>Unified Decision Chronicles</strong>: Confront 5 major, non-linear historical forks (such as the Yamuna river crossings and bullion treasury liquidations). Analyze your tactical alignment through real-time telemetry diagnostics (Guerrilla Vanguard vs. Consolidated Imperialist).</li>
+<li>📜 <strong>Authentic Manuscript Archives</strong>: Unroll and review detailed English translations of actual 18th-century diplomatic scrolls, intercepted letters, and sacred peace treaties.</li>
+<li>🏆 <strong>Dynamic Certification Exams</strong>: Test your historical knowledge with randomized challenge questions pulled from an onboard academic warehouse to earn a printable, customizable <strong>Royal Seminary Diploma</strong> bearing the Grand Peshwa Seal.</li>
+</ul>
+
+<div style="border-top: 1px solid #2d261e; padding-top: 12px; font-size: 12px; color: #F59E0B; text-align: center; font-weight: bold; letter-spacing: 0.1em; text-transform: uppercase;">
+🛡️ Transforming History from a Static Text into an Active, Tactical Playground
+</div>
+</div>
 </div>
 
 ---
