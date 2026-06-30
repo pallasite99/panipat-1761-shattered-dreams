@@ -89,13 +89,14 @@ interface BattleCanvasProps {
   onLootSuccess: () => void;
   onCommanderShout?: (speaker: string, role: string, avatar: string, text: string, faction: 'maratha' | 'durrani') => void;
   timeOfDay?: 'dawn' | 'noon' | 'dusk' | 'midnight';
-  weather?: 'clear' | 'rain' | 'dust_storm' | 'fog';
+  weather?: 'clear' | 'rain' | 'dust_storm' | 'fog' | 'extreme_heat';
   stage?: string;
   fortWallIntegrity?: number;
   spawnAllyTrigger?: number;
   spawnEnemyTrigger?: number;
   spawnAllyType?: string;
   spawnEnemyType?: string;
+  fuzzySpeedMultiplier?: number;
 }
 
 export const BattleCanvas: React.FC<BattleCanvasProps> = ({
@@ -113,7 +114,8 @@ export const BattleCanvas: React.FC<BattleCanvasProps> = ({
   spawnAllyTrigger = 0,
   spawnEnemyTrigger = 0,
   spawnAllyType = '',
-  spawnEnemyType = ''
+  spawnEnemyType = '',
+  fuzzySpeedMultiplier = 1.0
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const p5InstanceRef = useRef<p5 | null>(null);
@@ -177,7 +179,8 @@ export const BattleCanvas: React.FC<BattleCanvasProps> = ({
     isRaghobaSelected,
     cannonRecoil,
     swordSlashProgress,
-    slashAngle
+    slashAngle,
+    fuzzySpeedMultiplier
   });
 
   const callbacksRef = useRef({
@@ -206,7 +209,8 @@ export const BattleCanvas: React.FC<BattleCanvasProps> = ({
       isRaghobaSelected,
       cannonRecoil,
       swordSlashProgress,
-      slashAngle
+      slashAngle,
+      fuzzySpeedMultiplier
     };
   }, [
     phase,
@@ -227,7 +231,8 @@ export const BattleCanvas: React.FC<BattleCanvasProps> = ({
     isRaghobaSelected,
     cannonRecoil,
     swordSlashProgress,
-    slashAngle
+    slashAngle,
+    fuzzySpeedMultiplier
   ]);
 
   useEffect(() => {
@@ -1190,6 +1195,26 @@ export const BattleCanvas: React.FC<BattleCanvasProps> = ({
             p.noStroke();
             p.rect(0, dy, w, 24);
           }
+        } else if (s.weather === 'extreme_heat') {
+          // Warm amber heat shimmer gradient
+          p.noStroke();
+          p.fill('rgba(239, 68, 68, 0.05)');
+          p.rect(0, horizon, w, h - horizon);
+
+          // Heat shimmer waves
+          p.stroke('rgba(245, 158, 11, 0.15)');
+          p.strokeWeight(1.5);
+          p.noFill();
+          const waveCount = 8;
+          for (let i = 0; i < waveCount; i++) {
+            const xOffset = (w / waveCount) * i + (animTime * 0.2) % (w / waveCount);
+            p.beginShape();
+            for (let y = horizon; y < h; y += 15) {
+              const xShift = p.sin(y * 0.05 + animTime * 0.015) * 4;
+              p.vertex(xOffset + xShift, y);
+            }
+            p.endShape();
+          }
         }
       }
 
@@ -1223,7 +1248,7 @@ export const BattleCanvas: React.FC<BattleCanvasProps> = ({
           if (s.phase === 'clash') {
             if (battleModeRef.current === 'marching') {
               // March columns together with majestic uniform pace
-              item.x += isEnemy ? -1.2 : 1.2;
+              item.x += (isEnemy ? -1.2 : 1.2) * (s.fuzzySpeedMultiplier ?? 1.0);
             } else {
               // SCATTERED DUELS: lock target of opposite side
                const oppositionList = isEnemy ? alliedSoldiersRef.current : targetsRef.current;
@@ -1363,7 +1388,8 @@ export const BattleCanvas: React.FC<BattleCanvasProps> = ({
               let finalVx = desiredVx + sepX;
               let finalVy = desiredVy + sepY;
  
-              const maxSpeed = item.type.includes('Cavalry') ? 2.4 : 1.35;
+              const speedMult = s.fuzzySpeedMultiplier ?? 1.0;
+              const maxSpeed = (item.type.includes('Cavalry') ? 2.4 : 1.35) * speedMult;
               const speedLen = Math.hypot(finalVx, finalVy);
               if (speedLen > maxSpeed) {
                 finalVx = (finalVx / speedLen) * maxSpeed;

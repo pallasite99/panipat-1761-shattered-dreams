@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { BattleCanvas } from '../components/BattleCanvas';
+import { GodotBridge } from '../components/GodotBridge';
 import { SwordDuelArena } from '../components/SwordDuelArena';
 import { GardiSurrenderVisual } from '../components/GardiSurrenderVisual';
 import { BattlePreludeVideo } from '../components/BattlePreludeVideo';
@@ -31,6 +32,7 @@ import { Screen, CampaignStage, BattleProps } from '../types';
 import { TopBar } from '../components/SharedUI';
 import { RoyalBanner } from '../components/RoyalBanner';
 import { MARATHA_PRELUDES, DURRANI_PRELUDES } from '../data/battlePreludes';
+import { evaluateFuzzyWeather, WEATHER_PRESETS } from '../utils/fuzzyWeather';
 
 const TERRAIN_CONFIGS: { [key: string]: {
   name: string;
@@ -422,6 +424,7 @@ const WEATHER_CONFIGS = {
   rain: { name: "Yamuna Monsoon Rain", visibilityMod: -25, accuracyMod: -20, desc: "Wet sand banks & rain; slows physical sweeps (-20% acc).", color: "text-[#38bdf8]" },
   dust_storm: { name: "Kunjpura Dust Storm", visibilityMod: -50, accuracyMod: -35, desc: "Searing wind winds & sepia sands drift scope sights (-35% acc).", color: "text-[#f97316]" },
   fog: { name: "Winter Cold Fog", visibilityMod: -60, accuracyMod: -25, desc: "Thick frosted haze shields troop lines (-25% acc).", color: "text-[#cbd5e1]" },
+  extreme_heat: { name: "Severe Desert Heatwave", visibilityMod: -15, accuracyMod: -15, desc: "Searing hot sun rays warp air visibility & fatigue core troops rapidly (-15% acc).", color: "text-[#f43f5e]" },
 };
 
 export interface HistoricalBrief {
@@ -781,10 +784,29 @@ export const BattleScene: React.FC<BattleProps> = ({ onNavigate, onAdvance, stag
     }[];
   } | null>(null);
   const [decisionsHistory, setDecisionsHistory] = useState<string[]>([]);
+  const [viewportMode, setViewportMode] = useState<'p5' | 'godot'>('p5');
 
   // Weather and Music synthesizers variables
   const [timeOfDay, setTimeOfDay] = useState<'dawn' | 'noon' | 'dusk' | 'midnight'>('noon');
-  const [weather, setWeather] = useState<'clear' | 'rain' | 'dust_storm' | 'fog'>('clear');
+  const [weather, setWeather] = useState<'clear' | 'rain' | 'dust_storm' | 'fog' | 'extreme_heat'>('clear');
+  const [tempInput, setTempInput] = useState(28);
+  const [windInput, setWindInput] = useState(8);
+  const [dustInput, setDustInput] = useState(12);
+
+  const fuzzyResult = React.useMemo(() => {
+    return evaluateFuzzyWeather(tempInput, windInput, dustInput);
+  }, [tempInput, windInput, dustInput]);
+
+  // Synchronize inputs when weather preset changes
+  useEffect(() => {
+    const nominal = WEATHER_PRESETS[weather];
+    if (nominal) {
+      setTempInput(nominal.temperature);
+      setWindInput(nominal.windSpeed);
+      setDustInput(nominal.dustDensity);
+    }
+  }, [weather]);
+
   const [isMusicPlaying, setIsMusicPlaying] = useState(false);
   const [musicVolume, setMusicVolume] = useState(0.35);
   const audioSynthRef = useRef<FactionAudioSynth | null>(null);
@@ -823,7 +845,7 @@ export const BattleScene: React.FC<BattleProps> = ({ onNavigate, onAdvance, stag
     
     // Atmospheric environmental change per stage
     const times: ('dawn' | 'noon' | 'dusk' | 'midnight')[] = ['dawn', 'noon', 'dusk', 'midnight'];
-    const weathers: ('clear' | 'rain' | 'dust_storm' | 'fog')[] = ['clear', 'rain', 'dust_storm', 'fog'];
+    const weathers: ('clear' | 'rain' | 'dust_storm' | 'fog' | 'extreme_heat')[] = ['clear', 'rain', 'dust_storm', 'fog', 'extreme_heat'];
     const nextTime = times[(currentStageIndex) % times.length];
     const nextWeather = weathers[(currentStageIndex) % weathers.length];
     
@@ -886,7 +908,7 @@ export const BattleScene: React.FC<BattleProps> = ({ onNavigate, onAdvance, stag
   };
 
   const currentVisibility = Math.max(10, TIME_OF_DAY_CONFIGS[timeOfDay].visibility + WEATHER_CONFIGS[weather].visibilityMod);
-  const currentAccuracy = Math.max(15, TIME_OF_DAY_CONFIGS[timeOfDay].accuracy + WEATHER_CONFIGS[weather].accuracyMod);
+  const currentAccuracy = Math.max(15, Math.round((TIME_OF_DAY_CONFIGS[timeOfDay].accuracy + WEATHER_CONFIGS[weather].accuracyMod) * fuzzyResult.accuracyMultiplier));
 
   // Difficulty multiplier
   const stageDifficulty = {
@@ -1091,9 +1113,9 @@ export const BattleScene: React.FC<BattleProps> = ({ onNavigate, onAdvance, stag
 
       const isUdgir = stage === CampaignStage.NIZAM_CAMPAIGN;
       const marathaLossFactor = isUdgir ? 0.22 : 1.0;
-      const marathaLoss = (Math.random() * (0.9 * stageDifficulty * (isPanipat ? 1.8 : 1) * (1 / activeTerrain.defenseModifier))) * armorReduction * damageBlocked * difficultyMult * speedFactor * formationMarathaMod * marathaLossFactor;
+      const marathaLoss = (Math.random() * (0.9 * stageDifficulty * (isPanipat ? 1.8 : 1) * (1 / activeTerrain.defenseModifier))) * armorReduction * damageBlocked * difficultyMult * speedFactor * formationMarathaMod * marathaLossFactor * fuzzyResult.moraleDrainMultiplier;
       // Balance Durrani passive attrition symmetrically based on active difficulty scaling
-      const durraniLoss = ((Math.random() * (isPanipat ? 1.05 : 0.8) * (1.1 / difficultyMult)) * stageDifficulty) * speedFactor * formationDurraniMod;
+      const durraniLoss = ((Math.random() * (isPanipat ? 1.05 : 0.8) * (1.1 / difficultyMult)) * stageDifficulty) * speedFactor * formationDurraniMod * fuzzyResult.moraleDrainMultiplier;
 
       // Calculate active Prahar elapsed time for dynamic game modifiers
       const elapsed = 45 - battleTimeLeft;
@@ -1442,6 +1464,14 @@ export const BattleScene: React.FC<BattleProps> = ({ onNavigate, onAdvance, stag
       setIsReloading(false);
       setLog(prev => ["✅ RECOVERY COMPLETE: 5 / 5 strike stamina restored!", ...prev.slice(0, 4)]);
     }, 1400);
+  };
+
+  const handleGodotModifyCohesion = (amount: number, faction: 'maratha' | 'durrani') => {
+    if (faction === 'maratha') {
+      setMarathaMorale(prev => Math.max(0, Math.min(125, prev + amount)));
+    } else {
+      setDurraniMorale(prev => Math.max(0, Math.min(150, prev + amount)));
+    }
   };
 
   // Canvas-based click enemy hit registration callback
@@ -2529,6 +2559,35 @@ export const BattleScene: React.FC<BattleProps> = ({ onNavigate, onAdvance, stag
             <span className="text-white font-serif font-bold">{selectedDropHotspot || "UNSPECIFIED"}</span>
           </div>
 
+          {/* Godot vs P5 Viewport Switcher */}
+          <div className="absolute top-4 left-44 z-45 bg-[#121315]/95 border border-stone-850 p-1 rounded-sm flex items-center gap-1 shadow-lg">
+            <span className="text-[7px] font-mono font-black text-stone-500 uppercase tracking-widest px-1.5 hidden sm:inline">
+              VIEWPORT:
+            </span>
+            <button
+              type="button"
+              onClick={() => setViewportMode('p5')}
+              className={`px-2 py-0.5 rounded-xs font-mono text-[7.5px] font-black uppercase tracking-wider cursor-pointer transition-all ${
+                viewportMode === 'p5'
+                  ? 'bg-saffron text-stone-950 font-black shadow-inner'
+                  : 'text-stone-400 hover:text-stone-200 hover:bg-stone-900'
+              }`}
+            >
+              2D Tactical (P5)
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewportMode('godot')}
+              className={`px-2 py-0.5 rounded-xs font-mono text-[7.5px] font-black uppercase tracking-wider cursor-pointer transition-all flex items-center gap-1 ${
+                viewportMode === 'godot'
+                  ? 'bg-sky-500 text-white font-black shadow-inner animate-pulse'
+                  : 'text-stone-400 hover:text-stone-200 hover:bg-stone-900'
+              }`}
+            >
+              3D Immersive (Godot)
+            </button>
+          </div>
+
           <div className="absolute top-4 right-4 z-40 bg-stone-950/90 border border-stone-800 px-3 py-1 uppercase font-mono text-[9px] text-stone-400 rounded-sm flex items-center gap-2">
             <span className="relative flex h-2 w-2">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
@@ -2610,23 +2669,34 @@ export const BattleScene: React.FC<BattleProps> = ({ onNavigate, onAdvance, stag
               </div>
             )}
 
-            <BattleCanvas 
-              phase={battlePhase === 'choosing_drop' || battlePhase === 'dropping' ? 'initial' : 'clash'} 
-              clashAction={clashAction} 
-              enemyAction={enemyAction} 
-              activeFaction={activeFaction}
-              onEnemyHit={handleEnemyHitInCanvas}
-              onLootSuccess={handleAirdropLootClaimed}
-              onCommanderShout={handleCommanderShout}
-              timeOfDay={timeOfDay}
-              weather={weather}
-              stage={stage}
-              fortWallIntegrity={fortWallIntegrity}
-              spawnAllyTrigger={spawnAllyTrigger}
-              spawnEnemyTrigger={spawnEnemyTrigger}
-              spawnAllyType={spawnAllyType}
-              spawnEnemyType={spawnEnemyType}
-            />
+            {viewportMode === 'p5' ? (
+              <BattleCanvas 
+                phase={battlePhase === 'choosing_drop' || battlePhase === 'dropping' ? 'initial' : 'clash'} 
+                clashAction={clashAction} 
+                enemyAction={enemyAction} 
+                activeFaction={activeFaction}
+                onEnemyHit={handleEnemyHitInCanvas}
+                onLootSuccess={handleAirdropLootClaimed}
+                onCommanderShout={handleCommanderShout}
+                timeOfDay={timeOfDay}
+                weather={weather}
+                stage={stage}
+                fortWallIntegrity={fortWallIntegrity}
+                spawnAllyTrigger={spawnAllyTrigger}
+                spawnEnemyTrigger={spawnEnemyTrigger}
+                spawnAllyType={spawnAllyType}
+                spawnEnemyType={spawnEnemyType}
+                fuzzySpeedMultiplier={fuzzyResult.speedMultiplier}
+              />
+            ) : (
+              <GodotBridge 
+                onEnemyHit={handleEnemyHitInCanvas}
+                onModifyCohesion={handleGodotModifyCohesion}
+                onCommanderShout={handleCommanderShout}
+                weather={weather}
+                timeOfDay={timeOfDay}
+              />
+            )}
 
             {/* RTS STYLE HISTORICAL COMMANDER SHOUT DIALOGUE WIDGET */}
             <AnimatePresence>
@@ -2892,14 +2962,14 @@ export const BattleScene: React.FC<BattleProps> = ({ onNavigate, onAdvance, stag
             </div>
 
             {/* AMBIENCE, WEATHER & MILITARY SYNTH CONTROLS */}
-            <div id="weather-and-music-council" className="bg-[#121315] border border-stone-800 p-3.5 rounded-sm text-left shadow-lg space-y-3.5 my-4">
+            <div id="weather-and-music-council" className="bg-[#121315] border border-stone-850 p-4 rounded-sm text-left shadow-lg space-y-4 my-4">
               <div className="flex justify-between items-center border-b border-stone-900 pb-2">
                 <h4 className="text-[9.5px] font-mono font-black text-saffron uppercase tracking-widest flex items-center gap-1.5">
                   <Compass className="h-3 w-3 animate-spin text-saffron" style={{ animationDuration: '6s' }} />
-                  BATTLEWEATHER & ATMOSPHERE COUNCIL
+                  FUZZY LOGIC WEATHER COUNCIL
                 </h4>
-                <span className="text-[8px] font-mono font-bold bg-stone-900 px-1.5 py-0.5 rounded-xs text-stone-400">
-                  TACTICAL ACCURACY
+                <span className="text-[8px] font-mono font-bold bg-stone-900 px-1.5 py-0.5 rounded-xs text-saffron">
+                  REAL-TIME CONTROLLER
                 </span>
               </div>
 
@@ -2929,27 +2999,184 @@ export const BattleScene: React.FC<BattleProps> = ({ onNavigate, onAdvance, stag
               {/* Dynamic Weather Selector Grid */}
               <div className="space-y-2">
                 <span className="text-[9px] font-mono font-bold text-stone-400 uppercase tracking-widest block">
-                  2. Dynamic Weather Hazards: <span className="text-white font-bold">{WEATHER_CONFIGS[weather].name}</span>
+                  2. Dynamic Weather Presets: <span className="text-white font-bold">{WEATHER_CONFIGS[weather].name}</span>
                 </span>
-                <div className="grid grid-cols-4 gap-1.5">
-                  {(['clear', 'rain', 'dust_storm', 'fog'] as const).map((w) => (
+                <div className="grid grid-cols-5 gap-1">
+                  {(['clear', 'rain', 'dust_storm', 'fog', 'extreme_heat'] as const).map((w) => (
                     <button
                       key={w}
                       type="button"
                       onClick={() => setWeather(w)}
-                      className={`py-1 rounded-xs font-mono text-[9px] font-black uppercase tracking-wider text-center border cursor-pointer transition-all ${
+                      className={`py-1 rounded-xs font-mono text-[8px] font-black uppercase tracking-wider text-center border cursor-pointer transition-all ${
                         weather === w
                           ? 'bg-[#ea580c] text-stone-100 border-[#ea580c] shadow-xs scale-[1.03]'
                           : 'bg-stone-900 text-stone-400 border-stone-800 hover:text-stone-200 hover:bg-stone-850'
                       }`}
                     >
-                      {w === 'dust_storm' ? 'dust' : w}
+                      {w === 'dust_storm' ? 'dust' : w === 'extreme_heat' ? 'heat' : w}
                     </button>
                   ))}
                 </div>
-                {/* Weather modifier prompt status */}
-                <p className="text-[9.5px] text-stone-400 leading-tight font-sans italic bg-stone-900/50 p-1.5 border border-stone-900 rounded-xs mt-1.5">
-                  <span className="text-saffron font-bold">Effect:</span> {WEATHER_CONFIGS[weather].desc} Visibility at <span className="text-white font-bold">{currentVisibility}%</span>, Combat Accuracy is <span className="text-[#ea580c] font-black">{currentAccuracy}%</span>.
+              </div>
+
+              {/* Interactive Crisp Sliders */}
+              <div className="space-y-2.5 bg-stone-950 p-3 border border-stone-900 rounded-xs">
+                <span className="text-[8px] font-mono font-black text-stone-500 uppercase tracking-widest block">
+                  3. Adjust Crisp Input Variables
+                </span>
+
+                {/* Temperature */}
+                <div className="space-y-1">
+                  <div className="flex justify-between text-[9px] font-mono">
+                    <span className="text-stone-300">Temperature / तापमान:</span>
+                    <span className="text-saffron font-bold">{tempInput} °C</span>
+                  </div>
+                  <input
+                    type="range"
+                    min="-10"
+                    max="55"
+                    value={tempInput}
+                    onChange={(e) => setTempInput(Number(e.target.value))}
+                    className="w-full accent-saffron h-1 bg-stone-900 rounded-sm cursor-pointer"
+                  />
+                </div>
+
+                {/* Wind Speed */}
+                <div className="space-y-1">
+                  <div className="flex justify-between text-[9px] font-mono">
+                    <span className="text-stone-300">Wind Speed / पवन वेग:</span>
+                    <span className="text-saffron font-bold">{windInput} km/h</span>
+                  </div>
+                  <input
+                    type="range"
+                    min="0"
+                    max="120"
+                    value={windInput}
+                    onChange={(e) => setWindInput(Number(e.target.value))}
+                    className="w-full accent-saffron h-1 bg-stone-900 rounded-sm cursor-pointer"
+                  />
+                </div>
+
+                {/* Dust Density */}
+                <div className="space-y-1">
+                  <div className="flex justify-between text-[9px] font-mono">
+                    <span className="text-stone-300">Dust Density / धूली सांद्रता:</span>
+                    <span className="text-saffron font-bold">{dustInput}%</span>
+                  </div>
+                  <input
+                    type="range"
+                    min="0"
+                    max="100"
+                    value={dustInput}
+                    onChange={(e) => setDustInput(Number(e.target.value))}
+                    className="w-full accent-saffron h-1 bg-stone-900 rounded-sm cursor-pointer"
+                  />
+                </div>
+              </div>
+
+              {/* Fuzzy Membership Set Visualizers */}
+              <div className="space-y-2 bg-stone-950/40 p-3 border border-stone-900 rounded-xs">
+                <span className="text-[8px] font-mono font-black text-stone-500 uppercase tracking-widest block">
+                  4. Fuzzy Set Membership Functions (μ)
+                </span>
+
+                <div className="grid grid-cols-3 gap-2.5">
+                  {/* Temp Memberships */}
+                  <div className="space-y-1.5">
+                    <span className="text-[7.5px] font-mono text-stone-400 font-bold block">TEMPERATURE</span>
+                    <div className="space-y-1 text-[7.5px] font-mono">
+                      <div className="flex justify-between text-stone-400"><span>Cold:</span><span>{(fuzzyResult.memberships.temperature.cold * 100).toFixed(0)}%</span></div>
+                      <div className="h-1 bg-stone-900 rounded-xs overflow-hidden"><div className="h-full bg-blue-500 transition-all" style={{width: `${fuzzyResult.memberships.temperature.cold * 100}%`}}></div></div>
+                      
+                      <div className="flex justify-between text-stone-400"><span>Moderate:</span><span>{(fuzzyResult.memberships.temperature.moderate * 100).toFixed(0)}%</span></div>
+                      <div className="h-1 bg-stone-900 rounded-xs overflow-hidden"><div className="h-full bg-emerald-500 transition-all" style={{width: `${fuzzyResult.memberships.temperature.moderate * 100}%`}}></div></div>
+
+                      <div className="flex justify-between text-stone-400"><span>Hot:</span><span>{(fuzzyResult.memberships.temperature.hot * 100).toFixed(0)}%</span></div>
+                      <div className="h-1 bg-stone-900 rounded-xs overflow-hidden"><div className="h-full bg-orange-500 transition-all" style={{width: `${fuzzyResult.memberships.temperature.hot * 100}%`}}></div></div>
+
+                      <div className="flex justify-between text-stone-400"><span>Extreme:</span><span>{(fuzzyResult.memberships.temperature.extreme * 100).toFixed(0)}%</span></div>
+                      <div className="h-1 bg-stone-900 rounded-xs overflow-hidden"><div className="h-full bg-red-500 transition-all" style={{width: `${fuzzyResult.memberships.temperature.extreme * 100}%`}}></div></div>
+                    </div>
+                  </div>
+
+                  {/* Wind Memberships */}
+                  <div className="space-y-1.5">
+                    <span className="text-[7.5px] font-mono text-stone-400 font-bold block">WIND SPEED</span>
+                    <div className="space-y-1 text-[7.5px] font-mono">
+                      <div className="flex justify-between text-stone-400"><span>Calm:</span><span>{(fuzzyResult.memberships.windSpeed.calm * 100).toFixed(0)}%</span></div>
+                      <div className="h-1 bg-stone-900 rounded-xs overflow-hidden"><div className="h-full bg-indigo-500 transition-all" style={{width: `${fuzzyResult.memberships.windSpeed.calm * 100}%`}}></div></div>
+                      
+                      <div className="flex justify-between text-stone-400"><span>Moderate:</span><span>{(fuzzyResult.memberships.windSpeed.moderate * 100).toFixed(0)}%</span></div>
+                      <div className="h-1 bg-stone-900 rounded-xs overflow-hidden"><div className="h-full bg-teal-500 transition-all" style={{width: `${fuzzyResult.memberships.windSpeed.moderate * 100}%`}}></div></div>
+
+                      <div className="flex justify-between text-stone-400"><span>High:</span><span>{(fuzzyResult.memberships.windSpeed.high * 100).toFixed(0)}%</span></div>
+                      <div className="h-1 bg-stone-900 rounded-xs overflow-hidden"><div className="h-full bg-rose-500 transition-all" style={{width: `${fuzzyResult.memberships.windSpeed.high * 100}%`}}></div></div>
+                    </div>
+                  </div>
+
+                  {/* Dust Memberships */}
+                  <div className="space-y-1.5">
+                    <span className="text-[7.5px] font-mono text-stone-400 font-bold block">DUST DENSITY</span>
+                    <div className="space-y-1 text-[7.5px] font-mono">
+                      <div className="flex justify-between text-stone-400"><span>Low:</span><span>{(fuzzyResult.memberships.dustDensity.low * 100).toFixed(0)}%</span></div>
+                      <div className="h-1 bg-stone-900 rounded-xs overflow-hidden"><div className="h-full bg-stone-500 transition-all" style={{width: `${fuzzyResult.memberships.dustDensity.low * 100}%`}}></div></div>
+                      
+                      <div className="flex justify-between text-stone-400"><span>Moderate:</span><span>{(fuzzyResult.memberships.dustDensity.moderate * 100).toFixed(0)}%</span></div>
+                      <div className="h-1 bg-stone-900 rounded-xs overflow-hidden"><div className="h-full bg-[#f97316] transition-all" style={{width: `${fuzzyResult.memberships.dustDensity.moderate * 100}%`}}></div></div>
+
+                      <div className="flex justify-between text-stone-400"><span>High:</span><span>{(fuzzyResult.memberships.dustDensity.high * 100).toFixed(0)}%</span></div>
+                      <div className="h-1 bg-stone-900 rounded-xs overflow-hidden"><div className="h-full bg-amber-850 transition-all" style={{width: `${fuzzyResult.memberships.dustDensity.high * 100}%`}}></div></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Computed Fuzzy Outputs */}
+              <div className="space-y-2 bg-stone-900/50 p-3 border border-stone-850 rounded-xs">
+                <span className="text-[8px] font-mono font-black text-stone-500 uppercase tracking-widest block">
+                  5. Defuzzified Battle Modifiers (Output Values)
+                </span>
+
+                <div className="grid grid-cols-3 gap-2">
+                  <div className="bg-stone-950/80 p-2 border border-stone-900 rounded-xs text-center">
+                    <span className="text-[7px] text-stone-400 font-mono block uppercase">Troop Speed</span>
+                    <span className="text-sm font-black font-mono text-emerald-400 block mt-0.5">
+                      {fuzzyResult.speedMultiplier.toFixed(2)}x
+                    </span>
+                    <span className="text-[6.5px] text-stone-500 uppercase block">Movement modifier</span>
+                  </div>
+
+                  <div className="bg-stone-950/80 p-2 border border-stone-900 rounded-xs text-center">
+                    <span className="text-[7px] text-stone-400 font-mono block uppercase">Morale Drain</span>
+                    <span className={`text-sm font-black font-mono block mt-0.5 ${fuzzyResult.moraleDrainMultiplier > 1.5 ? 'text-red-400 animate-pulse' : 'text-orange-400'}`}>
+                      {fuzzyResult.moraleDrainMultiplier.toFixed(2)}x
+                    </span>
+                    <span className="text-[6.5px] text-stone-500 uppercase block">Attrition velocity</span>
+                  </div>
+
+                  <div className="bg-stone-950/80 p-2 border border-stone-900 rounded-xs text-center">
+                    <span className="text-[7px] text-stone-400 font-mono block uppercase">Firing Accuracy</span>
+                    <span className="text-sm font-black font-mono text-sky-400 block mt-0.5">
+                      {fuzzyResult.accuracyMultiplier.toFixed(2)}x
+                    </span>
+                    <span className="text-[6.5px] text-stone-500 uppercase block">Precision modifier</span>
+                  </div>
+                </div>
+
+                <div className="bg-stone-950 p-2 border border-stone-900 rounded-xs">
+                  <span className="text-[7.5px] font-mono text-stone-400 font-bold block mb-1">🔥 ACTIVE FUZZY INFERENCE RULES FIRING:</span>
+                  <div className="space-y-1 font-mono text-[7px] text-saffron leading-tight">
+                    {fuzzyResult.activeRules.map((rule, idx) => (
+                      <div key={idx} className="flex gap-1">
+                        <span className="text-stone-500 select-none">▶</span>
+                        <span>{rule}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <p className="text-[8px] text-stone-400 font-mono leading-tight">
+                  <span className="text-saffron font-bold">CRISP BATTLE IMPACT:</span> {WEATHER_CONFIGS[weather].desc} Visibility at <span className="text-white font-bold">{currentVisibility}%</span>, Base Combat Accuracy is <span className="text-[#ea580c] font-black">{currentAccuracy}%</span>.
                 </p>
               </div>
 
@@ -2966,6 +3193,8 @@ export const BattleScene: React.FC<BattleProps> = ({ onNavigate, onAdvance, stag
                     "🗡️ ENABLED: Monkshood Talwar Poison (Coat swords with extracts to bypass rain slips!)"
                   ) : weather === 'dust_storm' ? (
                     "🥁 ENABLED: Dhrupad War Drums (Guidance beats pierce dust storms, restore +30 Cohesion!)"
+                  ) : weather === 'extreme_heat' ? (
+                    "🍉 ENABLED: Chilled Buttermilk & Shard Batas-sherbet distribution (Restores +25 Cohesion!)"
                   ) : timeOfDay === 'midnight' ? (
                     "🎆 ENABLED: Garmadi Midnight Firecrackers (Panic camel divisions, cut Afghan morale by -25%!)"
                   ) : (
