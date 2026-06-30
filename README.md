@@ -99,9 +99,66 @@ The game harnesses the advanced power of the **Google Gemini SDK** (`@google/gen
 
 ---
 
-## 📂 Codebase Architecture & Directory Structure
+## 📂 Codebase Architecture & System Design
 
-The project features a highly modular, component-driven React architecture:
+"Panipat: 1761" is engineered on a highly optimized, decoupled full-stack architecture that blends high-performance client-side simulation with server-authorized operations. The design values strict separation of concerns, mathematical game loops, and skeuomorphic visual consistency.
+
+```
+┌────────────────────────────────────────────────────────────────────────────┐
+│                             IMPERIAL USER ROOM                             │
+│                      (Tailwind v4.0 + Motion React)                        │
+└──────────────────────┬──────────────────────────────┬──────────────────────┘
+                       │                              │
+                       ▼                              ▼
+┌──────────────────────────────────────────┐    ┌────────────────────────────┐
+│          REAL-TIME GRAPHICS              │    │     SKEUOMORPHIC HUD       │
+│      (HTML5 Canvas/Artillery Blast)      │    │  (State-driven Parchments) │
+└──────────────────────┬───────────────────┘    └─────────────┬──────────────┘
+                       │                                      │
+                       ▼                                      ▼
+┌────────────────────────────────────────────────────────────────────────────┐
+│                            STATE ORCHESTRATION                             │
+│              (Campaign Engine / React Context / Event Bus)                 │
+└──────────────────────┬──────────────────────────────┬──────────────────────┘
+                       │                              │
+                       ▼                              ▼
+┌──────────────────────────────────────────┐    ┌────────────────────────────┐
+│          SEMINARY LMS STORE              │    │    SOVEREIGN TREASURY      │
+│      (D3 Force-Directed Syllabus)        │    │    (MetaMask Web3 / API)   │
+└──────────────────────────────────────────┘    └─────────────┬──────────────┘
+                                                              │
+                                            Express API Proxy │ JSON Requests
+                                                              ▼
+┌────────────────────────────────────────────────────────────────────────────┐
+│                         STANDALONE EXPRESS BACKEND                         │
+│                    (Vite middleware / Safe Git Portal)                      │
+└────────────────────────────────────────────────────────────────────────────┘
+```
+
+### 🏛️ Architectural Subsystems
+
+#### 1. Real-Time Tactile Combat & Artilleries Canvas
+*   **Grid Coordinate Mapping**: Built on a modular 2D coordinate space container mapping physical layout matrices. 
+*   **Artillery Particle Recoil System**: Features custom dynamic velocity physics for ballistic calculations, screenshake displacement algorithms, particle fade-ins, and high-impact ground explosions. 
+*   **Action Tick Loops**: Combines custom state handlers with delta-timing to update unit stamina, combat multipliers, ammunition, and target engagement without bottlenecking UI threads.
+
+#### 2. Shaniwar Wada Academy (LMS) State Machine
+*   **Relational Event Bus**: Implements a dedicated asynchronous, non-blocking `LMSEventBus` to broker milestones and events between the **Syllabus Progress Tracker**, **Knowledge Network Canvas**, and the **Playbook Sandbox**.
+*   **D3 Force-Directed Engine**: Renders historical actors, treaties, and routes dynamically. Resolves structural collisions via multi-body simulation physics to distribute labels beautifully.
+*   **Learner Persistence Layer**: Uses a unified localized store to save syllabus completion, challenge exam records, and non-linear strategic alignments across sessions.
+
+#### 3. Sovereign Ledger and Wallet Protocols
+*   **Dual-path Treasury Architecture**: Adapts dynamically to user environment constraints.
+    *   *Sovereign Web3 Mode*: Interfaces directly with modern browser-injected wallets (such as MetaMask) to log on-chain authentication and secure campaign-starter rewards.
+    *   *Skeuomorphic Sandbox Mode*: Seamlessly falls back to local mathematical state tracking, allowing deep ledger allocations without blocking gameplay.
+
+#### 4. Express Secure Server & Git Portal
+*   **Vite Dev Pipeline**: Dual-mode bootstrapping utilizing a single Express instance. Mounts hot Vite development middleware in non-production, while executing optimized compiled bundles via static file delivery pipelines in production.
+*   **Secure API proxy**: Eliminates API keys from client-side vulnerability surfaces by routing sensitive requests (such as the Gemini API and remote repo sync operations) through protected server-side controller pathways.
+
+---
+
+## 📂 Detailed Directory Map
 
 ```
 panipat-1761-shattered-dreams/
@@ -112,7 +169,7 @@ panipat-1761-shattered-dreams/
 │   ├── durrani_faction_logo.png # Afghan Durrani Empire sigil
 │   └── readme_banner.jpg        # Cinematic header banner
 ├── src/
-│   ├── components/              # Game engine widgets & tactical mini-games
+│   ├── components/              # Isolated game engine widgets & tactical mini-games
 │   │   ├── AIDebateRoom.tsx     # Visual novel-style general debates & councils
 │   │   ├── MultiplayerLobbySimulator.tsx # Simulated matchmaking arena and card battles
 │   │   ├── ArtilleryCalibration.tsx # Windage & powder ratio mathematical cannon game
