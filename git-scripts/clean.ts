@@ -17,7 +17,7 @@ console.log("=== Staging all modified and untracked files ===");
 run('git add -A');
 
 console.log("=== Committing changes ===");
-const commitMsg = "chore: move git-related scripts to git-scripts directory for a clean root";
+const commitMsg = process.argv[3] || "ci: replace failing static pages deploy with container and security workflows";
 run(`git commit -m "${commitMsg}"`);
 
 // Read token from command-line arguments or environment
