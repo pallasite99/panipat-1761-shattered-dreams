@@ -97,6 +97,43 @@ export const SettingsOverlay: React.FC<OverlayProps & { onSaveLoad?: () => void 
   const [fxEnabled, setFxEnabled] = React.useState(true);
   const [voiceEnabled, setVoiceEnabled] = React.useState(true);
 
+  // Git Push Portal State
+  const [gitPat, setGitPat] = React.useState('');
+  const [gitMsg, setGitMsg] = React.useState('chore: update battlefield assets and visual simulation rules');
+  const [isPushing, setIsPushing] = React.useState(false);
+  const [pushLogs, setPushLogs] = React.useState<string[]>([]);
+  const [pushSuccess, setPushSuccess] = React.useState<boolean | null>(null);
+  const [pushError, setPushError] = React.useState<string | null>(null);
+
+  const handleGitPush = async () => {
+    setIsPushing(true);
+    setPushLogs([]);
+    setPushSuccess(null);
+    setPushError(null);
+    try {
+      const response = await fetch('/api/git/push', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pat: gitPat, commitMessage: gitMsg })
+      });
+      const data = await response.json();
+      if (data.logs) {
+        setPushLogs(data.logs);
+      }
+      if (response.ok && data.success) {
+        setPushSuccess(true);
+      } else {
+        setPushSuccess(false);
+        setPushError(data.error || 'Unknown error occurred during git operations');
+      }
+    } catch (err: any) {
+      setPushSuccess(false);
+      setPushError(err.message || 'Network communication failure');
+    } finally {
+      setIsPushing(false);
+    }
+  };
+
   React.useEffect(() => {
     if (isOpen) {
       setVol(panipatAudioEngine.getVolume());
@@ -336,6 +373,96 @@ export const SettingsOverlay: React.FC<OverlayProps & { onSaveLoad?: () => void 
                    </div>
                  </div>
               </div>
+
+                  {/* 4. GIT PUSH REMOTE INTEGRATION PORTAL */}
+                  <div className="p-5 mt-6 border border-stone-800 bg-stone-950/65 rounded-sm space-y-4">
+                     <p className="text-xs text-saffron font-black uppercase tracking-widest flex items-center gap-2">
+                       <span>⚙️</span> Git Sync & Remote Commit Portal
+                     </p>
+                     <p className="text-[10px] text-stone-500 uppercase font-bold tracking-wider leading-relaxed text-left">
+                       Commit and push current game status, code modifications, or files to the remote GitHub repository directly from the active live container environment.
+                     </p>
+
+                     <div className="space-y-3">
+                       {/* PAT Input */}
+                       <div className="space-y-1 text-left">
+                         <label className="block text-[9px] font-mono font-bold text-stone-400 uppercase">GitHub Personal Access Token (PAT):</label>
+                         <input 
+                           type="password"
+                           placeholder="ghp_..."
+                           value={gitPat}
+                           onChange={(e) => setGitPat(e.target.value)}
+                           className="w-full bg-stone-900 border border-stone-800 text-[11px] font-mono text-stone-300 p-2 rounded focus:outline-none focus:border-saffron"
+                         />
+                       </div>
+
+                       {/* Commit Message Input */}
+                       <div className="space-y-1 text-left">
+                         <label className="block text-[9px] font-mono font-bold text-stone-400 uppercase">Commit Message:</label>
+                         <input 
+                           type="text"
+                           placeholder="e.g., chore: make some updates"
+                           value={gitMsg}
+                           onChange={(e) => setGitMsg(e.target.value)}
+                           className="w-full bg-stone-900 border border-stone-800 text-[11px] font-mono text-stone-300 p-2 rounded focus:outline-none focus:border-saffron"
+                         />
+                       </div>
+                     </div>
+
+                     <button
+                       type="button"
+                       disabled={isPushing}
+                       onClick={handleGitPush}
+                       className="w-full py-2.5 bg-gradient-to-r from-stone-900 to-stone-850 hover:from-saffron hover:to-amber-600 hover:text-stone-950 text-stone-300 text-[10px] font-mono font-black uppercase tracking-widest rounded shadow border border-stone-800 hover:border-saffron cursor-pointer disabled:cursor-not-allowed flex items-center justify-center gap-2 transition-all"
+                     >
+                       {isPushing ? (
+                         <>
+                           <span className="animate-spin text-saffron font-bold">⚡</span>
+                           <span>Executing Push Sequence...</span>
+                         </>
+                       ) : (
+                         <>
+                           <span>🚀</span>
+                           <span>Execute Commit and Push</span>
+                         </>
+                       )}
+                     </button>
+
+                     {/* Result Alerts */}
+                     {pushSuccess === true && (
+                       <div className="p-3 bg-emerald-950/40 border border-emerald-900 rounded text-[10px] text-emerald-400 font-mono text-left flex items-start gap-2">
+                         <span>✔</span>
+                         <div>
+                           <p className="font-bold uppercase tracking-wider">Sync Completed Successfully!</p>
+                           <p className="mt-0.5 text-stone-400">All local files committed and synced safely to remote repository.</p>
+                         </div>
+                       </div>
+                     )}
+
+                     {pushSuccess === false && (
+                       <div className="p-3 bg-red-950/40 border border-red-900 rounded text-[10px] text-red-400 font-mono text-left flex items-start gap-2">
+                         <span>❌</span>
+                         <div>
+                           <p className="font-bold uppercase tracking-wider">Sync Execution Failed</p>
+                           <p className="mt-0.5 text-stone-300">{pushError}</p>
+                         </div>
+                       </div>
+                     )}
+
+                     {/* Terminal logs display */}
+                     {pushLogs.length > 0 && (
+                       <div className="space-y-1 text-left">
+                         <span className="text-[8px] font-mono text-stone-500 uppercase tracking-widest block">Git Exec Output Terminal:</span>
+                         <div className="bg-stone-950 border border-stone-900 p-3 rounded font-mono text-[9px] text-stone-400 max-h-40 overflow-y-auto space-y-1 whitespace-pre-wrap select-text custom-scrollbar">
+                           {pushLogs.map((log, index) => (
+                             <div key={index} className={log.startsWith('>') ? 'text-saffron' : log.startsWith('ERROR') ? 'text-red-400' : 'text-stone-400'}>
+                               {log}
+                             </div>
+                           ))}
+                         </div>
+                       </div>
+                     )}
+                  </div>
 
               <div className="mt-12 pt-8 border-t border-stone-800 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                  <div className="flex items-center gap-4 text-[10px] text-stone-500 uppercase font-black tracking-widest">
