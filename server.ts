@@ -13,10 +13,17 @@ async function startServer() {
 
   // API Route: Git Push
   app.post('/api/git/push', (req, res) => {
-    const { pat, commitMessage } = req.body;
+    const { pat, commitMessage, branch } = req.body;
 
     if (!commitMessage || typeof commitMessage !== 'string' || commitMessage.trim() === '') {
       return res.status(400).json({ success: false, error: 'Commit message is required' });
+    }
+
+    const targetBranch = (branch && typeof branch === 'string' && branch.trim() !== '') ? branch.trim() : 'main';
+    
+    // Strict regex validation for branch name to avoid shell injection
+    if (!/^[a-zA-Z0-9_\-\/\.]+$/.test(targetBranch)) {
+      return res.status(400).json({ success: false, error: 'Invalid branch name pattern. Use alphanumeric characters, hyphens, underscores, slashes, or periods only.' });
     }
 
     const token = (pat && pat.trim() !== '') ? pat.trim() : process.env.GITHUB_TOKEN;
@@ -68,16 +75,16 @@ async function startServer() {
       runGit(`git remote set-url origin "${authenticatedUrl}"`);
 
       // 5. Push to GitHub
-      console.log('Pushing to GitHub in Express server...');
-      const pushRes = runGit('git push origin main');
+      console.log(`Pushing HEAD to remote branch "${targetBranch}" in Express server...`);
+      const pushRes = runGit(`git push origin HEAD:${targetBranch}`);
 
       // 6. Restore public URL for security
       runGit(`git remote set-url origin ${publicUrl}`);
 
       if (pushRes.success) {
-        return res.json({ success: true, message: 'Successfully committed and pushed to GitHub remote!', logs });
+        return res.json({ success: true, message: `Successfully committed and pushed to remote branch "${targetBranch}" on GitHub!`, logs });
       } else {
-        return res.status(500).json({ success: false, error: 'Git push operation failed. See logs for details.', logs });
+        return res.status(500).json({ success: false, error: `Git push to branch "${targetBranch}" failed. See logs for details.`, logs });
       }
     } catch (e: any) {
       return res.status(500).json({ success: false, error: e.message, logs });

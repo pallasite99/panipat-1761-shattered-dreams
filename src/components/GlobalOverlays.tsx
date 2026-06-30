@@ -100,6 +100,7 @@ export const SettingsOverlay: React.FC<OverlayProps & { onSaveLoad?: () => void 
   // Git Push Portal State
   const [gitPat, setGitPat] = React.useState('');
   const [gitMsg, setGitMsg] = React.useState('chore: update battlefield assets and visual simulation rules');
+  const [gitBranch, setGitBranch] = React.useState('main');
   const [isPushing, setIsPushing] = React.useState(false);
   const [pushLogs, setPushLogs] = React.useState<string[]>([]);
   const [pushSuccess, setPushSuccess] = React.useState<boolean | null>(null);
@@ -114,7 +115,7 @@ export const SettingsOverlay: React.FC<OverlayProps & { onSaveLoad?: () => void 
       const response = await fetch('/api/git/push', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ pat: gitPat, commitMessage: gitMsg })
+        body: JSON.stringify({ pat: gitPat, commitMessage: gitMsg, branch: gitBranch })
       });
       const data = await response.json();
       if (data.logs) {
@@ -396,7 +397,20 @@ export const SettingsOverlay: React.FC<OverlayProps & { onSaveLoad?: () => void 
                          />
                        </div>
 
-                       {/* Commit Message Input */}
+                       
+                        {/* Target Branch Input */}
+                        <div className="space-y-1 text-left">
+                          <label className="block text-[9px] font-mono font-bold text-stone-400 uppercase">Target Branch Name:</label>
+                          <input 
+                            type="text"
+                            placeholder="e.g., main, dev, feature-branch"
+                            value={gitBranch}
+                            onChange={(e) => setGitBranch(e.target.value)}
+                            className="w-full bg-stone-900 border border-stone-800 text-[11px] font-mono text-stone-300 p-2 rounded focus:outline-none focus:border-saffron"
+                          />
+                        </div>
+
+                        {/* Commit Message Input */}
                        <div className="space-y-1 text-left">
                          <label className="block text-[9px] font-mono font-bold text-stone-400 uppercase">Commit Message:</label>
                          <input 
