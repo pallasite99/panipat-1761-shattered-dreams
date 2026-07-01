@@ -791,7 +791,7 @@ export const BattleScene: React.FC<BattleProps> = ({ onNavigate, onAdvance, stag
         return saved;
       }
     }
-    return 'godot';
+    return 'p5';
   });
 
   useEffect(() => {

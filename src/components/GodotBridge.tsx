@@ -101,6 +101,11 @@ export const GodotBridge: React.FC<GodotBridgeProps> = ({
   // High performance projection coordinates and explosion state refs
   const entityProjectionsRef = useRef<{ [id: string]: { x: number; y: number } }>({});
   const explosionRef = useRef<{ x: number, y: number, z: number, progress: number, radius: number } | null>(null);
+  const sceneEntitiesRef = useRef<Vec3[]>(sceneEntities);
+
+  useEffect(() => {
+    sceneEntitiesRef.current = sceneEntities;
+  }, [sceneEntities]);
 
   // Simulated packets
   const [packetLogs, setPacketLogs] = useState<{
@@ -370,61 +375,72 @@ func _physics_process(delta: float):
     if (engineState !== 'ENGINE_READY') return;
     
     const timer = setInterval(() => {
+      const current = sceneEntitiesRef.current;
+      const next = current.map(ent => ({ ...ent }));
       let hasChanged = false;
       let warningMsg: string | null = null;
+      let marathaCohesionDmg = 0;
+      let durraniCohesionDmg = 0;
       
-      setSceneEntities(prev => {
-        const next = prev.map(ent => ({ ...ent }));
-        
-        for (let i = 0; i < next.length; i++) {
-          const entA = next[i];
-          for (let j = i + 1; j < next.length; j++) {
-            const entB = next[j];
+      for (let i = 0; i < next.length; i++) {
+        const entA = next[i];
+        for (let j = i + 1; j < next.length; j++) {
+          const entB = next[j];
+          
+          const dx = entA.x - entB.x;
+          const dz = entA.z - entB.z;
+          const dist = Math.sqrt(dx*dx + dz*dz);
+          const radLimit = (entA.size + entB.size) * 0.75;
+          
+          if (dist < radLimit) {
+            // Rigid Body separation vector
+            const overlap = radLimit - dist;
+            const angle = Math.atan2(dz, dx);
+            const moveX = Math.cos(angle) * overlap * 0.51;
+            const moveZ = Math.sin(angle) * overlap * 0.51;
             
-            const dx = entA.x - entB.x;
-            const dz = entA.z - entB.z;
-            const dist = Math.sqrt(dx*dx + dz*dz);
-            const radLimit = (entA.size + entB.size) * 0.75;
+            // Push them apart
+            entA.x += moveX;
+            entA.z += moveZ;
+            entB.x -= moveX;
+            entB.z -= moveZ;
             
-            if (dist < radLimit) {
-              // Rigid Body separation vector
-              const overlap = radLimit - dist;
-              const angle = Math.atan2(dz, dx);
-              const moveX = Math.cos(angle) * overlap * 0.51;
-              const moveZ = Math.sin(angle) * overlap * 0.51;
+            // Clamp to bounds
+            entA.x = Math.max(-8, Math.min(8, entA.x));
+            entA.z = Math.max(-8, Math.min(8, entA.z));
+            entB.x = Math.max(-8, Math.min(8, entB.x));
+            entB.z = Math.max(-8, Math.min(8, entB.z));
+            
+            hasChanged = true;
+            
+            if (entA.faction !== entB.faction) {
+              warningMsg = `💥 CLASH DETECTED: ${entA.label} colliding with ${entB.label}! Melee damage applied!`;
               
-              // Push them apart
-              entA.x += moveX;
-              entA.z += moveZ;
-              entB.x -= moveX;
-              entB.z -= moveZ;
-              
-              // Clamp to bounds
-              entA.x = Math.max(-8, Math.min(8, entA.x));
-              entA.z = Math.max(-8, Math.min(8, entA.z));
-              entB.x = Math.max(-8, Math.min(8, entB.x));
-              entB.z = Math.max(-8, Math.min(8, entB.z));
-              
-              hasChanged = true;
-              
-              if (entA.faction !== entB.faction) {
-                warningMsg = `💥 CLASH DETECTED: ${entA.label} colliding with ${entB.label}! Melee damage applied!`;
-                
-                // Subtract cohesion dynamically
-                onModifyCohesion(-0.3, 'maratha');
-                onModifyCohesion(-0.4, 'durrani');
-              }
+              // Accumulate cohesion damage
+              marathaCohesionDmg += 0.3;
+              durraniCohesionDmg += 0.4;
             }
           }
         }
-        return hasChanged ? next : prev;
-      });
+      }
+
+      if (hasChanged) {
+        setSceneEntities(next);
+      }
+      
+      // Execute parent callback state modifiers safely outside any rendering or state setter paths
+      if (marathaCohesionDmg > 0 && onModifyCohesion) {
+        onModifyCohesion(-marathaCohesionDmg, 'maratha');
+      }
+      if (durraniCohesionDmg > 0 && onModifyCohesion) {
+        onModifyCohesion(-durraniCohesionDmg, 'durrani');
+      }
       
       setCollisionWarning(warningMsg);
     }, 50);
 
     return () => clearInterval(timer);
-  }, [engineState]);
+  }, [engineState, onModifyCohesion]);
 
   // 2. Skirmish Auto-Walker interval (10Hz)
   useEffect(() => {
@@ -477,16 +493,22 @@ func _physics_process(delta: float):
       const elapsed = (now - lastTime) / 1000;
       lastTime = now;
       
+      let completed = false;
       setProjectileT(prev => {
         const next = prev + elapsed * 0.95;
         if (next >= 1.0) {
-          setIsLaunchingProjectile(false);
-          handleProjectileImpact();
+          completed = true;
           return 1.0;
         }
         return next;
       });
-      animFrame = requestAnimationFrame(tick);
+
+      if (completed) {
+        setIsLaunchingProjectile(false);
+        handleProjectileImpact();
+      } else {
+        animFrame = requestAnimationFrame(tick);
+      }
     };
     animFrame = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(animFrame);
