@@ -8,7 +8,7 @@ import {
 } from 'lucide-react';
 
 interface GodotBridgeProps {
-  onEnemyHit?: (damage: number) => void;
+  onEnemyHit?: (damage: number, label?: string, isAutonomous?: boolean) => void;
   onLootSuccess?: () => void;
   onCommanderShout?: (speaker: string, role: string, avatar: string, text: string, faction: 'maratha' | 'durrani') => void;
   weather?: 'clear' | 'rain' | 'dust_storm' | 'fog' | 'extreme_heat';
@@ -248,7 +248,7 @@ func _physics_process(delta: float):
     
     // Wire up to the actual parent callback handlers
     if (type === 'artillery_impact' && onEnemyHit) {
-      onEnemyHit(data.damage || 20);
+      onEnemyHit(data.damage || 20, "artillery", true);
       if (onCommanderShout) {
         onCommanderShout(
           "Ibrahim Khan Gardi", 
@@ -563,7 +563,7 @@ func _physics_process(delta: float):
     
     if (onEnemyHit && hitsList.length > 0) {
       const totalDmg = hitsList.reduce((sum, h) => sum + h.damage, 0);
-      onEnemyHit(totalDmg);
+      onEnemyHit(totalDmg, "artillery", true);
     }
   };
 
