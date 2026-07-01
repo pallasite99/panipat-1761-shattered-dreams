@@ -784,7 +784,21 @@ export const BattleScene: React.FC<BattleProps> = ({ onNavigate, onAdvance, stag
     }[];
   } | null>(null);
   const [decisionsHistory, setDecisionsHistory] = useState<string[]>([]);
-  const [viewportMode, setViewportMode] = useState<'p5' | 'godot'>('godot');
+  const [viewportMode, setViewportMode] = useState<'p5' | 'godot'>(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem('panipat_battle_viewport_mode');
+      if (saved === 'p5' || saved === 'godot') {
+        return saved;
+      }
+    }
+    return 'godot';
+  });
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      localStorage.setItem('panipat_battle_viewport_mode', viewportMode);
+    }
+  }, [viewportMode]);
 
   // Weather and Music synthesizers variables
   const [timeOfDay, setTimeOfDay] = useState<'dawn' | 'noon' | 'dusk' | 'midnight'>('noon');
