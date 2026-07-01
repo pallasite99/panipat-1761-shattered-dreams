@@ -20,6 +20,7 @@ import {
   BookOpen,
   MessageSquare,
   Check,
+  Package
 } from "lucide-react";
 import { TopBar, SideNav } from "../components/SharedUI";
 import { Screen, CampaignStage } from "../types";
@@ -625,6 +626,32 @@ export const StrategicMap: React.FC<{
     const interval = setInterval(checkClearedTabs, 500);
     return () => clearInterval(interval);
   }, [checkClearedTabs]);
+
+  // Map scale zoom state (defaults to 50%)
+  const [mapScale, setMapScale] = useState<number>(0.5);
+
+  // Viewport dimensions for perfect drag constraints
+  const [dimensions, setDimensions] = useState({
+    width: typeof window !== "undefined" ? window.innerWidth : 1200,
+    height: typeof window !== "undefined" ? window.innerHeight : 800,
+  });
+
+  useEffect(() => {
+    const handleResize = () => {
+      setDimensions({
+        width: window.innerWidth,
+        height: window.innerHeight,
+      });
+    };
+    if (typeof window !== "undefined") {
+      window.addEventListener("resize", handleResize);
+    }
+    return () => {
+      if (typeof window !== "undefined") {
+        window.removeEventListener("resize", handleResize);
+      }
+    };
+  }, []);
 
   // Civilization Strategy Resources States
   const [treasuryMohurs, setTreasuryMohurs] = useState<number>(() => {
@@ -1814,6 +1841,13 @@ export const StrategicMap: React.FC<{
   const isViewingOpponent = activeFaction !== playingFaction;
   const showSecretOpponentView = isViewingOpponent && !isOpponentScouted;
 
+  const viewportWidth = dimensions.width > 1024 ? dimensions.width - 256 : dimensions.width;
+  const viewportHeight = dimensions.height;
+  
+  // Calculate dynamic constraints
+  const dragLeft = Math.min(0, -4000 + (viewportWidth / mapScale));
+  const dragTop = Math.min(0, -4000 + (viewportHeight / mapScale));
+
   return (
     <div className="relative h-screen w-screen bg-stone-950 overflow-hidden font-sans">
       <TopBar
@@ -1901,40 +1935,6 @@ export const StrategicMap: React.FC<{
 
         {/* Cinematic Vignette */}
         <div className="absolute inset-0 pointer-events-none z-20 shadow-[inset_0_0_150px_rgba(0,0,0,0.6)]" />
-
-        {/* Civilization Stats HUD - Elegant Floating Dashboard */}
-        <div
-          id="civ-stats-hud"
-          className="absolute top-20 left-6 lg:left-[18rem] z-40 flex items-center gap-1 p-1 bg-stone-950/95 border border-[#8B5E3C] rounded-sm shadow-2xl backdrop-blur-md"
-        >
-          <div className="flex items-center gap-1.5 px-3 border-r border-[#8B5E3C]/35 h-6">
-            <Coins size={13} className="text-saffron animate-pulse" />
-            <span className="text-[9px] font-black text-stone-400 font-mono">
-              GOLD:
-            </span>
-            <span className="text-[11px] font-serif font-black text-amber-200">
-              {treasuryMohurs.toLocaleString()}
-            </span>
-          </div>
-          <div className="flex items-center gap-1.5 px-3 border-r border-[#8B5E3C]/35 h-6">
-            <Scroll size={13} className="text-emerald-500" />
-            <span className="text-[9px] font-black text-stone-400 font-mono">
-              FOOD:
-            </span>
-            <span className="text-[11px] font-serif font-black text-emerald-400">
-              {provisions}T
-            </span>
-          </div>
-          <div className="flex items-center gap-1.5 px-3 h-6">
-            <Flag size={13} className="text-red-500 animate-pulse" />
-            <span className="text-[9px] font-black text-stone-400 font-mono">
-              COHESION:
-            </span>
-            <span className="text-[11px] font-serif font-black text-red-500">
-              {morale}%
-            </span>
-          </div>
-        </div>
 
         {/* Interactive Historical Dispatch Hub */}
         <div
@@ -2079,13 +2079,35 @@ export const StrategicMap: React.FC<{
           </div>
         )}
 
-        {/* Draggable Map Container */}
-        <motion.div
-          drag
-          dragConstraints={{ left: -2500, right: 0, top: -2500, bottom: 0 }}
-          style={{ width: "4000px", height: "4000px" }}
-          className="absolute cursor-grab active:cursor-grabbing origin-top-left scale-50"
+        {/* Scaled Wrapper for Zooming */}
+        <div
+          style={{
+            transform: `scale(${mapScale})`,
+            transformOrigin: "top left",
+            width: "100%",
+            height: "100%",
+            position: "absolute",
+            top: 0,
+            left: 0,
+            pointerEvents: "none"
+          }}
         >
+          {/* Draggable Map Container */}
+          <motion.div
+            drag
+            dragConstraints={{ 
+              left: dragLeft, 
+              right: 0, 
+              top: dragTop, 
+              bottom: 0 
+            }}
+            style={{ 
+              width: "4000px", 
+              height: "4000px",
+              pointerEvents: "auto"
+            }}
+            className="absolute cursor-grab active:cursor-grabbing"
+          >
           {/* Detailed Map Lines - Ink Style & Diverse Indian Terrain SVG features */}
           <svg className="absolute inset-0 z-5 pointer-events-none w-full h-full overflow-visible">
             <defs>
@@ -2609,6 +2631,23 @@ export const StrategicMap: React.FC<{
                       ${isCurrent ? "z-30" : "z-10"}
                     `}
                   >
+                    {/* Dynamic Resource Loot Indicator */}
+                    {isCompleted && !showSecretOpponentView && (
+                      <div 
+                        className="absolute -top-1 -right-1 bg-stone-950 border border-[#8B5E3C] w-6 h-6 rounded-full flex items-center justify-center shadow-lg z-30 animate-bounce"
+                        title="Captured territory contributing resources"
+                      >
+                        {m.stage === CampaignStage.NIZAM_CAMPAIGN && <Coins size={11} className="text-amber-400" />}
+                        {m.stage === CampaignStage.PUNE && <Users size={11} className="text-sky-400" />}
+                        {m.stage === CampaignStage.BURHANPUR && <Package size={11} className="text-emerald-400" />}
+                        {m.stage === CampaignStage.GWALIOR && <Coins size={11} className="text-amber-400" />}
+                        {m.stage === CampaignStage.DELHI_NEGOTIATIONS && <Coins size={11} className="text-amber-400" />}
+                        {m.stage === CampaignStage.SHINDE_STAND && <Users size={11} className="text-sky-400" />}
+                        {m.stage === CampaignStage.DELHI_BATTLE && <Package size={11} className="text-emerald-400" />}
+                        {m.stage === CampaignStage.PANIPAT && <Swords size={11} className="text-red-400" />}
+                      </div>
+                    )}
+
                     {/* Wax Seal / Counter Visual */}
                     <div
                       className={`absolute inset-0 rounded-full border-4 shadow-inner transform rotate-12 transition-transform group-hover:rotate-0
@@ -2663,16 +2702,17 @@ export const StrategicMap: React.FC<{
 
                   <div className="mt-4 text-center">
                     <span
-                      className={`px-5 py-2 text-sm font-serif uppercase font-black tracking-widest bg-stone-950/20 backdrop-blur-sm rounded-sm
+                      className={`px-4 py-1.5 text-xs font-serif uppercase tracking-widest rounded-md inline-block transition-all backdrop-blur-md shadow-md
                       ${
                         showSecretOpponentView
-                          ? "text-red-400 border border-red-900/50 bg-red-950/80 font-mono tracking-wider"
+                          ? "text-red-400 border border-red-900/50 bg-red-950/90 font-mono tracking-wider"
                           : isCurrent
-                            ? "text-stone-900 border-2 bg-saffron/10 inline-block font-bold " +
-                              (activeFaction === "maratha"
-                                ? "border-saffron text-stone-900"
-                                : "border-emerald-500 text-stone-100")
-                            : "text-stone-700"
+                            ? activeFaction === "maratha"
+                              ? "text-saffron border-2 border-saffron bg-stone-950/95 font-black shadow-[0_0_15px_rgba(255,153,51,0.8)] scale-110"
+                              : "text-emerald-400 border-2 border-emerald-500 bg-stone-950/95 font-black shadow-[0_0_15px_rgba(16,185,129,0.8)] scale-110"
+                            : isCompleted
+                              ? "text-emerald-500 border border-emerald-900/40 bg-stone-950/80"
+                              : "text-stone-400 border border-stone-850/60 bg-stone-950/60"
                       }
                     `}
                     >
@@ -2814,6 +2854,7 @@ export const StrategicMap: React.FC<{
             })}
           </div>
         </motion.div>
+      </div>
 
         {/* Global Progress Rails - 18th Century Instrument Look */}
         <div className="absolute top-20 left-1/2 -translate-x-1/2 w-full max-w-4xl px-20 z-40 flex items-center gap-8">
@@ -4565,6 +4606,40 @@ export const StrategicMap: React.FC<{
             onApplyEffects={handleApplyEventEffects}
           />
         )}
+
+        {/* Interactive Strategic Map Zoom HUD */}
+        <div 
+          className="absolute bottom-24 right-6 z-40 flex flex-col gap-1.5 bg-stone-950/95 border border-[#8B5E3C] p-2 rounded-md shadow-2xl backdrop-blur-md"
+          id="map-zoom-controls"
+        >
+          <span className="text-[8px] font-mono font-black text-stone-400 text-center uppercase tracking-widest border-b border-[#8B5E3C]/20 pb-1 mb-1">
+            ZOOM
+          </span>
+          <button
+            onClick={() => setMapScale(prev => Math.min(1.5, prev + 0.1))}
+            className="w-9 h-9 flex items-center justify-center bg-stone-900 border border-[#8B5E3C]/30 text-saffron hover:bg-stone-850 hover:text-white active:scale-95 transition-all font-bold text-lg rounded-sm cursor-pointer"
+            title="Zoom In"
+          >
+            +
+          </button>
+          <button
+            onClick={() => setMapScale(0.5)}
+            className="w-9 h-6 flex items-center justify-center bg-stone-900 border border-[#8B5E3C]/20 text-stone-400 hover:text-saffron hover:bg-stone-850 active:scale-95 transition-all text-[10px] font-mono tracking-widest uppercase rounded-sm cursor-pointer"
+            title="Reset Zoom"
+          >
+            100%
+          </button>
+          <button
+            onClick={() => setMapScale(prev => Math.max(0.15, prev - 0.1))}
+            className="w-9 h-9 flex items-center justify-center bg-stone-900 border border-[#8B5E3C]/30 text-saffron hover:bg-stone-850 hover:text-white active:scale-95 transition-all font-bold text-lg rounded-sm cursor-pointer"
+            title="Zoom Out"
+          >
+            −
+          </button>
+          <span className="text-[8px] font-mono font-black text-stone-400 text-center uppercase tracking-wider mt-0.5">
+            {Math.round(mapScale * 200)}%
+          </span>
+        </div>
       </main>
     </div>
   );

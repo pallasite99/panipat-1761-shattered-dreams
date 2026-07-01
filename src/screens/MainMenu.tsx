@@ -269,6 +269,9 @@ export const MainMenu: React.FC<{
                     onClick={() => { 
                       setFaction('maratha'); 
                       localStorage.setItem('panipat_campaign_faction', 'maratha');
+                      localStorage.setItem('panipat_campaign_treasury', '145000');
+                      localStorage.setItem('panipat_campaign_provisions', '1400');
+                      localStorage.setItem('panipat_campaign_manpower', '45000');
                       setCampaignStage(CampaignStage.NIZAM_CAMPAIGN);
                       setAppState('story'); 
                     }}
@@ -284,6 +287,9 @@ export const MainMenu: React.FC<{
                     onClick={() => { 
                       setFaction('durrani'); 
                       localStorage.setItem('panipat_campaign_faction', 'durrani');
+                      localStorage.setItem('panipat_campaign_treasury', '145000');
+                      localStorage.setItem('panipat_campaign_provisions', '1400');
+                      localStorage.setItem('panipat_campaign_manpower', '45000');
                       setCampaignStage(CampaignStage.NIZAM_CAMPAIGN);
                       setAppState('story'); 
                     }}

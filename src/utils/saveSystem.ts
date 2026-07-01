@@ -13,6 +13,7 @@ export interface CampaignSave {
   generalName: string;
   recruitedTroops: string[];
   drillLevel: number;
+  manpower?: number;
 }
 
 const STORAGE_KEY = 'panipat_campaign_saves_slots';
@@ -37,6 +38,7 @@ export const saveCampaignToSlot = (slotName: string, id?: string): CampaignSave 
   const morale = Number(localStorage.getItem('panipat_campaign_morale') || '80');
   const general = localStorage.getItem('panipat_campaign_general') || 'bhau';
   const generalName = localStorage.getItem('panipat_campaign_general_name') || 'Sadashivrao Bhau';
+  const manpower = Number(localStorage.getItem('panipat_campaign_manpower') || '45000');
   
   let recruitedTroops: string[] = [];
   try {
@@ -61,7 +63,8 @@ export const saveCampaignToSlot = (slotName: string, id?: string): CampaignSave 
     general,
     generalName,
     recruitedTroops,
-    drillLevel
+    drillLevel,
+    manpower
   };
 
   const existingIndex = saves.findIndex(s => s.id === saveId);
@@ -85,6 +88,7 @@ export const loadCampaignFromSlot = (save: CampaignSave): void => {
   localStorage.setItem('panipat_campaign_general_name', save.generalName);
   localStorage.setItem('panipat_campaign_recruited_troops', JSON.stringify(save.recruitedTroops));
   localStorage.setItem('panipat_campaign_drill_level', save.drillLevel.toString());
+  localStorage.setItem('panipat_campaign_manpower', (save.manpower || 45000).toString());
   
   // Set clears for current stage in Strategic Map
   localStorage.setItem(`cleared_council_${save.stage}`, 'true');

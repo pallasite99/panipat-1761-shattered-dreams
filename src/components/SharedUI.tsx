@@ -29,7 +29,8 @@ import {
   X,
   GraduationCap,
   Compass,
-  Scroll
+  Scroll,
+  Coins
 } from 'lucide-react';
 import { Screen } from '../types';
 
@@ -42,43 +43,90 @@ export const TopBar: React.FC<{
   onHelp?: () => void;
   onSettings?: () => void;
   onShowBattleLog?: () => void;
-}> = ({ screen, onNavigate, onToggleMenu, onHelp, onSettings, onShowBattleLog }) => (
-  <header className="fixed top-0 left-0 w-full z-50 flex justify-between items-center px-4 md:px-10 py-3 bg-stone-950/90 backdrop-blur-sm border-b-4 border-stone-800/80 bronze-bevel">
-    <div className="flex items-center gap-4 md:gap-8">
-      <button 
-        className="lg:hidden text-saffron p-1"
-        onClick={onToggleMenu}
-      >
-        <Menu size={24} />
-      </button>
-      <h1 
-        className="text-lg md:text-2xl font-bold text-saffron italic drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] font-serif uppercase tracking-widest cursor-pointer whitespace-nowrap"
-        onClick={() => onNavigate(Screen.MAIN_MENU)}
-      >
-        Panipat: 1761
-      </h1>
-      <nav className="hidden xl:flex gap-8 font-serif tracking-widest uppercase text-sm">
+}> = ({ screen, onNavigate, onToggleMenu, onHelp, onSettings, onShowBattleLog }) => {
+  const [resources, setResources] = React.useState({
+    manpower: 45000,
+    provisions: 1400,
+    gold: 145000
+  });
+
+  React.useEffect(() => {
+    const update = () => {
+      const savedManpower = localStorage.getItem("panipat_campaign_manpower");
+      const savedProvisions = localStorage.getItem("panipat_campaign_provisions");
+      const savedGold = localStorage.getItem("panipat_campaign_treasury");
+
+      setResources({
+        manpower: savedManpower ? Number(savedManpower) : 45000,
+        provisions: savedProvisions ? Number(savedProvisions) : 1400,
+        gold: savedGold ? Number(savedGold) : 145000
+      });
+    };
+
+    update();
+    const interval = setInterval(update, 500);
+    return () => clearInterval(interval);
+  }, []);
+
+  return (
+    <header className="fixed top-0 left-0 w-full z-50 flex justify-between items-center px-4 md:px-10 py-3 bg-stone-950/90 backdrop-blur-sm border-b-4 border-stone-800/80 bronze-bevel">
+      <div className="flex items-center gap-4 md:gap-8">
         <button 
-          onClick={() => onNavigate(Screen.TACTICAL_HUD)}
-          className={`transition-all duration-300 ${screen === Screen.TACTICAL_HUD ? 'text-saffron border-b-2 border-saffron pb-1' : 'text-stone-400 hover:text-saffron'}`}
+          className="lg:hidden text-saffron p-1"
+          onClick={onToggleMenu}
         >
-          Morale
+          <Menu size={24} />
         </button>
-        <button 
-          onClick={() => onNavigate(Screen.LOGISTICS)}
-          className={`transition-all duration-300 ${screen === Screen.LOGISTICS ? 'text-saffron border-b-2 border-saffron pb-1' : 'text-stone-400 hover:text-saffron'}`}
+        <h1 
+          className="text-lg md:text-2xl font-bold text-saffron italic drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] font-serif uppercase tracking-widest cursor-pointer whitespace-nowrap"
+          onClick={() => onNavigate(Screen.MAIN_MENU)}
         >
-          Logistics
-        </button>
-        <button 
-          onClick={() => onNavigate(Screen.COMMANDER_DEV)}
-          className={`transition-all duration-300 ${screen === Screen.COMMANDER_DEV ? 'text-saffron border-b-2 border-saffron pb-1' : 'text-stone-400 hover:text-saffron'}`}
-        >
-          Intelligence
-        </button>
-      </nav>
-    </div>
-    <div className="flex items-center gap-6">
+          Panipat: 1761
+        </h1>
+        <nav className="hidden xl:flex gap-8 font-serif tracking-widest uppercase text-sm">
+          <button 
+            onClick={() => onNavigate(Screen.TACTICAL_HUD)}
+            className={`transition-all duration-300 ${screen === Screen.TACTICAL_HUD ? 'text-saffron border-b-2 border-saffron pb-1' : 'text-stone-400 hover:text-saffron'}`}
+          >
+            Morale
+          </button>
+          <button 
+            onClick={() => onNavigate(Screen.LOGISTICS)}
+            className={`transition-all duration-300 ${screen === Screen.LOGISTICS ? 'text-saffron border-b-2 border-saffron pb-1' : 'text-stone-400 hover:text-saffron'}`}
+          >
+            Logistics
+          </button>
+          <button 
+            onClick={() => onNavigate(Screen.COMMANDER_DEV)}
+            className={`transition-all duration-300 ${screen === Screen.COMMANDER_DEV ? 'text-saffron border-b-2 border-saffron pb-1' : 'text-stone-400 hover:text-saffron'}`}
+          >
+            Intelligence
+          </button>
+        </nav>
+      </div>
+
+      {/* Persistent Resource Status Bar - Responsive & Compact */}
+      <div className="flex items-center gap-3 sm:gap-5 bg-stone-900/60 px-3 sm:px-5 py-1 sm:py-1.5 rounded-full border border-stone-800/80 shadow-inner">
+        <div className="flex items-center gap-1.5" title="Manpower (Active Soldiers)">
+          <Users size={14} className="text-sky-400 shrink-0 animate-pulse" />
+          <span className="text-[9px] font-mono uppercase text-stone-400 font-bold hidden lg:inline">Manpower</span>
+          <span className="text-[11px] sm:text-xs font-serif font-black text-sky-200">{resources.manpower.toLocaleString()}</span>
+        </div>
+        <div className="w-px h-3 bg-stone-800" />
+        <div className="flex items-center gap-1.5" title="Food Provisions">
+          <Package size={14} className="text-emerald-400 shrink-0" />
+          <span className="text-[9px] font-mono uppercase text-stone-400 font-bold hidden lg:inline">Provisions</span>
+          <span className="text-[11px] sm:text-xs font-serif font-black text-emerald-300">{resources.provisions.toLocaleString()}T</span>
+        </div>
+        <div className="w-px h-3 bg-stone-800" />
+        <div className="flex items-center gap-1.5" title="Treasury Gold Mohurs">
+          <Coins size={14} className="text-amber-400 shrink-0" />
+          <span className="text-[9px] font-mono uppercase text-stone-400 font-bold hidden lg:inline">Gold</span>
+          <span className="text-[11px] sm:text-xs font-serif font-black text-amber-200">{resources.gold.toLocaleString()}</span>
+        </div>
+      </div>
+
+      <div className="flex items-center gap-6">
       <div className="flex gap-4">
         {onShowBattleLog && (
           <button 
@@ -116,7 +164,8 @@ export const TopBar: React.FC<{
       )}
     </div>
   </header>
-);
+  );
+};
 
 export const BottomNav: React.FC<{ activeAction?: string; onAction?: (action: string) => void }> = ({ activeAction, onAction }) => (
   <footer className="fixed bottom-0 w-full z-50 flex justify-around md:justify-center items-center gap-2 md:gap-12 pb-2 md:pb-4 bg-stone-900/95 border-t-4 border-stone-700 hammered-metal shadow-[0_-10px_30px_rgba(0,0,0,0.5)] h-20 md:h-24">

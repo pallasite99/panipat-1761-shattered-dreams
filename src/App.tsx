@@ -67,7 +67,30 @@ export default function App() {
     const stages = Object.values(CampaignStage);
     const currentIndex = stages.indexOf(campaignStage);
     if (currentIndex < stages.length - 1) {
-      setCampaignStage(stages[currentIndex + 1]);
+      const nextStage = stages[currentIndex + 1];
+      setCampaignStage(nextStage);
+
+      // Define resource adjustments for advancing to each stage
+      const STAGE_TRANSITIONS: Record<string, { manpower: number; provisions: number; gold: number }> = {
+        [CampaignStage.PUNE]: { manpower: 12000, provisions: 300, gold: 80000 },
+        [CampaignStage.BURHANPUR]: { manpower: 5000, provisions: -400, gold: -30000 },
+        [CampaignStage.GWALIOR]: { manpower: 8000, provisions: -300, gold: 40000 },
+        [CampaignStage.DELHI_NEGOTIATIONS]: { manpower: 6000, provisions: -200, gold: -25000 },
+        [CampaignStage.SHINDE_STAND]: { manpower: -5000, provisions: -300, gold: -15000 },
+        [CampaignStage.DELHI_BATTLE]: { manpower: -4000, provisions: 800, gold: 50000 },
+        [CampaignStage.PANIPAT]: { manpower: -10000, provisions: -800, gold: -20000 },
+      };
+
+      const change = STAGE_TRANSITIONS[nextStage];
+      if (change) {
+        const currentGold = Number(localStorage.getItem("panipat_campaign_treasury") || "145000");
+        const currentProvisions = Number(localStorage.getItem("panipat_campaign_provisions") || "1400");
+        const currentManpower = Number(localStorage.getItem("panipat_campaign_manpower") || "45000");
+
+        localStorage.setItem("panipat_campaign_treasury", Math.max(0, currentGold + change.gold).toString());
+        localStorage.setItem("panipat_campaign_provisions", Math.max(0, currentProvisions + change.provisions).toString());
+        localStorage.setItem("panipat_campaign_manpower", Math.max(0, currentManpower + change.manpower).toString());
+      }
     }
   };
 

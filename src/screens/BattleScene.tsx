@@ -784,7 +784,7 @@ export const BattleScene: React.FC<BattleProps> = ({ onNavigate, onAdvance, stag
     }[];
   } | null>(null);
   const [decisionsHistory, setDecisionsHistory] = useState<string[]>([]);
-  const [viewportMode, setViewportMode] = useState<'p5' | 'godot'>('p5');
+  const [viewportMode, setViewportMode] = useState<'p5' | 'godot'>('godot');
 
   // Weather and Music synthesizers variables
   const [timeOfDay, setTimeOfDay] = useState<'dawn' | 'noon' | 'dusk' | 'midnight'>('noon');
