@@ -24,8 +24,15 @@ This document details the step-by-step phases to implement high-value historical
 
 ---
 
+## Phase 5: Royal Intelligence: Harkara Spy Networks & Cipher Decryption Deck
+*   **Harkara Strategic Spies**: Recruited scouts positioned at 4 historical gateways (Yamuna Bed, Sonepat Plains, Delhi Highway, Panipat Saltmarshes). Positioning spies costs Gold, unlocking vital regional intel reports and strategic combat multipliers.
+*   **Decryption Scriptorium**: An interactive Caesar-shift key decryption deck parsing secret correspondence from Najib-ud-Daula, Ahmad Shah, and Rohilla leaders. Solving shifts confers extensive treasury rewards and morale surges.
+
+---
+
 ## Status Ledger
 - [x] Phase 1: Dynamic Weather & Seasonal Attrition Engine (Completed)
 - [x] Phase 2: Diplomatic Coalition & Secret Treaties (Completed)
 - [x] Phase 3: Grand Academy: Flintlock Barracks Drill Simulator (Completed)
 - [x] Phase 4: Historical Chronicles & Battle Replay Analyzer (Completed)
+- [x] Phase 5: Royal Intelligence: Harkara Spy Networks & Cipher Decryption Deck (Completed)

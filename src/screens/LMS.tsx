@@ -39,13 +39,14 @@ import {
 import { KGraph } from '../components/KGraph';
 import { TacticalSandbox } from '../components/TacticalSandbox';
 import { FlintlockDrillSimulator } from '../components/FlintlockDrillSimulator';
+import { HarkaraSpyNetwork } from '../components/HarkaraSpyNetwork';
 
 export const LMS: React.FC<{
   onNavigate: (s: Screen) => void;
   onHelp?: () => void;
   onSettings?: () => void;
 }> = ({ onNavigate, onHelp, onSettings }) => {
-  const [activeTab, setActiveTab] = useState<'lessons' | 'formations' | 'drill' | 'chromaps' | 'decisions' | 'materials' | 'quiz'>('lessons');
+  const [activeTab, setActiveTab] = useState<'lessons' | 'formations' | 'drill' | 'chromaps' | 'decisions' | 'materials' | 'quiz' | 'harkaras'>('lessons');
   const [selectedPathway, setSelectedPathway] = useState<'Student' | 'Scholar'>('Student');
   const [selectedLesson, setSelectedLesson] = useState<Lesson | null>(null);
   const [selectedDoc, setSelectedDoc] = useState<DocumentArchive | null>(null);
@@ -245,6 +246,7 @@ export const LMS: React.FC<{
               { id: 'drill', label: '🎯 Barracks Drill' },
               { id: 'chromaps', label: '⛓️ Knowledge Network' },
               { id: 'decisions', label: '⚖️ Decision Chronicles' },
+              { id: 'harkaras', label: '📡 Harkara Intelligence' },
               { id: 'materials', label: '📜 Manuscript Room' },
               { id: 'quiz', label: '🏅 Challenge & Diploma' }
             ].map(tab => (
@@ -853,6 +855,26 @@ export const LMS: React.FC<{
                     </div>
                   </motion.div>
                 )}
+              </motion.div>
+            )}
+
+            {/* Tab 8: Harkara Spy Network Intelligence System */}
+            {activeTab === 'harkaras' && (
+              <motion.div 
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="max-w-6xl mx-auto space-y-6"
+              >
+                <div className="p-4 bg-[#20150d] border border-[#8B5E3C]/20 rounded text-left">
+                  <h3 className="text-sm font-serif font-black text-white mb-1 uppercase tracking-wide flex items-center gap-1.5">
+                    📡 Royal Harkara Intelligence Room (Phase 5)
+                  </h3>
+                  <p className="text-xs text-stone-400 leading-relaxed font-sans">
+                    Monitor intercepted ciphers and decrypt royal correspondence from the Rohilla-Afghan invaders. Deploy scouting Harkaras across high-risk sectors of Northern Hindusthan to establish strategic logistics shields and troop surveillance grids.
+                  </p>
+                </div>
+
+                <HarkaraSpyNetwork onApplyRewards={handleApplyDrillRewards} />
               </motion.div>
             )}
 
