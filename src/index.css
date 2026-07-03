@@ -112,5 +112,32 @@
   .clip-soldier {
     clip-path: polygon(50% 0%, 80% 10%, 90% 20%, 90% 50%, 75% 55%, 80% 100%, 20% 100%, 25% 55%, 10% 50%, 10% 20%, 20% 10%);
   }
+
+  @keyframes fall {
+    0% {
+      transform: translateY(-10px) rotate(0deg) translateX(0);
+      opacity: 0;
+    }
+    10% {
+      opacity: 0.85;
+    }
+    90% {
+      opacity: 0.85;
+    }
+    100% {
+      transform: translateY(105vh) rotate(360deg) translateX(40px);
+      opacity: 0;
+    }
+  }
+
+  .animate-fall {
+    animation-name: fall;
+    animation-timing-function: linear;
+  }
+
+  body.sidebar-collapsed .lg\:pl-64,
+  body.sidebar-collapsed .lg\:pl-64 {
+    padding-left: 0px !important;
+  }
 }
 

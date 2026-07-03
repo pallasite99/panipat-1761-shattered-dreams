@@ -18,6 +18,7 @@ import { Encyclopedia } from './screens/Encyclopedia';
 import { Timeline } from './screens/Timeline';
 import { LMS } from './screens/LMS';
 import { Cartography } from './screens/Cartography';
+import { Achievements } from './screens/Achievements';
 import { HelpOverlay, SettingsOverlay } from './components/GlobalOverlays';
 import { BattleLogOverlay } from './components/BattleLogOverlay';
 import { FeedbackWidget } from './components/FeedbackWidget';
@@ -39,6 +40,16 @@ export default function App() {
   React.useEffect(() => {
     localStorage.setItem('panipat_campaign_stage', campaignStage);
   }, [campaignStage]);
+
+  React.useEffect(() => {
+    const handleOpenSaveLoad = () => {
+      setIsSaveLoadOpen(true);
+    };
+    window.addEventListener('panipat-open-save-load', handleOpenSaveLoad);
+    return () => {
+      window.removeEventListener('panipat-open-save-load', handleOpenSaveLoad);
+    };
+  }, []);
 
   React.useEffect(() => {
     if (currentScreen === Screen.BATTLE) {
@@ -148,6 +159,16 @@ export default function App() {
         return <LMS onNavigate={handleNavigate} {...commonProps} />;
       case Screen.CARTOGRAPHY:
         return <Cartography onNavigate={handleNavigate} {...commonProps} />;
+      case Screen.ACHIEVEMENTS:
+        return (
+          <Achievements 
+            onNavigate={handleNavigate} 
+            isMenuOpen={isMenuOpen} 
+            onToggleMenu={() => setIsMenuOpen(true)} 
+            onMenuClose={() => setIsMenuOpen(false)} 
+            {...commonProps}
+          />
+        );
       default:
         return <MainMenu onNavigate={handleNavigate} {...commonProps} />;
     }

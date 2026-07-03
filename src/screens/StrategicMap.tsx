@@ -32,6 +32,7 @@ import { CommanderMessenger } from "../components/CommanderMessenger";
 import { RoyalBanner } from "../components/RoyalBanner";
 import { CampaignEvents } from "../components/CampaignEvents";
 import { PuneCelebrationVisual } from "../components/PuneCelebrationVisual";
+import { DelhiEnvoyVisual } from "../components/DelhiEnvoyVisual";
 
 interface PolicyCardOption {
   id: string;
@@ -3285,42 +3286,40 @@ export const StrategicMap: React.FC<{
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="fixed inset-0 z-50 flex items-center justify-center bg-black/95 backdrop-blur-2xl p-4 overflow-y-auto"
+              className={`fixed inset-0 z-[80] flex items-center justify-center bg-black/95 backdrop-blur-2xl overflow-y-auto ${
+                (puneStep === 0 || puneStep === 5) && activeFaction === "maratha" ? "p-0" : "p-4"
+              }`}
             >
-              <div className="max-w-3xl w-full p-6 md:p-8 bg-stone-900 border-4 border-saffron shadow-3xl bronze-bevel relative my-auto">
+              <div
+                className={
+                  (puneStep === 0 || puneStep === 5) && activeFaction === "maratha"
+                    ? "w-full h-full bg-stone-950 flex flex-col justify-between relative"
+                    : "max-w-3xl w-full p-6 md:p-8 bg-stone-900 border-4 border-saffron shadow-3xl bronze-bevel relative my-auto"
+                }
+              >
                 {/* Header */}
-                <div className="flex justify-between items-center border-b border-stone-800 pb-4 mb-6">
-                  <div className="flex items-center gap-3">
-                    <Gavel className="text-saffron" size={24} />
-                    <h2 className="font-serif text-xl md:text-2xl text-white uppercase tracking-widest font-black">
+                {!((puneStep === 0 || puneStep === 5) && activeFaction === "maratha") && (
+                  <div className="flex justify-between items-center border-b border-stone-800 pb-4 mb-6">
+                    <div className="flex items-center gap-3">
+                      <Gavel className="text-saffron" size={24} />
+                      <h2 className="font-serif text-xl md:text-2xl text-white uppercase tracking-widest font-black">
+                        {activeFaction === "maratha"
+                          ? "Pune Court Chambers"
+                          : "Kabul Durbar Chambers"}
+                      </h2>
+                    </div>
+                    <span className="text-[10px] text-stone-500 font-mono">
                       {activeFaction === "maratha"
-                        ? "Pune Court Chambers"
-                        : "Kabul Durbar Chambers"}
-                    </h2>
+                        ? "1760 A.D. • Shaniwar Wada"
+                        : "1760 A.D. • Bala Hissar Citadel"}
+                    </span>
                   </div>
-                  <span className="text-[10px] text-stone-500 font-mono">
-                    {activeFaction === "maratha"
-                      ? "1760 A.D. • Shaniwar Wada"
-                      : "1760 A.D. • Bala Hissar Citadel"}
-                  </span>
-                </div>
+                )}
 
                 {puneStep === 0 && (
-                  <div className="space-y-6">
+                  <div className={activeFaction === "maratha" ? "w-full h-full flex flex-col" : "space-y-6"}>
                     {activeFaction === "maratha" ? (
-                      <>
-                        <div className="text-center space-y-1">
-                          <span className="px-2.5 py-0.5 bg-gradient-to-r from-amber-500 to-saffron text-stone-950 font-mono font-black text-[8.5px] tracking-widest uppercase rounded-xs">
-                            🏆 DECCAN CONQUEST CELEBRATED
-                          </span>
-                          <h3 className="font-serif text-xl md:text-2xl text-white uppercase tracking-wide">
-                            Pune Rejoices at Shaniwar Wada!
-                          </h3>
-                        </div>
-
-                        {/* Interactive Celebration Component */}
-                        <PuneCelebrationVisual />
-                      </>
+                      <PuneCelebrationVisual onComplete={() => setPuneStep(1)} />
                     ) : (
                       <>
                         <p className="text-stone-300 font-serif italic text-xs leading-relaxed text-center">
@@ -3329,7 +3328,8 @@ export const StrategicMap: React.FC<{
                       </>
                     )}
 
-                    <div className="bg-stone-950 p-4 border border-stone-800 rounded-sm">
+                    {activeFaction !== "maratha" && (
+                      <div className="bg-stone-950 p-4 border border-stone-800 rounded-sm">
                       <p className="text-xs font-mono text-stone-400">
                         {activeFaction === "maratha" ? (
                           <>
@@ -3354,14 +3354,17 @@ export const StrategicMap: React.FC<{
                         )}
                       </p>
                     </div>
+                    )}
 
-                    <button
-                      type="button"
-                      onClick={() => setPuneStep(1)}
-                      className="w-full py-4 bg-saffron hover:bg-yellow-600 font-serif text-stone-950 font-black uppercase text-xs tracking-widest transition-all pointer-events-auto"
-                    >
-                      {activeFaction === "maratha" ? "Acknowledge Celebrations & Settle Court Policies" : "Enter Court Debate"}
-                    </button>
+                    {activeFaction !== "maratha" && (
+                      <button
+                        type="button"
+                        onClick={() => setPuneStep(1)}
+                        className="w-full py-4 bg-saffron hover:bg-yellow-600 font-serif text-stone-950 font-black uppercase text-xs tracking-widest transition-all pointer-events-auto"
+                      >
+                        Enter Court Debate
+                      </button>
+                    )}
                   </div>
                 )}
 
@@ -3677,118 +3680,13 @@ export const StrategicMap: React.FC<{
                 )}
 
                 {puneStep === 5 && (
-                  <div className="space-y-6 font-sans text-left text-neutral-200">
-                    <div className="flex justify-center mb-1">
-                      <span className="px-3 py-1 bg-amber-950 border border-[#8B5E3C] text-saffron font-mono font-bold text-[9px] tracking-widest uppercase rounded-xs animate-pulse">
-                        📜 REGIONAL GEOPOLITICAL DECREE
-                      </span>
-                    </div>
-
-                    <h3 className="font-serif text-xl md:text-2xl text-white text-center uppercase tracking-wide">
-                      The Envoy of Shaniwar Wada: Dattaji Shinde Sent to Delhi
-                    </h3>
-
-                    {/* Atmospheric Cinematic Visual Card */}
-                    <div className="relative h-44 rounded-sm border-2 border-[#8B5E3C]/40 overflow-hidden bg-gradient-to-b from-[#1c120c] to-[#0a0604] p-4 flex flex-col justify-between shadow-inner">
-                      {/* Sun silhouette */}
-                      <div className="absolute right-12 top-6 w-16 h-16 rounded-full bg-orange-600/10 blur-xl pointer-events-none" />
-                      <div className="absolute right-16 top-10 w-8 h-8 rounded-full bg-amber-600/20 pointer-events-none" />
-
-                      {/* Moving Marching Troops visual */}
-                      <div className="relative z-10 flex flex-col h-full justify-between">
-                        <div className="flex justify-between items-start text-[10px] font-mono text-stone-400">
-                          <span>📍 ROUTE: PUNE ➔ JAIPUR ➔ REBARI ➔ DELHI</span>
-                          <span className="text-stone-300 font-bold">FORCE: VANGUARD CAVALRY STRENGTH</span>
-                        </div>
-
-                        {/* Animated Cavalry March representation */}
-                        <div className="w-full relative overflow-hidden h-14 bg-stone-950/80 p-2 border border-stone-850/40 rounded-xs flex items-center">
-                          <div className="absolute inset-0 bg-gradient-to-r from-saffron/5 via-orange-950/15 to-transparent pointer-events-none" />
-
-                          {/* Staggered moving dust and horse silhouettes using Framer motion */}
-                          <div className="relative w-full h-full overflow-hidden">
-                            {[0, 1, 2, 3].map((i) => (
-                              <motion.div
-                                key={i}
-                                initial={{ x: -180 }}
-                                animate={{ x: 500 }}
-                                transition={{
-                                  duration: 10,
-                                  repeat: Infinity,
-                                  delay: i * 2.5,
-                                  ease: "linear",
-                                }}
-                                className="absolute top-1/2 -translate-y-1/2 flex items-center gap-2 select-none pointer-events-none"
-                              >
-                                <span className="text-2xl animate-bounce">
-                                  🏇
-                                </span>
-                                <div className="flex flex-col">
-                                  <span className="text-[8px] font-mono font-black text-saffron leading-none">
-                                    SHINDE CAVALRY COHORT
-                                  </span>
-                                  <span className="text-[7px] text-stone-400 font-medium leading-none">
-                                    Jankoji & Dattaji's Vanguard
-                                  </span>
-                                </div>
-                              </motion.div>
-                            ))}
-                          </div>
-                        </div>
-
-                        <div className="text-[9.5px] font-mono text-amber-500/80 flex items-center gap-1.5">
-                          <span className="animate-ping w-1.5 h-1.5 rounded-full bg-amber-500 inline-block shrink-0" />
-                          4,000 HORSEMEN DISPATCHED WITH SWIFT SOVEREIGN ORDERS
-                        </div>
-                      </div>
-
-                      {/* Ominous backdrop grids */}
-                      <div className="absolute inset-x-0 bottom-0 h-1 bg-[#8B5E3C]/20 border-t border-stone-800" />
-                    </div>
-
-                    {/* Descriptive Narrative */}
-                    <p className="text-stone-300 font-serif text-xs md:text-sm leading-relaxed text-center italic">
-                      "With court decrees drafted at Shaniwar Wada, the legendary sirdar Dattaji Shinde mounts his charger. He takes command of Maratha vanguard units, departing Pune with a fast-marching cavalry column. His mandate is direct: reach Delhi, establish a defense treaties network, and barricade northern river basins before the Durrani columns can cross."
-                    </p>
-
-                    {/* Extremely Ominous Historical Warning Box */}
-                    <div className="p-4 bg-red-950/25 border-2 border-red-900/50 text-stone-200 rounded-sm relative">
-                      <div className="absolute top-1 right-2 text-xl opacity-30 select-none">
-                        💀
-                      </div>
-                      <h4 className="font-serif text-xs font-black uppercase text-red-400 tracking-wider flex items-center gap-1.5 mb-1.5 font-bold">
-                        ⚠️ OMINOUS WARNING FOR THE VANGUARD
-                      </h4>
-                      <p className="text-[11px] leading-relaxed font-sans text-stone-300 text-left">
-                        Dattaji marches with legendary bravado, famously declaring,{" "}
-                        <span className="text-red-400 font-semibold italic">
-                          "बचेंगे तो और भी लड़ेंगे" ("If we survive, we shall fight again!")
-                        </span>
-                        . But Delhi's politics are a treacherous spider's web.
-                        The local Nawab Shuja-ud-Daula is already secretly
-                        corresponding with Abdali, and Mughal promises are
-                        hollow dust. By separating from the main Maratha host,
-                        Dattaji's small vanguard rides directly into an
-                        inescapable trap. They will soon find themselves
-                        isolated, face-to-face with an elite Afghan swarm on the
-                        muddy, blood-clogged shores of{" "}
-                        <span className="text-red-400 font-bold">
-                          Barari Ghat
-                        </span>
-                        ...
-                      </p>
-                    </div>
-
-                    <button
-                      type="button"
-                      onClick={() => {
+                  <div className="w-full h-full flex flex-col">
+                    <DelhiEnvoyVisual
+                      onComplete={() => {
                         setShowPunePolitics(false);
                         onAdvance();
                       }}
-                      className="w-full py-4 bg-gradient-to-r from-[#9a3412] to-red-650 hover:from-red-650 hover:to-[#9a3412] font-serif text-white font-black uppercase text-xs tracking-widest transition-all rounded-sm shadow-xl cursor-pointer pointer-events-auto"
-                    >
-                      Acknowledge Destiny & Begin Grand Crusade
-                    </button>
+                    />
                   </div>
                 )}
               </div>

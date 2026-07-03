@@ -196,19 +196,24 @@ func _physics_process(delta: float):
     addTerminalLog("Establishing virtual HTML5 canvas bindings...");
     
     let currentProgress = 0;
+    let localState: 'BOOTING' | 'LOADING_WASM' | 'COMPILING_SHADERS' | 'ENGINE_READY' = 'BOOTING';
+
     const interval = setInterval(() => {
-      if (engineState === 'BOOTING') {
+      if (localState === 'BOOTING') {
+        localState = 'LOADING_WASM';
         setEngineState('LOADING_WASM');
         addTerminalLog("Requesting WebAssembly payload 'godot_battle_engine.wasm' (24.8 MB)...");
-      } else if (engineState === 'LOADING_WASM') {
-        currentProgress += Math.floor(Math.random() * 20) + 7;
+      } else if (localState === 'LOADING_WASM') {
+        currentProgress += Math.floor(Math.random() * 20) + 12;
         if (currentProgress >= 100) {
           currentProgress = 100;
+          localState = 'COMPILING_SHADERS';
           setEngineState('COMPILING_SHADERS');
           addTerminalLog("WASM loaded. Compiling GLES3 shaders and pre-assembling materials...");
         }
         setLoadProgress(currentProgress);
-      } else if (engineState === 'COMPILING_SHADERS') {
+      } else if (localState === 'COMPILING_SHADERS') {
+        localState = 'ENGINE_READY';
         setEngineState('ENGINE_READY');
         addTerminalLog("Godot 4.2 GLES3 Web Engine successfully bound! Canvas active.");
         addTerminalLog("Listening on window.godotBridge...");
@@ -224,13 +229,13 @@ func _physics_process(delta: float):
         addPacketLog('GODOT_TO_REACT', 'godot_ready', { status: "fully_assembled", timestamp: Date.now() });
         clearInterval(interval);
       }
-    }, 850);
+    }, 500);
 
     return () => {
       clearInterval(interval);
       delete (window as any).godotBridge;
     };
-  }, [engineState]);
+  }, []);
 
   // Sync React properties with Godot through the simulated React->Godot stream
   useEffect(() => {
@@ -664,24 +669,81 @@ func _physics_process(delta: float):
       const w = canvas.width = parentW * resolutionScale;
       const h = canvas.height = parentH * resolutionScale;
       
-      // Clear viewport with a beautiful, high-contrast grid pattern mimicking Godot's GLES3 backdrop
-      ctx.fillStyle = '#1e1f22'; // Godot theme grey
+      // Skybox background/atmospheric gradient depending on time of day
+      let skyTop = '#0284c7';
+      let skyBottom = '#e0f2fe';
+      let groundColor = '#4d7c0f'; // Grass green
+      let sideColor = '#451a03'; // Solid core soil
+      let sunDir = { x: 0.1, y: 1.0, z: -0.1 };
+      let sunColor = '#ffffff';
+
+      if (timeOfDay === 'dawn') {
+        skyTop = '#1e1b4b'; // Deep indigo
+        skyBottom = '#ff7e5f'; // Warm sunrise orange
+        groundColor = '#854d0e'; // Golden/brown soil
+        sideColor = '#451a03';
+        sunDir = { x: -1.0, y: 0.4, z: 0.2 };
+        sunColor = '#fdbb74';
+      } else if (timeOfDay === 'noon') {
+        skyTop = '#0284c7'; // Vivid azure
+        skyBottom = '#bae6fd'; // Light horizon sky
+        groundColor = '#3f6212'; // Vibrant green meadow
+        sideColor = '#27170c';
+        sunDir = { x: 0.1, y: 1.1, z: -0.1 };
+        sunColor = '#ffffff';
+      } else if (timeOfDay === 'dusk') {
+        skyTop = '#311432'; // Deep plum
+        skyBottom = '#ea580c'; // Vibrant dust orange
+        groundColor = '#78350f'; // Scorched ochre soil
+        sideColor = '#311411';
+        sunDir = { x: 1.0, y: 0.35, z: -0.3 };
+        sunColor = '#fb7185';
+      } else if (timeOfDay === 'midnight') {
+        skyTop = '#09090b'; // Starry black
+        skyBottom = '#1e1b4b'; // Dark blue twilight
+        groundColor = '#14532d'; // Pale moonlit field
+        sideColor = '#0b1c10';
+        sunDir = { x: 0.6, y: 0.8, z: -0.6 };
+        sunColor = '#93c5fd';
+      }
+
+      if (weather === 'dust_storm') {
+        groundColor = '#b45309'; // Sand brown
+        skyTop = '#78350f';
+        skyBottom = '#ca8a04';
+      } else if (weather === 'rain') {
+        groundColor = '#1e2912'; // Damp dark moss green
+      }
+
+      // Draw backdrop gradient
+      const skyGrad = ctx.createLinearGradient(0, 0, 0, h);
+      skyGrad.addColorStop(0, skyTop);
+      skyGrad.addColorStop(0.45, skyBottom);
+      skyGrad.addColorStop(0.45, '#121315'); // Viewport borders
+      skyGrad.addColorStop(1, '#0e0f11');
+      ctx.fillStyle = skyGrad;
       ctx.fillRect(0, 0, w, h);
 
-      // Draw subtle editor grid limits
-      ctx.strokeStyle = '#2d2f34';
-      ctx.lineWidth = wireframeMode ? 0.5 : 1;
-      const gridCount = 20;
-      const gap = w / gridCount;
-      for (let i = 0; i < gridCount; i++) {
+      // Starry Sky for midnight conditions
+      if (timeOfDay === 'midnight') {
+        ctx.fillStyle = '#ffffff';
+        for (let i = 0; i < 35; i++) {
+          const starX = (Math.sin(i * 45.3) * 0.5 + 0.5) * w;
+          const starY = (Math.cos(i * 12.8) * 0.5 + 0.5) * (h * 0.4);
+          const starSize = Math.max(0.5, (Math.sin(Date.now() * 0.003 + i) * 0.5 + 0.5) * 2) * resolutionScale;
+          ctx.fillRect(starX, starY, starSize, starSize);
+        }
+        // Crescent Moon
+        const moonX = w * 0.85;
+        const moonY = h * 0.12;
         ctx.beginPath();
-        ctx.moveTo(i * gap, 0);
-        ctx.lineTo(i * gap, h);
-        ctx.stroke();
+        ctx.arc(moonX, moonY, 15 * resolutionScale, 0, Math.PI * 2);
+        ctx.fillStyle = '#fef08a';
+        ctx.fill();
         ctx.beginPath();
-        ctx.moveTo(0, i * gap);
-        ctx.lineTo(w, i * gap);
-        ctx.stroke();
+        ctx.arc(moonX - 5 * resolutionScale, moonY, 13 * resolutionScale, 0, Math.PI * 2);
+        ctx.fillStyle = skyTop;
+        ctx.fill();
       }
 
       // Camera projection formulas (Isometric/3D perspective conversion)
@@ -704,190 +766,815 @@ func _physics_process(delta: float):
         const finalZ = y * sinP + rz * cosP;
 
         // Perspective division
-        const distance = 14 + finalZ;
-        const scale = (camZoom * 20 * resolutionScale) / Math.max(0.1, distance);
+        const distance = 16 + finalZ;
+        const scale = (camZoom * 22 * resolutionScale) / Math.max(0.1, distance);
 
         return {
           x: w / 2 + rx * scale,
-          y: h / 2 - ry * scale,
+          y: h / 2 - ry * scale + 20 * resolutionScale,
           depth: finalZ
         };
       };
 
-      // 1. DRAW 3D GROUND PLANE (A rotating wireframe mesh representing the battlefield grid)
-      ctx.strokeStyle = wireframeMode ? 'rgba(59, 130, 246, 0.3)' : 'rgba(139, 92, 26, 0.25)'; // Earthy tone vs Blue Grid
-      ctx.lineWidth = 1.5;
-      const gridSize = 8;
-      const step = 2;
+      // Shaded flat colors based on face normals (Lambertian reflection)
+      const getShadedColor = (baseColor: string, nx: number, ny: number, nz: number) => {
+        const len = Math.sqrt(nx*nx + ny*ny + nz*nz);
+        const snx = len > 0 ? nx / len : 0;
+        const sny = len > 0 ? ny / len : 1;
+        const snz = len > 0 ? nz / len : 0;
 
-      for (let x = -gridSize; x <= gridSize; x += step) {
-        ctx.beginPath();
-        const start = project({ x, y: 0, z: -gridSize });
-        const end = project({ x, y: 0, z: gridSize });
-        ctx.moveTo(start.x, start.y);
-        ctx.lineTo(end.x, end.y);
-        ctx.stroke();
-      }
+        const slen = Math.sqrt(sunDir.x*sunDir.x + sunDir.y*sunDir.y + sunDir.z*sunDir.z);
+        const slx = slen > 0 ? sunDir.x / slen : 0;
+        const sly = slen > 0 ? sunDir.y / slen : 1;
+        const slz = slen > 0 ? sunDir.z / slen : 0;
 
-      for (let z = -gridSize; z <= gridSize; z += step) {
-        ctx.beginPath();
-        const start = project({ x: -gridSize, y: 0, z });
-        const end = project({ x: gridSize, y: 0, z });
-        ctx.moveTo(start.x, start.y);
-        ctx.lineTo(end.x, end.y);
-        ctx.stroke();
-      }
+        const dot = snx * slx + sny * sly + snz * slz;
+        const intensity = 0.55 + 0.45 * Math.max(-0.2, Math.min(1.0, dot));
 
-      // Add 3D Coordinate axes widget in top corner
-      const axisOrigin = { x: -6, y: 3, z: -6 };
-      const projectedOrigin = project(axisOrigin);
-      const axisX = project({ x: axisOrigin.x + 2, y: axisOrigin.y, z: axisOrigin.z });
-      const axisY = project({ x: axisOrigin.x, y: axisOrigin.y + 2, z: axisOrigin.z });
-      const axisZ = project({ x: axisOrigin.x, y: axisOrigin.y, z: axisOrigin.z + 2 });
-
-      // Draw Axes
-      ctx.lineWidth = 2;
-      ctx.strokeStyle = '#ef4444'; // Red = X
-      ctx.beginPath(); ctx.moveTo(projectedOrigin.x, projectedOrigin.y); ctx.lineTo(axisX.x, axisX.y); ctx.stroke();
-      ctx.fillStyle = '#ef4444'; ctx.font = `${8 * resolutionScale}px monospace`; ctx.fillText('X', axisX.x + 4, axisX.y);
-
-      ctx.strokeStyle = '#22c55e'; // Green = Y
-      ctx.beginPath(); ctx.moveTo(projectedOrigin.x, projectedOrigin.y); ctx.lineTo(axisY.x, axisY.y); ctx.stroke();
-      ctx.fillStyle = '#22c55e'; ctx.fillText('Y', axisY.x + 4, axisY.y);
-
-      ctx.strokeStyle = '#3b82f6'; // Blue = Z
-      ctx.beginPath(); ctx.moveTo(projectedOrigin.x, projectedOrigin.y); ctx.lineTo(axisZ.x, axisZ.y); ctx.stroke();
-      ctx.fillStyle = '#3b82f6'; ctx.fillText('Z', axisZ.x + 4, axisZ.y);
-
-      // Reset projection coordinate cache map
-      entityProjectionsRef.current = {};
-
-      // 2. DRAW SCENE NODES (Troop meshes / 3D primitives)
-      // Sort items by depth to ensure correct rendering overlap (Painter's algorithm!)
-      const projectedEntities = sceneEntities.map(ent => ({
-        original: ent,
-        proj: project(ent)
-      })).sort((a, b) => b.proj.depth - a.proj.depth);
-
-      projectedEntities.forEach(({ original: ent, proj }) => {
-        const isMaratha = ent.faction === 'maratha';
-        const factionColor = isMaratha ? '#f97316' : '#ef4444';
-        
-        // Cache screen-space coordinate for drag hit tests
-        entityProjectionsRef.current[ent.id] = { x: proj.x, y: proj.y };
-
-        // Base ground projection shadow ring
-        const baseProj = project({ ...ent, y: 0 });
-        ctx.beginPath();
-        ctx.ellipse(baseProj.x, baseProj.y, 14 * ent.size * resolutionScale, 6 * ent.size * resolutionScale, 0, 0, Math.PI * 2);
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.35)';
-        ctx.fill();
-        ctx.strokeStyle = selectedEntityId === ent.id ? '#38bdf8' : factionColor;
-        ctx.lineWidth = selectedEntityId === ent.id ? 2.5 : 1;
-        ctx.stroke();
-
-        // 3D Bounding Collider visualizer (Phase 3 mesh collisions helper)
-        if (selectedEntityId === ent.id) {
-          ctx.beginPath();
-          ctx.arc(baseProj.x, baseProj.y, 22 * ent.size * resolutionScale, 0, Math.PI * 2);
-          ctx.strokeStyle = 'rgba(56, 189, 248, 0.45)';
-          ctx.setLineDash([2, 2]);
-          ctx.lineWidth = 1;
-          ctx.stroke();
-          ctx.setLineDash([]);
+        // Hex parsing to rgb
+        let hex = baseColor.replace('#', '');
+        if (hex.length === 3) {
+          hex = hex[0] + hex[0] + hex[1] + hex[1] + hex[2] + hex[2];
         }
+        const r = parseInt(hex.substring(0, 2), 16) || 0;
+        const g = parseInt(hex.substring(2, 4), 16) || 0;
+        const b = parseInt(hex.substring(4, 6), 16) || 0;
 
-        // 3D Primitive drawing
-        if (wireframeMode) {
-          ctx.strokeStyle = factionColor;
+        const finalR = Math.min(255, Math.round(r * intensity));
+        const finalG = Math.min(255, Math.round(g * intensity));
+        const finalB = Math.min(255, Math.round(b * intensity));
+
+        return `rgb(${finalR}, ${finalG}, ${finalB})`;
+      };
+
+      const draw3DFace = (points: { x: number; y: number; z: number }[], baseColor: string, normal: { x: number; y: number; z: number }) => {
+        if (points.length < 3) return;
+        const projPoints = points.map(p => project(p));
+        
+        ctx.beginPath();
+        ctx.moveTo(projPoints[0].x, projPoints[0].y);
+        for (let i = 1; i < projPoints.length; i++) {
+          ctx.lineTo(projPoints[i].x, projPoints[i].y);
+        }
+        ctx.closePath();
+
+        const shaded = getShadedColor(baseColor, normal.x, normal.y, normal.z);
+        ctx.fillStyle = shaded;
+        ctx.fill();
+
+        // High fidelity geometric edges
+        ctx.strokeStyle = getShadedColor(baseColor, normal.x + 0.1, normal.y + 0.1, normal.z + 0.1);
+        ctx.lineWidth = 0.75 * resolutionScale;
+        ctx.stroke();
+      };
+
+      // Painter's Algorithm: Create a sorted 3D draw queue
+      const drawQueue: { depth: number; render: () => void }[] = [];
+
+      // 1. DIORAMA TABLETOP SLAB BASE
+      const slabY = -1.5;
+      const vTop = [
+        { x: -8, y: 0, z: -8 },
+        { x: 8, y: 0, z: -8 },
+        { x: 8, y: 0, z: 8 },
+        { x: -8, y: 0, z: 8 }
+      ];
+      const vBottom = [
+        { x: -8, y: slabY, z: -8 },
+        { x: 8, y: slabY, z: -8 },
+        { x: 8, y: slabY, z: 8 },
+        { x: -8, y: slabY, z: 8 }
+      ];
+
+      const topDepth = vTop.reduce((sum, p) => sum + project(p).depth, 0) / 4;
+      
+      // Top ground face
+      drawQueue.push({
+        depth: topDepth + 1.2, // Back-most base layer
+        render: () => {
+          draw3DFace(vTop, groundColor, { x: 0, y: 1, z: 0 });
+
+          // Interactive tactical grid overlays on slab top
+          ctx.strokeStyle = timeOfDay === 'midnight' ? 'rgba(56, 189, 248, 0.15)' : 'rgba(255, 255, 255, 0.1)';
           ctx.lineWidth = 1;
-          ctx.beginPath();
-          const topProj = project({ ...ent, y: ent.type === 'fort' ? 1.6 : ent.type === 'cavalry' ? 1.0 : 0.8 });
-          ctx.moveTo(baseProj.x - 10, baseProj.y);
-          ctx.lineTo(topProj.x - 10, topProj.y);
-          ctx.lineTo(topProj.x + 10, topProj.y);
-          ctx.lineTo(baseProj.x + 10, baseProj.y);
-          ctx.closePath();
-          ctx.stroke();
-        } else {
-          ctx.beginPath();
-          if (ent.type === 'fort') {
-            // Draw a tower-like prism mesh
-            const topProj = project({ ...ent, y: 1.6 });
-            ctx.moveTo(baseProj.x - 12 * resolutionScale, baseProj.y);
-            ctx.lineTo(topProj.x - 12 * resolutionScale, topProj.y);
-            ctx.lineTo(topProj.x + 12 * resolutionScale, topProj.y);
-            ctx.lineTo(baseProj.x + 12 * resolutionScale, baseProj.y);
-            ctx.closePath();
-            ctx.fillStyle = isMaratha ? '#2a1e12' : '#221111';
-            ctx.fill();
-            ctx.strokeStyle = factionColor;
-            ctx.lineWidth = 2;
-            ctx.stroke();
-
-            // Battlements top
+          for (let x = -8; x <= 8; x += 2) {
             ctx.beginPath();
-            ctx.moveTo(topProj.x - 15 * resolutionScale, topProj.y);
-            ctx.lineTo(topProj.x + 15 * resolutionScale, topProj.y);
+            const start = project({ x, y: 0.01, z: -8 });
+            const end = project({ x, y: 0.01, z: 8 });
+            ctx.moveTo(start.x, start.y);
+            ctx.lineTo(end.x, end.y);
             ctx.stroke();
-          } else if (ent.type === 'cavalry') {
-            // Draw isometric diamond representing war horse/chariots
-            const topProj = project({ ...ent, y: 1.0 });
-            ctx.moveTo(baseProj.x, baseProj.y + 6 * resolutionScale);
-            ctx.lineTo(topProj.x - 10 * resolutionScale, topProj.y);
-            ctx.lineTo(topProj.x, topProj.y - 12 * resolutionScale);
-            ctx.lineTo(topProj.x + 10 * resolutionScale, topProj.y);
-            ctx.closePath();
-            ctx.fillStyle = isMaratha ? '#ea580c' : '#dc2626';
-            ctx.fill();
-            ctx.strokeStyle = '#ffffff';
-            ctx.lineWidth = 1;
-            ctx.stroke();
-          } else if (ent.type === 'artillery') {
-            // Draw spherical cannon node
-            const topProj = project({ ...ent, y: 0.9 });
-            ctx.arc(topProj.x, topProj.y, 9 * resolutionScale, 0, Math.PI * 2);
-            ctx.fillStyle = isMaratha ? '#451a03' : '#3f3f46';
-            ctx.fill();
-            ctx.strokeStyle = factionColor;
-            ctx.lineWidth = 1.5;
-            ctx.stroke();
-
-            // Cannon barrel pointing outwards
+          }
+          for (let z = -8; z <= 8; z += 2) {
             ctx.beginPath();
-            ctx.moveTo(topProj.x, topProj.y);
-            ctx.lineTo(topProj.x + (isMaratha ? 15 : -15) * resolutionScale, topProj.y);
-            ctx.lineWidth = 4 * resolutionScale;
-            ctx.strokeStyle = '#27272a';
-            ctx.stroke();
-          } else {
-            // Standard Infantry capsule
-            const topProj = project({ ...ent, y: 0.8 });
-            ctx.moveTo(baseProj.x - 7 * resolutionScale, baseProj.y);
-            ctx.lineTo(topProj.x - 7 * resolutionScale, topProj.y);
-            ctx.arc(topProj.x, topProj.y, 7 * resolutionScale, Math.PI, 0);
-            ctx.lineTo(baseProj.x + 7 * resolutionScale, baseProj.y);
-            ctx.closePath();
-            ctx.fillStyle = isMaratha ? '#f97316' : '#ef4444';
-            ctx.fill();
-            ctx.strokeStyle = '#ffffff';
-            ctx.lineWidth = 1;
+            const start = project({ x: -8, y: 0.01, z });
+            const end = project({ x: 8, y: 0.01, z });
+            ctx.moveTo(start.x, start.y);
+            ctx.lineTo(end.x, end.y);
             ctx.stroke();
           }
         }
-
-        // Display node tag overlay
-        ctx.fillStyle = selectedEntityId === ent.id ? '#38bdf8' : '#ffffff';
-        ctx.font = `bold ${8.5 * resolutionScale}px monospace`;
-        ctx.fillText(ent.label || '', baseProj.x - 45 * resolutionScale, baseProj.y - (ent.type === 'fort' ? 45 : 25) * resolutionScale);
-        
-        // Dynamic node vector tracking label
-        ctx.fillStyle = 'rgba(156, 163, 175, 0.85)';
-        ctx.font = `${7 * resolutionScale}px monospace`;
-        ctx.fillText(`Vector3(${ent.x.toFixed(1)}, ${ent.y.toFixed(1)}, ${ent.z.toFixed(1)})`, baseProj.x - 30 * resolutionScale, baseProj.y + 14 * resolutionScale);
       });
 
-      // 3. DRAW PHYSICAL PROJECTILE PARABOLA TRAJECTORY (Phase 3 ballistic physics)
+      // Side 1: Front facing side of slab
+      const fFront = [vTop[3], vTop[2], vBottom[2], vBottom[3]];
+      const frontDepth = fFront.reduce((sum, p) => sum + project(p).depth, 0) / 4;
+      drawQueue.push({
+        depth: frontDepth + 1.0,
+        render: () => {
+          draw3DFace(fFront, sideColor, { x: 0, y: 0, z: 1 });
+          // Striped clay deposits texture
+          ctx.strokeStyle = '#1e1108';
+          ctx.lineWidth = 2 * resolutionScale;
+          for (let layerY = -0.3; layerY >= slabY; layerY -= 0.4) {
+            ctx.beginPath();
+            const pL = project({ x: -8, y: layerY, z: 8 });
+            const pR = project({ x: 8, y: layerY, z: 8 });
+            ctx.moveTo(pL.x, pL.y);
+            ctx.lineTo(pR.x, pR.y);
+            ctx.stroke();
+          }
+        }
+      });
+
+      // Side 2: Right facing side of slab
+      const fRight = [vTop[2], vTop[1], vBottom[1], vBottom[2]];
+      const rightDepth = fRight.reduce((sum, p) => sum + project(p).depth, 0) / 4;
+      drawQueue.push({
+        depth: rightDepth + 1.0,
+        render: () => {
+          draw3DFace(fRight, sideColor, { x: 1, y: 0, z: 0 });
+          ctx.strokeStyle = '#1e1108';
+          ctx.lineWidth = 2 * resolutionScale;
+          for (let layerY = -0.3; layerY >= slabY; layerY -= 0.4) {
+            ctx.beginPath();
+            const pL = project({ x: 8, y: layerY, z: 8 });
+            const pR = project({ x: 8, y: layerY, z: -8 });
+            ctx.moveTo(pL.x, pL.y);
+            ctx.lineTo(pR.x, pR.y);
+            ctx.stroke();
+          }
+        }
+      });
+
+      // Side 3: Back facing side of slab
+      const fBack = [vTop[1], vTop[0], vBottom[0], vBottom[1]];
+      const backDepth = fBack.reduce((sum, p) => sum + project(p).depth, 0) / 4;
+      drawQueue.push({
+        depth: backDepth + 1.0,
+        render: () => {
+          draw3DFace(fBack, sideColor, { x: 0, y: 0, z: -1 });
+        }
+      });
+
+      // Side 4: Left facing side of slab
+      const fLeft = [vTop[0], vTop[3], vBottom[3], vBottom[0]];
+      const leftDepth = fLeft.reduce((sum, p) => sum + project(p).depth, 0) / 4;
+      drawQueue.push({
+        depth: leftDepth + 1.0,
+        render: () => {
+          draw3DFace(fLeft, sideColor, { x: -1, y: 0, z: 0 });
+          ctx.strokeStyle = '#1e1108';
+          ctx.lineWidth = 2 * resolutionScale;
+          for (let layerY = -0.3; layerY >= slabY; layerY -= 0.4) {
+            ctx.beginPath();
+            const pL = project({ x: -8, y: layerY, z: -8 });
+            const pR = project({ x: -8, y: layerY, z: 8 });
+            ctx.moveTo(pL.x, pL.y);
+            ctx.lineTo(pR.x, pR.y);
+            ctx.stroke();
+          }
+        }
+      });
+
+      // 2. STATIC SCENERY AND PROP ASSETS
+      const STATIC_TREES = [
+        { x: -6.8, z: -6.0, size: 1.15 },
+        { x: -5.2, z: -7.2, size: 0.9 },
+        { x: 6.8, z: -6.8, size: 1.25 },
+        { x: 7.2, z: -4.8, size: 1.0 },
+        { x: -7.2, z: 5.5, size: 0.95 },
+        { x: 6.5, z: 6.5, size: 1.15 }
+      ];
+
+      STATIC_TREES.forEach(tree => {
+        const depth = project({ x: tree.x, y: 0, z: tree.z }).depth;
+        drawQueue.push({
+          depth: depth + 0.1,
+          render: () => {
+            const s = tree.size;
+            // 3D trunk (brown cube block)
+            const tBottom = [
+              { x: tree.x - 0.15*s, y: 0, z: tree.z - 0.15*s },
+              { x: tree.x + 0.15*s, y: 0, z: tree.z - 0.15*s },
+              { x: tree.x + 0.15*s, y: 0, z: tree.z + 0.15*s },
+              { x: tree.x - 0.15*s, y: 0, z: tree.z + 0.15*s }
+            ];
+            const tTop = tBottom.map(p => ({ ...p, y: 0.75*s }));
+            
+            draw3DFace([tBottom[0], tBottom[1], tTop[1], tTop[0]], '#451a03', { x: 0, y: 0, z: -1 });
+            draw3DFace([tBottom[1], tBottom[2], tTop[2], tTop[1]], '#451a03', { x: 1, y: 0, z: 0 });
+            draw3DFace([tBottom[2], tBottom[3], tTop[3], tTop[2]], '#5c2d12', { x: 0, y: 0, z: 1 });
+            draw3DFace([tBottom[3], tBottom[0], tTop[0], tTop[3]], '#5c2d12', { x: -1, y: 0, z: 0 });
+
+            // Foliage low-poly cone 1
+            const fTip1 = { x: tree.x, y: 1.6*s, z: tree.z };
+            const fBase1 = [
+              { x: tree.x - 0.65*s, y: 0.55*s, z: tree.z - 0.65*s },
+              { x: tree.x + 0.65*s, y: 0.55*s, z: tree.z - 0.65*s },
+              { x: tree.x + 0.65*s, y: 0.55*s, z: tree.z + 0.65*s },
+              { x: tree.x - 0.65*s, y: 0.55*s, z: tree.z + 0.65*s }
+            ];
+            draw3DFace([fBase1[0], fBase1[1], fTip1], '#166534', { x: 0, y: 0.7, z: -0.7 });
+            draw3DFace([fBase1[1], fBase1[2], fTip1], '#15803d', { x: 0.7, y: 0.7, z: 0 });
+            draw3DFace([fBase1[2], fBase1[3], fTip1], '#166534', { x: 0, y: 0.7, z: 0.7 });
+            draw3DFace([fBase1[3], fBase1[0], fTip1], '#15803d', { x: -0.7, y: 0.7, z: 0 });
+
+            // Foliage low-poly cone 2 (Upper deck)
+            const fTip2 = { x: tree.x, y: 2.3*s, z: tree.z };
+            const fBase2 = [
+              { x: tree.x - 0.48*s, y: 1.25*s, z: tree.z - 0.48*s },
+              { x: tree.x + 0.48*s, y: 1.25*s, z: tree.z - 0.48*s },
+              { x: tree.x + 0.48*s, y: 1.25*s, z: tree.z + 0.48*s },
+              { x: tree.x - 0.48*s, y: 1.25*s, z: tree.z + 0.48*s }
+            ];
+            draw3DFace([fBase2[0], fBase2[1], fTip2], '#14532d', { x: 0, y: 0.7, z: -0.7 });
+            draw3DFace([fBase2[1], fBase2[2], fTip2], '#166534', { x: 0.7, y: 0.7, z: 0 });
+            draw3DFace([fBase2[2], fBase2[3], fTip2], '#14532d', { x: 0, y: 0.7, z: 0.7 });
+            draw3DFace([fBase2[3], fBase2[0], fTip2], '#166534', { x: -0.7, y: 0.7, z: 0 });
+          }
+        });
+      });
+
+      const STATIC_ROCKS = [
+        { x: -3.8, z: -5.2, size: 0.45 },
+        { x: 3.8, z: -6.2, size: 0.55 },
+        { x: -2.2, z: 6.8, size: 0.38 },
+        { x: 4.8, z: 5.8, size: 0.48 }
+      ];
+
+      STATIC_ROCKS.forEach(rock => {
+        const depth = project({ x: rock.x, y: 0, z: rock.z }).depth;
+        drawQueue.push({
+          depth: depth + 0.1,
+          render: () => {
+            const s = rock.size;
+            const top = { x: rock.x, y: s * 0.85, z: rock.z };
+            const base = [
+              { x: rock.x - s, y: 0, z: rock.z - s },
+              { x: rock.x + s, y: 0, z: rock.z - s },
+              { x: rock.x + s, y: 0, z: rock.z + s },
+              { x: rock.x - s, y: 0, z: rock.z + s }
+            ];
+            draw3DFace([base[0], base[1], top], '#57534e', { x: 0, y: 0.7, z: -0.7 });
+            draw3DFace([base[1], base[2], top], '#78716c', { x: 0.7, y: 0.7, z: 0 });
+            draw3DFace([base[2], base[3], top], '#57534e', { x: 0, y: 0.7, z: 0.7 });
+            draw3DFace([base[3], base[0], top], '#78716c', { x: -0.7, y: 0.7, z: 0 });
+          }
+        });
+      });
+
+      // Military Camp Yurts/Tents
+      const MILITARY_TENTS = [
+        { x: -6.5, z: -2.2, faction: 'maratha' },
+        { x: -7.0, z: 1.8, faction: 'maratha' },
+        { x: 6.5, z: -1.2, faction: 'durrani' },
+        { x: 7.0, z: 1.8, faction: 'durrani' }
+      ];
+
+      MILITARY_TENTS.forEach(tent => {
+        const depth = project({ x: tent.x, y: 0, z: tent.z }).depth;
+        const color = tent.faction === 'maratha' ? '#f97316' : '#ef4444';
+        
+        drawQueue.push({
+          depth: depth + 0.1,
+          render: () => {
+            const s = 0.65;
+            const peak = { x: tent.x, y: 1.2, z: tent.z };
+            const base = [
+              { x: tent.x - s, y: 0, z: tent.z - s },
+              { x: tent.x + s, y: 0, z: tent.z - s },
+              { x: tent.x + s, y: 0, z: tent.z + s },
+              { x: tent.x - s, y: 0, z: tent.z + s }
+            ];
+            
+            draw3DFace([base[0], base[1], peak], color, { x: 0, y: 0.7, z: -0.7 });
+            draw3DFace([base[1], base[2], peak], '#fafafa', { x: 0.7, y: 0.7, z: 0 });
+            draw3DFace([base[2], base[3], peak], color, { x: 0, y: 0.7, z: 0.7 });
+            draw3DFace([base[3], base[0], peak], '#fafafa', { x: -0.7, y: 0.7, z: 0 });
+
+            // Banner flags waving on top of the tents
+            const pPeak = project(peak);
+            ctx.beginPath();
+            ctx.moveTo(pPeak.x, pPeak.y);
+            ctx.lineTo(pPeak.x, pPeak.y - 14 * resolutionScale);
+            ctx.strokeStyle = '#cbd5e1';
+            ctx.lineWidth = 1.5;
+            ctx.stroke();
+
+            const w = Math.sin(Date.now() * 0.007 + tent.x) * 3;
+            ctx.beginPath();
+            ctx.moveTo(pPeak.x, pPeak.y - 14 * resolutionScale);
+            ctx.lineTo(pPeak.x + 9 * resolutionScale + w, pPeak.y - 11 * resolutionScale);
+            ctx.lineTo(pPeak.x, pPeak.y - 8 * resolutionScale);
+            ctx.closePath();
+            ctx.fillStyle = color;
+            ctx.fill();
+          }
+        });
+      });
+
+      // HQ waving banners
+      const HQ_FLAGS = [
+        { x: -6, z: 3.8, faction: 'maratha', color: '#f97316' },
+        { x: 6, z: 3.8, faction: 'durrani', color: '#16a34a' } // Green banner
+      ];
+
+      HQ_FLAGS.forEach(flag => {
+        const depth = project({ x: flag.x, y: 0, z: flag.z }).depth;
+        drawQueue.push({
+          depth: depth + 0.1,
+          render: () => {
+            const pBase = project({ x: flag.x, y: 0, z: flag.z });
+            const pTop = project({ x: flag.x, y: 4.2, z: flag.z });
+
+            // Draw flag pole
+            ctx.beginPath();
+            ctx.moveTo(pBase.x, pBase.y);
+            ctx.lineTo(pTop.x, pTop.y);
+            ctx.strokeStyle = '#94a3b8';
+            ctx.lineWidth = 3 * resolutionScale;
+            ctx.stroke();
+
+            // Pole gold tip
+            ctx.beginPath();
+            ctx.arc(pTop.x, pTop.y, 4 * resolutionScale, 0, Math.PI * 2);
+            ctx.fillStyle = '#fde047';
+            ctx.fill();
+
+            // Wave multiplier
+            ctx.beginPath();
+            ctx.moveTo(pTop.x, pTop.y);
+            
+            // Draw fluttering flag segments
+            const steps = 10;
+            for (let step = 0; step <= steps; step++) {
+              const r = step / steps;
+              const wx = flag.x + r * 1.6;
+              const wy = 4.2 + Math.sin(Date.now() * 0.007 - step * 0.45) * 0.15;
+              const p = project({ x: wx, y: wy, z: flag.z });
+              ctx.lineTo(p.x, p.y);
+            }
+
+            const returnY = 4.2 - 0.75 + Math.sin(Date.now() * 0.007 - steps * 0.45) * 0.15;
+            const pReturn = project({ x: flag.x + 1.6, y: returnY, z: flag.z });
+            ctx.lineTo(pReturn.x, pReturn.y);
+
+            for (let step = steps; step >= 0; step--) {
+              const r = step / steps;
+              const wx = flag.x + r * 1.6;
+              const wy = 4.2 - 0.75 + Math.sin(Date.now() * 0.007 - step * 0.45) * 0.15;
+              const p = project({ x: wx, y: wy, z: flag.z });
+              ctx.lineTo(p.x, p.y);
+            }
+            ctx.closePath();
+            ctx.fillStyle = flag.color;
+            ctx.fill();
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 0.5;
+            ctx.stroke();
+
+            if (flag.faction === 'maratha') {
+              // Saffron tail cuts
+              ctx.beginPath();
+              const pTailMid = project({ x: flag.x + 1.6, y: 4.2 - 0.37 + Math.sin(Date.now() * 0.007 - steps * 0.45) * 0.15, z: flag.z });
+              const pTailTop = project({ x: flag.x + 2.5, y: 4.2 + Math.sin(Date.now() * 0.007 - 14 * 0.45) * 0.15, z: flag.z });
+              const pTailBottom = project({ x: flag.x + 2.5, y: 4.2 - 0.75 + Math.sin(Date.now() * 0.007 - 14 * 0.45) * 0.15, z: flag.z });
+              ctx.moveTo(pReturn.x, pReturn.y);
+              ctx.lineTo(pTailBottom.x, pTailBottom.y);
+              ctx.lineTo(pTailMid.x, pTailMid.y);
+              ctx.lineTo(pTailTop.x, pTailTop.y);
+              ctx.closePath();
+              ctx.fillStyle = flag.color;
+              ctx.fill();
+            }
+          }
+        });
+      });
+
+      // Defensive Stakes (Palisades / Stockades)
+      const PALISADE_STAKES = [
+        { x: -5.0, z: -3.4 },
+        { x: -4.6, z: -3.4 },
+        { x: -4.2, z: -3.4 },
+        { x: -3.8, z: -3.4 },
+        { x: -3.4, z: -3.4 }
+      ];
+
+      PALISADE_STAKES.forEach(stake => {
+        const depth = project({ x: stake.x, y: 0, z: stake.z }).depth;
+        drawQueue.push({
+          depth: depth + 0.1,
+          render: () => {
+            const base = [
+              { x: stake.x - 0.1, y: 0, z: stake.z - 0.1 },
+              { x: stake.x + 0.1, y: 0, z: stake.z - 0.1 },
+              { x: stake.x + 0.1, y: 0, z: stake.z + 0.1 },
+              { x: stake.x - 0.1, y: 0, z: stake.z + 0.1 }
+            ];
+            const tip = { x: stake.x, y: 0.7, z: stake.z + 0.28 }; // driven in slightly forward
+
+            draw3DFace([base[0], base[1], tip], '#78350f', { x: 0, y: 0.7, z: -0.7 });
+            draw3DFace([base[1], base[2], tip], '#78350f', { x: 0.7, y: 0.7, z: 0 });
+            draw3DFace([base[2], base[3], tip], '#9a3412', { x: 0, y: 0.7, z: 0.7 });
+            draw3DFace([base[3], base[0], tip], '#9a3412', { x: -0.7, y: 0.7, z: 0 });
+          }
+        });
+      });
+
+      // 3. TROOP NODE ENTITIES
+      sceneEntities.forEach(ent => {
+        const proj = project(ent);
+        const depth = proj.depth;
+        const isMaratha = ent.faction === 'maratha';
+        const factionColor = isMaratha ? '#f97316' : '#ef4444';
+        
+        // Cache screen-space coordinates for dragging/hit testing
+        entityProjectionsRef.current[ent.id] = { x: proj.x, y: proj.y };
+
+        drawQueue.push({
+          depth: depth,
+          render: () => {
+            const baseProj = project({ ...ent, y: 0 });
+            
+            // Ground shadow ring
+            ctx.beginPath();
+            ctx.ellipse(baseProj.x, baseProj.y, 14 * ent.size * resolutionScale, 6 * ent.size * resolutionScale, 0, 0, Math.PI * 2);
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.42)';
+            ctx.fill();
+
+            // Neon faction selector circles
+            ctx.strokeStyle = selectedEntityId === ent.id ? '#06b6d4' : factionColor;
+            ctx.lineWidth = selectedEntityId === ent.id ? 2.5 * resolutionScale : 1 * resolutionScale;
+            ctx.stroke();
+
+            // Active/Selection dashed halo
+            if (selectedEntityId === ent.id) {
+              ctx.beginPath();
+              ctx.ellipse(baseProj.x, baseProj.y, 22 * ent.size * resolutionScale, 10 * ent.size * resolutionScale, 0, 0, Math.PI * 2);
+              ctx.strokeStyle = 'rgba(6, 182, 212, 0.5)';
+              ctx.setLineDash([3, 3]);
+              ctx.stroke();
+              ctx.setLineDash([]);
+            }
+
+            // Draw 3D solid low-poly meshes
+            if (wireframeMode) {
+              ctx.strokeStyle = factionColor;
+              ctx.lineWidth = 1.25 * resolutionScale;
+              ctx.beginPath();
+              const topProj = project({ ...ent, y: ent.type === 'fort' ? 1.6 : ent.type === 'cavalry' ? 1.0 : 0.8 });
+              ctx.moveTo(baseProj.x - 12 * resolutionScale, baseProj.y);
+              ctx.lineTo(topProj.x - 12 * resolutionScale, topProj.y);
+              ctx.lineTo(topProj.x + 12 * resolutionScale, topProj.y);
+              ctx.lineTo(baseProj.x + 12 * resolutionScale, baseProj.y);
+              ctx.closePath();
+              ctx.stroke();
+            } else if (ent.type === 'fort') {
+              // 3D Octagonal defensive fort/battery keep
+              const height = 1.65 * ent.size;
+              const rBase = 0.65 * ent.size;
+              const rTop = 0.58 * ent.size;
+              const sides = 8;
+              
+              const basePts = [];
+              const topPts = [];
+              for (let i = 0; i < sides; i++) {
+                const angle = (i / sides) * Math.PI * 2;
+                basePts.push({ x: ent.x + Math.cos(angle)*rBase, y: 0, z: ent.z + Math.sin(angle)*rBase });
+                topPts.push({ x: ent.x + Math.cos(angle)*rTop, y: height, z: ent.z + Math.sin(angle)*rTop });
+              }
+
+              const stoneColor = isMaratha ? '#78716c' : '#57534e';
+              for (let i = 0; i < sides; i++) {
+                const next = (i + 1) % sides;
+                const normalX = Math.cos((i + 0.5) / sides * Math.PI * 2);
+                const normalZ = Math.sin((i + 0.5) / sides * Math.PI * 2);
+                draw3DFace([basePts[i], basePts[next], topPts[next], topPts[i]], stoneColor, { x: normalX, y: 0.1, z: normalZ });
+              }
+
+              // Deck face
+              draw3DFace(topPts, '#44403c', { x: 0, y: 1, z: 0 });
+
+              // Battlements atop fort
+              for (let i = 0; i < sides; i++) {
+                if (i % 2 === 0) {
+                  const next = (i + 1) % sides;
+                  const crenBase = [topPts[i], topPts[next]];
+                  const crenTop = crenBase.map(p => ({ ...p, y: p.y + 0.28 }));
+                  draw3DFace([crenBase[0], crenBase[1], crenTop[1], crenTop[0]], '#57534e', { x: Math.cos(i/sides*Math.PI*2), y: 0, z: Math.sin(i/sides*Math.PI*2) });
+                }
+              }
+
+              // Heavy wooden doors
+              const doorAngle = Math.PI * 1.25;
+              const pDoorL = { x: ent.x + Math.cos(doorAngle - 0.22)*rBase, y: 0, z: ent.z + Math.sin(doorAngle - 0.22)*rBase };
+              const pDoorR = { x: ent.x + Math.cos(doorAngle + 0.22)*rBase, y: 0, z: ent.z + Math.sin(doorAngle + 0.22)*rBase };
+              const pDoorTL = { ...pDoorL, y: 0.45 };
+              const pDoorTR = { ...pDoorR, y: 0.45 };
+              draw3DFace([pDoorL, pDoorR, pDoorTR, pDoorTL], '#451a03', { x: Math.cos(doorAngle), y: 0, z: Math.sin(doorAngle) });
+
+              // Fort crest banner
+              const pFlagBase = project({ x: ent.x, y: height, z: ent.z });
+              const pFlagTop = project({ x: ent.x, y: height + 0.75, z: ent.z });
+              ctx.beginPath();
+              ctx.moveTo(pFlagBase.x, pFlagBase.y);
+              ctx.lineTo(pFlagTop.x, pFlagTop.y);
+              ctx.strokeStyle = '#cbd5e1';
+              ctx.lineWidth = 1.5;
+              ctx.stroke();
+
+              const w = Math.sin(Date.now() * 0.007 + ent.x) * 4;
+              ctx.beginPath();
+              ctx.moveTo(pFlagTop.x, pFlagTop.y);
+              ctx.lineTo(pFlagTop.x + 13 * resolutionScale + w, pFlagTop.y + 2);
+              ctx.lineTo(pFlagTop.x, pFlagTop.y + 7 * resolutionScale);
+              ctx.closePath();
+              ctx.fillStyle = factionColor;
+              ctx.fill();
+
+            } else if (ent.type === 'artillery') {
+              // 3D Brass cannon tube & wooden carriage wheel base
+              const scale = ent.size;
+              let targetDir = { x: isMaratha ? 1 : -1, z: 0 };
+              const target = sceneEntities.find(t => t.id === selectedTargetId);
+              if (target) {
+                const dx = target.x - ent.x;
+                const dz = target.z - ent.z;
+                const len = Math.sqrt(dx*dx + dz*dz);
+                if (len > 0) {
+                  targetDir = { x: dx / len, z: dz / len };
+                }
+              }
+
+              const wheelDir = { x: -targetDir.z, z: targetDir.x };
+
+              // Wheels
+              const drawWheel = (offsetSign: number) => {
+                const wx = ent.x + wheelDir.x * 0.45 * offsetSign;
+                const wz = ent.z + wheelDir.z * 0.45 * offsetSign;
+                const wProj = project({ x: wx, y: 0.35, z: wz });
+                
+                ctx.beginPath();
+                ctx.ellipse(wProj.x, wProj.y, 11 * scale * resolutionScale, 11 * scale * resolutionScale, 0, 0, Math.PI * 2);
+                ctx.fillStyle = '#1e1b4b'; // dark composite rim
+                ctx.fill();
+                ctx.strokeStyle = '#854d0e'; // bronze rim banding
+                ctx.lineWidth = 2.5 * resolutionScale;
+                ctx.stroke();
+
+                ctx.beginPath();
+                ctx.ellipse(wProj.x, wProj.y, 8 * scale * resolutionScale, 8 * scale * resolutionScale, 0, 0, Math.PI * 2);
+                ctx.fillStyle = '#78350f';
+                ctx.fill();
+                ctx.strokeStyle = '#b45309';
+                ctx.lineWidth = 1;
+                ctx.stroke();
+
+                ctx.beginPath();
+                ctx.arc(wProj.x, wProj.y, 2.5 * resolutionScale, 0, Math.PI * 2);
+                ctx.fillStyle = '#94a3b8';
+                ctx.fill();
+              };
+
+              const camDotWheel = wheelDir.x * Math.cos(camYaw) + wheelDir.z * Math.sin(camYaw);
+              if (camDotWheel > 0) {
+                drawWheel(-1);
+                drawWheel(1);
+              } else {
+                drawWheel(1);
+                drawWheel(-1);
+              }
+
+              // Carriage box
+              const mBase = [
+                { x: ent.x - targetDir.x*0.4 - wheelDir.x*0.2, y: 0.15, z: ent.z - targetDir.z*0.4 - wheelDir.z*0.2 },
+                { x: ent.x - targetDir.x*0.4 + wheelDir.x*0.2, y: 0.15, z: ent.z - targetDir.z*0.4 + wheelDir.z*0.2 },
+                { x: ent.x + targetDir.x*0.35 + wheelDir.x*0.2, y: 0.25, z: ent.z + targetDir.z*0.35 + wheelDir.z*0.2 },
+                { x: ent.x + targetDir.x*0.35 - wheelDir.x*0.2, y: 0.25, z: ent.z + targetDir.z*0.35 - wheelDir.z*0.2 }
+              ];
+              const mTop = mBase.map(p => ({ ...p, y: p.y + 0.2 }));
+              draw3DFace([mBase[0], mBase[1], mTop[1], mTop[0]], '#451a03', { x: -targetDir.x, y: 0, z: -targetDir.z });
+              draw3DFace([mBase[1], mBase[2], mTop[2], mTop[1]], '#451a03', { x: wheelDir.x, y: 0, z: wheelDir.z });
+              draw3DFace([mBase[2], mBase[3], mTop[3], mTop[2]], '#78350f', { x: targetDir.x, y: 0, z: targetDir.z });
+              draw3DFace([mBase[3], mBase[0], mTop[0], mTop[3]], '#78350f', { x: -wheelDir.x, y: 0, z: -wheelDir.z });
+              draw3DFace(mTop, '#b45309', { x: 0, y: 1, z: 0 });
+
+              // Barrel cylinder vector
+              const bStart = { x: ent.x - targetDir.x * 0.52, y: 0.45, z: ent.z - targetDir.z * 0.52 };
+              const bEnd = { x: ent.x + targetDir.x * 0.68, y: 0.45 + Math.sin(cannonAngle * Math.PI / 180)*0.25, z: ent.z + targetDir.z * 0.68 };
+              const pBStart = project(bStart);
+              const pBEnd = project(bEnd);
+
+              ctx.beginPath();
+              ctx.moveTo(pBStart.x, pBStart.y);
+              ctx.lineTo(pBEnd.x, pBEnd.y);
+              ctx.strokeStyle = isMaratha ? '#ca8a04' : '#4b5563'; // Brass vs Cast Iron
+              ctx.lineWidth = 8 * scale * resolutionScale;
+              ctx.lineCap = 'round';
+              ctx.stroke();
+
+              // Hollow cannon muzzle black tip
+              ctx.beginPath();
+              ctx.arc(pBEnd.x, pBEnd.y, 2.5 * scale * resolutionScale, 0, Math.PI * 2);
+              ctx.fillStyle = '#09090b';
+              ctx.fill();
+
+              // Cannonballs pile
+              const ballOffset = wheelDir;
+              const bx = ent.x - ballOffset.x * 0.58;
+              const bz = ent.z - ballOffset.z * 0.58;
+              const pBall = project({ x: bx, y: 0.08, z: bz });
+              ctx.beginPath();
+              ctx.arc(pBall.x, pBall.y, 5 * scale * resolutionScale, 0, Math.PI * 2);
+              ctx.fillStyle = '#27272a';
+              ctx.fill();
+              ctx.strokeStyle = '#52525b';
+              ctx.lineWidth = 1;
+              ctx.stroke();
+
+            } else if (ent.type === 'cavalry') {
+              // 3D horse anatomy with rider
+              const hTorso = [
+                { x: ent.x - 0.38, y: 0.28, z: ent.z - 0.16 },
+                { x: ent.x + 0.38, y: 0.28, z: ent.z - 0.16 },
+                { x: ent.x + 0.38, y: 0.28, z: ent.z + 0.16 },
+                { x: ent.x - 0.38, y: 0.28, z: ent.z + 0.16 }
+              ];
+              const hTorsoTop = hTorso.map(p => ({ ...p, y: 0.62 }));
+              const horseColor = isMaratha ? '#7c2d12' : '#57534e';
+              
+              draw3DFace([hTorso[0], hTorso[1], hTorsoTop[1], hTorsoTop[0]], horseColor, { x: 0, y: 0, z: -1 });
+              draw3DFace([hTorso[1], hTorso[2], hTorsoTop[2], hTorsoTop[1]], horseColor, { x: 1, y: 0, z: 0 });
+              draw3DFace([hTorso[2], hTorso[3], hTorsoTop[3], hTorsoTop[2]], horseColor, { x: 0, y: 0, z: 1 });
+              draw3DFace([hTorso[3], hTorso[0], hTorsoTop[0], hTorsoTop[3]], horseColor, { x: -1, y: 0, z: 0 });
+              draw3DFace(hTorsoTop, factionColor, { x: 0, y: 1, z: 0 }); // saddle cloth
+
+              // Horse head & neck block
+              const dir = isMaratha ? -1 : 1;
+              const pNeckB = project({ x: ent.x + 0.26*dir, y: 0.52, z: ent.z });
+              const pNeckT = project({ x: ent.x + 0.46*dir, y: 0.9, z: ent.z });
+              ctx.beginPath();
+              ctx.moveTo(pNeckB.x, pNeckB.y);
+              ctx.lineTo(pNeckT.x, pNeckT.y);
+              ctx.strokeStyle = horseColor;
+              ctx.lineWidth = 7.5 * resolutionScale;
+              ctx.lineCap = 'round';
+              ctx.stroke();
+
+              // Legs
+              const drawLeg = (lx: number, lz: number) => {
+                const pLTop = project({ x: ent.x + lx, y: 0.35, z: ent.z + lz });
+                const pLBot = project({ x: ent.x + lx, y: 0, z: ent.z + lz });
+                ctx.beginPath();
+                ctx.moveTo(pLTop.x, pLTop.y);
+                ctx.lineTo(pLBot.x, pLBot.y);
+                ctx.strokeStyle = horseColor;
+                ctx.lineWidth = 2.5 * resolutionScale;
+                ctx.stroke();
+              };
+              drawLeg(-0.25, -0.12);
+              drawLeg(-0.25, 0.12);
+              drawLeg(0.25, -0.12);
+              drawLeg(0.25, 0.12);
+
+              // Rider sitting at Y = 0.62
+              const pRiderB = project({ x: ent.x, y: 0.62, z: ent.z });
+              const pRiderH = project({ x: ent.x, y: 1.18, z: ent.z });
+              ctx.beginPath();
+              ctx.moveTo(pRiderB.x, pRiderB.y);
+              ctx.lineTo(pRiderH.x, pRiderH.y);
+              ctx.strokeStyle = isMaratha ? '#fed7aa' : '#cbd5e1'; // skin tone
+              ctx.lineWidth = 9.5 * resolutionScale;
+              ctx.lineCap = 'round';
+              ctx.stroke();
+
+              // Rider turban/helmet
+              ctx.beginPath();
+              ctx.arc(pRiderH.x, pRiderH.y - 2 * resolutionScale, 5 * resolutionScale, 0, Math.PI * 2);
+              ctx.fillStyle = isMaratha ? '#ea580c' : '#991b1b';
+              ctx.fill();
+
+              // Spear banner
+              const pSpearS = project({ x: ent.x + 0.1, y: 0.5, z: ent.z + 0.16 });
+              const pSpearE = project({ x: ent.x + 0.2*dir, y: 1.65, z: ent.z + 0.28 });
+              ctx.beginPath();
+              ctx.moveTo(pSpearS.x, pSpearS.y);
+              ctx.lineTo(pSpearE.x, pSpearE.y);
+              ctx.strokeStyle = '#94a3b8';
+              ctx.lineWidth = 1.5 * resolutionScale;
+              ctx.stroke();
+
+              // Tip
+              ctx.beginPath();
+              ctx.arc(pSpearE.x, pSpearE.y, 2 * resolutionScale, 0, Math.PI * 2);
+              ctx.fillStyle = '#cbd5e1';
+              ctx.fill();
+
+              // Lance banner cloth
+              ctx.beginPath();
+              ctx.moveTo(pSpearE.x, pSpearE.y + 2);
+              ctx.lineTo(pSpearE.x - 12*dir*resolutionScale, pSpearE.y + 6*resolutionScale);
+              ctx.lineTo(pSpearE.x, pSpearE.y + 11 * resolutionScale);
+              ctx.closePath();
+              ctx.fillStyle = factionColor;
+              ctx.fill();
+
+            } else {
+              // 3D armored infantry capsule with shield and talwar!
+              const rBase = 0.3;
+              const height = 0.9;
+              const infBody = [
+                { x: ent.x - rBase, y: 0, z: ent.z - rBase },
+                { x: ent.x + rBase, y: 0, z: ent.z - rBase },
+                { x: ent.x + rBase, y: 0, z: ent.z + rBase },
+                { x: ent.x - rBase, y: 0, z: ent.z + rBase }
+              ];
+              const infTop = infBody.map(p => ({ ...p, y: height }));
+              const coatColor = isMaratha ? '#ea580c' : '#be123c';
+
+              draw3DFace([infBody[0], infBody[1], infTop[1], infTop[0]], coatColor, { x: 0, y: 0, z: -1 });
+              draw3DFace([infBody[1], infBody[2], infTop[2], infTop[1]], coatColor, { x: 1, y: 0, z: 0 });
+              draw3DFace([infBody[2], infBody[3], infTop[3], infTop[2]], coatColor, { x: 0, y: 0, z: 1 });
+              draw3DFace([infBody[3], infBody[0], infTop[0], infTop[3]], coatColor, { x: -1, y: 0, z: 0 });
+              draw3DFace(infTop, '#ca8a04', { x: 0, y: 1, z: 0 }); // gold epaulets
+
+              // Soldier Head
+              const pHead = project({ x: ent.x, y: height + 0.16, z: ent.z });
+              ctx.beginPath();
+              ctx.arc(pHead.x, pHead.y, 7 * resolutionScale, 0, Math.PI * 2);
+              ctx.fillStyle = '#fed7aa';
+              ctx.fill();
+
+              // Turban wrapping
+              ctx.beginPath();
+              ctx.arc(pHead.x, pHead.y - 3 * resolutionScale, 5.5 * resolutionScale, 0, Math.PI * 2);
+              ctx.fillStyle = isMaratha ? '#f97316' : '#991b1b';
+              ctx.fill();
+
+              // Round Dhal shield
+              const pShield = project({ x: ent.x - 0.3, y: height * 0.58, z: ent.z + 0.16 });
+              ctx.beginPath();
+              ctx.arc(pShield.x, pShield.y, 9 * resolutionScale, 0, Math.PI * 2);
+              ctx.fillStyle = '#1e293b'; // black rhinoceros hide shield
+              ctx.fill();
+              ctx.strokeStyle = '#ca8a04'; // gold trim
+              ctx.lineWidth = 1.5 * resolutionScale;
+              ctx.stroke();
+
+              ctx.beginPath();
+              ctx.arc(pShield.x, pShield.y, 1.5 * resolutionScale, 0, Math.PI * 2);
+              ctx.fillStyle = '#fde047';
+              ctx.fill();
+
+              // Sword swing
+              const swingAngle = Math.sin(Date.now() * 0.009 + ent.x) * 0.45;
+              const swordTip = { 
+                x: ent.x + 0.36 + Math.cos(swingAngle)*0.32, 
+                y: height * 0.68 + Math.sin(swingAngle)*0.32, 
+                z: ent.z - 0.1 
+              };
+              const swordHand = { x: ent.x + 0.3, y: height * 0.52, z: ent.z - 0.1 };
+              const pHand = project(swordHand);
+              const pTip = project(swordTip);
+
+              ctx.beginPath();
+              ctx.moveTo(pHand.x, pHand.y);
+              ctx.lineTo(pTip.x, pTip.y);
+              ctx.strokeStyle = '#e2e8f0'; // bright steel
+              ctx.lineWidth = 2 * resolutionScale;
+              ctx.stroke();
+
+              ctx.beginPath();
+              ctx.arc(pHand.x, pHand.y, 2 * resolutionScale, 0, Math.PI * 2);
+              ctx.fillStyle = '#ca8a04'; // gold hilt
+              ctx.fill();
+            }
+
+            // Display node tag overlay
+            ctx.fillStyle = selectedEntityId === ent.id ? '#06b6d4' : '#ffffff';
+            ctx.font = `bold ${8.5 * resolutionScale}px monospace`;
+            ctx.fillText(ent.label || '', baseProj.x - 45 * resolutionScale, baseProj.y - (ent.type === 'fort' ? 52 : 36) * resolutionScale);
+            
+            // Dynamic node vector tracking label
+            ctx.fillStyle = 'rgba(156, 163, 175, 0.85)';
+            ctx.font = `${7 * resolutionScale}px monospace`;
+            ctx.fillText(`Vector3(${ent.x.toFixed(1)}, ${ent.y.toFixed(1)}, ${ent.z.toFixed(1)})`, baseProj.x - 30 * resolutionScale, baseProj.y + 14 * resolutionScale);
+          }
+        });
+      });
+
+      // 4. BALISTIC PROJECTILES & EXPLOSIONS
       if (isLaunchingProjectile) {
         const launcher = sceneEntities.find(ent => ent.id === 'm1') || sceneEntities[0];
         const target = sceneEntities.find(ent => ent.id === selectedTargetId) || sceneEntities[3];
@@ -905,78 +1592,92 @@ func _physics_process(delta: float):
           const bProj = project({ x: bX, y: bY, z: bZ });
           const bShadowProj = project({ x: bX, y: 0, z: bZ });
 
-          // Draw falling shadow on ground grid
-          ctx.beginPath();
-          ctx.ellipse(bShadowProj.x, bShadowProj.y, 6 * resolutionScale, 3 * resolutionScale, 0, 0, Math.PI * 2);
-          ctx.fillStyle = 'rgba(0, 0, 0, 0.45)';
-          ctx.fill();
+          // Shadow
+          drawQueue.push({
+            depth: bShadowProj.depth + 0.1,
+            render: () => {
+              ctx.beginPath();
+              ctx.ellipse(bShadowProj.x, bShadowProj.y, 6 * resolutionScale, 3 * resolutionScale, 0, 0, Math.PI * 2);
+              ctx.fillStyle = 'rgba(0, 0, 0, 0.45)';
+              ctx.fill();
+            }
+          });
 
-          // Draw dotted ballistic trajectory lines
-          ctx.beginPath();
-          ctx.strokeStyle = 'rgba(234, 88, 12, 0.65)';
-          ctx.setLineDash([4, 4]);
-          const trajectorySteps = 15;
-          for (let step = 0; step <= trajectorySteps; step++) {
-            const ts = step / trajectorySteps;
-            const px = launcher.x + (target.x - launcher.x) * ts;
-            const pz = launcher.z + (target.z - launcher.z) * ts;
-            const py = Math.sin(ts * Math.PI) * Math.max(1.0, maxHeight);
-            const pProj = project({ x: px, y: py, z: pz });
-            if (step === 0) ctx.moveTo(pProj.x, pProj.y);
-            else ctx.lineTo(pProj.x, pProj.y);
-          }
-          ctx.stroke();
-          ctx.setLineDash([]);
+          // Flying Cannonball
+          drawQueue.push({
+            depth: bProj.depth - 0.2,
+            render: () => {
+              // Ballistic tracer line
+              ctx.beginPath();
+              ctx.strokeStyle = 'rgba(234, 88, 12, 0.65)';
+              ctx.setLineDash([4, 4]);
+              const steps = 15;
+              for (let step = 0; step <= steps; step++) {
+                const ts = step / steps;
+                const px = launcher.x + (target.x - launcher.x) * ts;
+                const pz = launcher.z + (target.z - launcher.z) * ts;
+                const py = Math.sin(ts * Math.PI) * Math.max(1.0, maxHeight);
+                const p = project({ x: px, y: py, z: pz });
+                if (step === 0) ctx.moveTo(p.x, p.y);
+                else ctx.lineTo(p.x, p.y);
+              }
+              ctx.stroke();
+              ctx.setLineDash([]);
 
-          // Draw active projectile sphere
-          ctx.beginPath();
-          ctx.arc(bProj.x, bProj.y, 5 * resolutionScale, 0, Math.PI * 2);
-          ctx.fillStyle = '#f97316';
-          ctx.fill();
-          ctx.strokeStyle = '#fde047';
-          ctx.lineWidth = 1.5 * resolutionScale;
-          ctx.stroke();
+              ctx.beginPath();
+              ctx.arc(bProj.x, bProj.y, 5 * resolutionScale, 0, Math.PI * 2);
+              ctx.fillStyle = '#f97316';
+              ctx.fill();
+              ctx.strokeStyle = '#fde047';
+              ctx.lineWidth = 1.5 * resolutionScale;
+              ctx.stroke();
+            }
+          });
         }
       }
 
-      // 4. DRAW EXPLOSION PARTICLES (Phase 3 feedback explosion solvers)
       if (explosionRef.current) {
         const exp = explosionRef.current;
-        exp.progress += 0.04;
-        
         const expProj = project({ x: exp.x, y: exp.y, z: exp.z });
         
-        // Shockwave rings expansion
-        ctx.beginPath();
-        ctx.arc(expProj.x, expProj.y, exp.radius * exp.progress * 8 * resolutionScale, 0, Math.PI * 2);
-        ctx.strokeStyle = `rgba(239, 68, 68, ${1 - exp.progress})`;
-        ctx.lineWidth = 3 * resolutionScale;
-        ctx.stroke();
+        drawQueue.push({
+          depth: expProj.depth - 0.5,
+          render: () => {
+            exp.progress += 0.04;
+            
+            // Blast ring expansion
+            ctx.beginPath();
+            ctx.arc(expProj.x, expProj.y, exp.radius * exp.progress * 15 * resolutionScale, 0, Math.PI * 2);
+            ctx.strokeStyle = `rgba(239, 68, 68, ${1 - exp.progress})`;
+            ctx.lineWidth = 3.5 * resolutionScale;
+            ctx.stroke();
 
-        ctx.beginPath();
-        ctx.arc(expProj.x, expProj.y, exp.radius * exp.progress * 4 * resolutionScale, 0, Math.PI * 2);
-        ctx.fillStyle = `rgba(251, 146, 60, ${(1 - exp.progress) * 0.45})`;
-        ctx.fill();
+            ctx.beginPath();
+            ctx.arc(expProj.x, expProj.y, exp.radius * exp.progress * 7 * resolutionScale, 0, Math.PI * 2);
+            ctx.fillStyle = `rgba(251, 146, 60, ${(1 - exp.progress) * 0.5})`;
+            ctx.fill();
 
-        // Little dynamic sparks lines
-        ctx.strokeStyle = '#fde047';
-        ctx.lineWidth = 1.5;
-        for (let i = 0; i < 12; i++) {
-          const angle = (i / 12) * Math.PI * 2 + exp.progress;
-          const length = 18 * exp.progress;
-          const startDist = 7 * exp.progress;
-          ctx.beginPath();
-          ctx.moveTo(expProj.x + Math.cos(angle) * startDist * resolutionScale, expProj.y + Math.sin(angle) * startDist * resolutionScale);
-          ctx.lineTo(expProj.x + Math.cos(angle) * (startDist + length) * resolutionScale, expProj.y + Math.sin(angle) * (startDist + length) * resolutionScale);
-          ctx.stroke();
-        }
+            // sparks
+            ctx.strokeStyle = '#fde047';
+            ctx.lineWidth = 1.5;
+            for (let i = 0; i < 12; i++) {
+              const angle = (i / 12) * Math.PI * 2 + exp.progress;
+              const length = 20 * exp.progress;
+              const startDist = 8 * exp.progress;
+              ctx.beginPath();
+              ctx.moveTo(expProj.x + Math.cos(angle) * startDist * resolutionScale, expProj.y + Math.sin(angle) * startDist * resolutionScale);
+              ctx.lineTo(expProj.x + Math.cos(angle) * (startDist + length) * resolutionScale, expProj.y + Math.sin(angle) * (startDist + length) * resolutionScale);
+              ctx.stroke();
+            }
 
-        if (exp.progress >= 1.0) {
-          explosionRef.current = null;
-        }
+            if (exp.progress >= 1.0) {
+              explosionRef.current = null;
+            }
+          }
+        });
       }
 
-      // 5. DRAW LIVE MELEE CLASH EFFECT (Overlapping shapes)
+      // 5. LIVE MELEE CLASH EFFECTS
       for (let i = 0; i < sceneEntities.length; i++) {
         const entA = sceneEntities[i];
         for (let j = i + 1; j < sceneEntities.length; j++) {
@@ -992,66 +1693,112 @@ func _physics_process(delta: float):
               const midZ = (entA.z + entB.z) * 0.5;
               const midProj = project({ x: midX, y: 0.2, z: midZ });
               
-              // Draw colliding boundary sparks
-              ctx.beginPath();
-              ctx.arc(midProj.x, midProj.y, (12 + Math.sin(Date.now() * 0.02) * 4) * resolutionScale, 0, Math.PI * 2);
-              ctx.strokeStyle = '#ef4444';
-              ctx.lineWidth = 1.5 * resolutionScale;
-              ctx.stroke();
+              drawQueue.push({
+                depth: midProj.depth - 0.2,
+                render: () => {
+                  ctx.beginPath();
+                  ctx.arc(midProj.x, midProj.y, (13 + Math.sin(Date.now() * 0.02) * 4) * resolutionScale, 0, Math.PI * 2);
+                  ctx.strokeStyle = '#ef4444';
+                  ctx.lineWidth = 2 * resolutionScale;
+                  ctx.stroke();
 
-              ctx.fillStyle = 'rgba(239, 68, 68, 0.15)';
-              ctx.fill();
+                  ctx.fillStyle = 'rgba(239, 68, 68, 0.18)';
+                  ctx.fill();
 
-              ctx.fillStyle = '#fde047';
-              ctx.font = `bold ${8 * resolutionScale}px monospace`;
-              ctx.fillText("💥 CLASHING", midProj.x - 26 * resolutionScale, midProj.y - 12 * resolutionScale);
+                  // comic bursts sparks
+                  ctx.strokeStyle = '#fbbf24';
+                  ctx.lineWidth = 1.5;
+                  for (let s = 0; s < 6; s++) {
+                    const ang = s / 6 * Math.PI * 2 + Date.now()*0.01;
+                    ctx.beginPath();
+                    ctx.moveTo(midProj.x + Math.cos(ang)*4, midProj.y + Math.sin(ang)*4);
+                    ctx.lineTo(midProj.x + Math.cos(ang)*16, midProj.y + Math.sin(ang)*16);
+                    ctx.stroke();
+                  }
+
+                  ctx.fillStyle = '#fde047';
+                  ctx.font = `bold ${8 * resolutionScale}px monospace`;
+                  ctx.fillText("💥 CLASHING", midProj.x - 26 * resolutionScale, midProj.y - 12 * resolutionScale);
+                }
+              });
             }
           }
         }
       }
 
-      // Dynamic Weather Screen Filter Overlay inside WebGL Viewport
+      // 6. ATMOSPHERIC DRIFTING CLOUDS
+      const CLOUDS = [
+        { x: -5, y: 5.5, z: -4 },
+        { x: 1, y: 4.8, z: -5.5 },
+        { x: 4.5, y: 6.2, z: 2 }
+      ];
+
+      CLOUDS.forEach((cloud, idx) => {
+        const cx = cloud.x + Math.sin(Date.now() * 0.0003 + idx) * 2;
+        const cProj = project({ x: cx, y: cloud.y, z: cloud.z });
+        
+        drawQueue.push({
+          depth: cProj.depth + 2.0, // Clouds float highest
+          render: () => {
+            ctx.beginPath();
+            ctx.ellipse(cProj.x, cProj.y, 45 * resolutionScale, 18 * resolutionScale, 0, 0, Math.PI * 2);
+            ctx.ellipse(cProj.x - 20 * resolutionScale, cProj.y + 4, 30 * resolutionScale, 15 * resolutionScale, 0, 0, Math.PI * 2);
+            ctx.ellipse(cProj.x + 20 * resolutionScale, cProj.y + 4, 30 * resolutionScale, 15 * resolutionScale, 0, 0, Math.PI * 2);
+            ctx.fillStyle = timeOfDay === 'midnight' ? 'rgba(30, 41, 59, 0.28)' : 'rgba(255, 255, 255, 0.25)';
+            ctx.fill();
+          }
+        });
+      });
+
+      // SORT DRAW QUEUE BY DEPTH DESCENDING AND EXECUTE PAINTERS ALGORITHM DRAW PASS
+      drawQueue.sort((a, b) => b.depth - a.depth);
+      drawQueue.forEach(item => item.render());
+
+      // 7. AMBIENT PARTICULATE WEATHER FILTER SCREEN OVERLAYS
       if (weather === 'dust_storm') {
-        ctx.fillStyle = 'rgba(234, 110, 12, 0.14)';
+        ctx.fillStyle = 'rgba(217, 119, 6, 0.12)';
         ctx.fillRect(0, 0, w, h);
-        // Sand particles in viewport
-        ctx.fillStyle = 'rgba(251, 191, 36, 0.35)';
-        const particleCount = renderQuality === 'low' ? 5 : renderQuality === 'medium' ? 12 : 25;
-        for (let k = 0; k < particleCount; k++) {
-          const px = (Math.random() * w + Date.now() * 0.4) % w;
+        
+        ctx.fillStyle = 'rgba(245, 158, 11, 0.35)';
+        const count = renderQuality === 'low' ? 6 : renderQuality === 'medium' ? 14 : 28;
+        for (let k = 0; k < count; k++) {
+          const px = (Math.random() * w + Date.now() * 0.5) % w;
           const py = Math.random() * h;
-          ctx.fillRect(px, py, 2.5 * resolutionScale, 1 * resolutionScale);
+          ctx.fillRect(px, py, 3 * resolutionScale, 1 * resolutionScale);
         }
       } else if (weather === 'rain') {
-        ctx.fillStyle = 'rgba(56, 189, 248, 0.08)';
+        ctx.fillStyle = 'rgba(56, 189, 248, 0.06)';
         ctx.fillRect(0, 0, w, h);
-        ctx.strokeStyle = 'rgba(56, 189, 248, 0.4)';
+        ctx.strokeStyle = 'rgba(56, 189, 248, 0.35)';
         ctx.lineWidth = 1;
-        const dripCount = renderQuality === 'low' ? 6 : renderQuality === 'medium' ? 15 : 30;
-        for (let k = 0; k < dripCount; k++) {
+        const count = renderQuality === 'low' ? 8 : renderQuality === 'medium' ? 18 : 35;
+        for (let k = 0; k < count; k++) {
           const px = Math.random() * w;
           const py = Math.random() * h;
           ctx.beginPath();
           ctx.moveTo(px, py);
-          ctx.lineTo(px - 5 * resolutionScale, py + 15 * resolutionScale);
+          ctx.lineTo(px - 6 * resolutionScale, py + 18 * resolutionScale);
           ctx.stroke();
         }
       } else if (weather === 'fog') {
-        ctx.fillStyle = 'rgba(203, 213, 225, 0.22)';
+        const fogGrad = ctx.createRadialGradient(w/2, h/2, 10, w/2, h/2, w/2);
+        fogGrad.addColorStop(0, 'rgba(203, 213, 225, 0.12)');
+        fogGrad.addColorStop(1, 'rgba(148, 163, 184, 0.28)');
+        ctx.fillStyle = fogGrad;
         ctx.fillRect(0, 0, w, h);
       } else if (weather === 'extreme_heat') {
-        ctx.fillStyle = 'rgba(239, 68, 68, 0.05)';
+        ctx.fillStyle = 'rgba(239, 68, 68, 0.04)';
         ctx.fillRect(0, 0, w, h);
-        // Draw ambient heat ripples
-        ctx.strokeStyle = 'rgba(245, 158, 11, 0.18)';
+        // Wave ripple haze
+        ctx.strokeStyle = 'rgba(245, 158, 11, 0.16)';
         ctx.lineWidth = 1;
-        const waveCount = renderQuality === 'low' ? 2 : renderQuality === 'medium' ? 5 : 8;
-        for (let m = 0; m < waveCount; m++) {
+        const count = renderQuality === 'low' ? 2 : renderQuality === 'medium' ? 5 : 8;
+        for (let m = 0; m < count; m++) {
           const ry = h / 2 + m * 30 + Math.sin(Date.now() * 0.005 + m) * 10;
           ctx.beginPath();
           ctx.moveTo(0, ry);
           for (let rx = 0; rx < w; rx += 20) {
-            ctx.lineTo(rx, ry + Math.sin(rx * 0.02 + Date.now() * 0.01) * 3);
+            ctx.lineTo(rx, ry + Math.sin(rx * 0.025 + Date.now() * 0.012) * 3);
           }
           ctx.stroke();
         }
@@ -1069,7 +1816,7 @@ func _physics_process(delta: float):
 
     render();
     return () => cancelAnimationFrame(animFrame);
-  }, [engineState, camYaw, camPitch, camZoom, weather, sceneEntities, resolutionScale, renderQuality, wireframeMode, selectedEntityId, isLaunchingProjectile, projectileT, selectedTargetId, cannonAngle]);
+  }, [engineState, camYaw, camPitch, camZoom, weather, sceneEntities, resolutionScale, renderQuality, wireframeMode, selectedEntityId, isLaunchingProjectile, projectileT, selectedTargetId, cannonAngle, timeOfDay]);
 
   // Handle Dragging to rotate Godot camera or translate selected entities (Phase 3)
   const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {

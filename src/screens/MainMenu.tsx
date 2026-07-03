@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Flag, Swords, Users, Settings, ChevronRight, HelpCircle, Book, BookOpen, Scroll, GraduationCap, Compass } from 'lucide-react';
+import { Flag, Swords, Users, Settings, ChevronRight, HelpCircle, Book, BookOpen, Scroll, GraduationCap, Compass, Award, Save } from 'lucide-react';
 import { Screen, CampaignStage, General } from '../types';
 
 const MARATHA_GENERALS: General[] = [
@@ -249,11 +249,13 @@ export const MainMenu: React.FC<{
   const [general, setGeneral] = useState<General | null>(null);
 
   const menuItems = [
-    { id: Screen.STRATEGIC_MAP, label: 'Grand Campaign', icon: Flag },
-    { id: Screen.TACTICAL_HUD, label: 'Skirmish', icon: Swords },
-    { id: Screen.LMS, label: 'Grand Academy', icon: GraduationCap },
-    { id: Screen.CARTOGRAPHY, label: 'Imperial Cartography', icon: Compass },
-    { id: Screen.WAR_COUNCIL, label: 'Multiplayer', icon: Users },
+    { id: Screen.STRATEGIC_MAP, label: 'Grand Campaign', icon: Flag, action: () => onNavigate(Screen.STRATEGIC_MAP) },
+    { id: Screen.TACTICAL_HUD, label: 'Skirmish', icon: Swords, action: () => onNavigate(Screen.TACTICAL_HUD) },
+    { id: Screen.LMS, label: 'Grand Academy', icon: GraduationCap, action: () => onNavigate(Screen.LMS) },
+    { id: Screen.CARTOGRAPHY, label: 'Imperial Cartography', icon: Compass, action: () => onNavigate(Screen.CARTOGRAPHY) },
+    { id: Screen.ACHIEVEMENTS, label: 'Imperial Achievements', icon: Award, action: () => onNavigate(Screen.ACHIEVEMENTS) },
+    { id: Screen.WAR_COUNCIL, label: 'Multiplayer', icon: Users, action: () => onNavigate(Screen.WAR_COUNCIL) },
+    ...(onSaveLoad ? [{ id: 'save_load' as any, label: 'Campaign Registry', icon: Save, action: onSaveLoad }] : []),
   ];
 
   if (appState === 'intro') return <IntroScreen onComplete={() => setAppState('assets')} />;
@@ -376,6 +378,15 @@ export const MainMenu: React.FC<{
           Panipat: 1761
         </h1>
         <div className="flex items-center gap-6">
+          {onSaveLoad && (
+            <button 
+              onClick={onSaveLoad}
+              className="flex items-center gap-2 text-stone-400 hover:text-saffron transition-all active:scale-95 group uppercase text-[10px] font-bold tracking-widest animate-pulse"
+            >
+              <Save size={18} />
+              <span>Load Game</span>
+            </button>
+          )}
           <button 
             onClick={onSettings}
             className="flex items-center gap-2 text-stone-400 hover:text-saffron transition-all active:scale-95 group uppercase text-[10px] font-bold tracking-widest"
@@ -400,7 +411,7 @@ export const MainMenu: React.FC<{
                 key={item.id}
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
-                onClick={() => onNavigate(item.id)}
+                onClick={item.action}
                 className="w-full max-w-md flex items-center justify-between p-4 mb-4 border border-stone-800 bg-stone-900/50 hover:bg-stone-800 transition-all group"
               >
                 <div className="flex items-center gap-4">
@@ -435,6 +446,13 @@ export const MainMenu: React.FC<{
         >
             <Book size={20} />
             <span className="uppercase text-xs font-bold tracking-widest">Encyclopedia</span>
+        </button>
+        <button 
+             onClick={() => onNavigate(Screen.ACHIEVEMENTS)}
+             className="flex items-center gap-2 text-stone-500 hover:text-saffron transition-all"
+        >
+            <Award size={20} />
+            <span className="uppercase text-xs font-bold tracking-widest">Achievements</span>
         </button>
       </footer>
     </div>

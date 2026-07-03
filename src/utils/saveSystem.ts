@@ -14,6 +14,17 @@ export interface CampaignSave {
   recruitedTroops: string[];
   drillLevel: number;
   manpower?: number;
+  factions?: string;
+  factionsLog?: string;
+  scenarios?: string;
+  scenConsequences?: string;
+  diplomacyTrust?: string;
+  diplomacyChats?: string;
+  diplomacyRewards?: string;
+  powderBarrels?: number;
+  silverBullion?: number;
+  rationsStance?: string;
+  clearedStatuses?: string;
 }
 
 const STORAGE_KEY = 'panipat_campaign_saves_slots';
@@ -50,6 +61,25 @@ export const saveCampaignToSlot = (slotName: string, id?: string): CampaignSave 
   
   const drillLevel = Number(localStorage.getItem('panipat_campaign_drill_level') || '1');
 
+  const factions = localStorage.getItem('panipat_campaign_factions') || '';
+  const factionsLog = localStorage.getItem('panipat_campaign_factions_log') || '';
+  const scenarios = localStorage.getItem('panipat_campaign_scenarios') || '';
+  const scenConsequences = localStorage.getItem('panipat_campaign_scen_consequences') || '';
+  const diplomacyTrust = localStorage.getItem('panipat_diplomacy_trust') || '';
+  const diplomacyChats = localStorage.getItem('panipat_diplomacy_chats') || '';
+  const diplomacyRewards = localStorage.getItem('panipat_diplomacy_rewards') || '';
+  const powderBarrels = localStorage.getItem('panipat_campaign_powder_barrels') ? Number(localStorage.getItem('panipat_campaign_powder_barrels')) : undefined;
+  const silverBullion = localStorage.getItem('panipat_campaign_silver_bullion') ? Number(localStorage.getItem('panipat_campaign_silver_bullion')) : undefined;
+  const rationsStance = localStorage.getItem('panipat_campaign_rations_stance') || undefined;
+
+  const clearedStatuses: Record<string, boolean> = {};
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    if (key && (key.startsWith('cleared_council_') || key.startsWith('cleared_logistics_') || key.startsWith('cleared_treasury_'))) {
+      clearedStatuses[key] = localStorage.getItem(key) === 'true';
+    }
+  }
+
   const saveId = id || `save_${Date.now()}`;
   const newSave: CampaignSave = {
     id: saveId,
@@ -64,7 +94,18 @@ export const saveCampaignToSlot = (slotName: string, id?: string): CampaignSave 
     generalName,
     recruitedTroops,
     drillLevel,
-    manpower
+    manpower,
+    factions: factions || undefined,
+    factionsLog: factionsLog || undefined,
+    scenarios: scenarios || undefined,
+    scenConsequences: scenConsequences || undefined,
+    diplomacyTrust: diplomacyTrust || undefined,
+    diplomacyChats: diplomacyChats || undefined,
+    diplomacyRewards: diplomacyRewards || undefined,
+    powderBarrels,
+    silverBullion,
+    rationsStance,
+    clearedStatuses: Object.keys(clearedStatuses).length > 0 ? JSON.stringify(clearedStatuses) : undefined,
   };
 
   const existingIndex = saves.findIndex(s => s.id === saveId);
@@ -90,10 +131,52 @@ export const loadCampaignFromSlot = (save: CampaignSave): void => {
   localStorage.setItem('panipat_campaign_drill_level', save.drillLevel.toString());
   localStorage.setItem('panipat_campaign_manpower', (save.manpower || 45000).toString());
   
-  // Set clears for current stage in Strategic Map
-  localStorage.setItem(`cleared_council_${save.stage}`, 'true');
-  localStorage.setItem(`cleared_logistics_${save.stage}`, 'true');
-  localStorage.setItem(`cleared_treasury_${save.stage}`, 'true');
+  if (save.factions) localStorage.setItem('panipat_campaign_factions', save.factions);
+  else localStorage.removeItem('panipat_campaign_factions');
+
+  if (save.factionsLog) localStorage.setItem('panipat_campaign_factions_log', save.factionsLog);
+  else localStorage.removeItem('panipat_campaign_factions_log');
+
+  if (save.scenarios) localStorage.setItem('panipat_campaign_scenarios', save.scenarios);
+  else localStorage.removeItem('panipat_campaign_scenarios');
+
+  if (save.scenConsequences) localStorage.setItem('panipat_campaign_scen_consequences', save.scenConsequences);
+  else localStorage.removeItem('panipat_campaign_scen_consequences');
+
+  if (save.diplomacyTrust) localStorage.setItem('panipat_diplomacy_trust', save.diplomacyTrust);
+  else localStorage.removeItem('panipat_diplomacy_trust');
+
+  if (save.diplomacyChats) localStorage.setItem('panipat_diplomacy_chats', save.diplomacyChats);
+  else localStorage.removeItem('panipat_diplomacy_chats');
+
+  if (save.diplomacyRewards) localStorage.setItem('panipat_diplomacy_rewards', save.diplomacyRewards);
+  else localStorage.removeItem('panipat_diplomacy_rewards');
+
+  if (save.powderBarrels !== undefined) localStorage.setItem('panipat_campaign_powder_barrels', save.powderBarrels.toString());
+  else localStorage.removeItem('panipat_campaign_powder_barrels');
+
+  if (save.silverBullion !== undefined) localStorage.setItem('panipat_campaign_silver_bullion', save.silverBullion.toString());
+  else localStorage.removeItem('panipat_campaign_silver_bullion');
+
+  if (save.rationsStance) localStorage.setItem('panipat_campaign_rations_stance', save.rationsStance);
+  else localStorage.removeItem('panipat_campaign_rations_stance');
+
+  // Load cleared statuses
+  if (save.clearedStatuses) {
+    try {
+      const parsed = JSON.parse(save.clearedStatuses);
+      Object.keys(parsed).forEach(key => {
+        localStorage.setItem(key, parsed[key] ? 'true' : 'false');
+      });
+    } catch (e) {
+      console.error('Error loading cleared statuses:', e);
+    }
+  } else {
+    // Fallback: set clears for current stage in Strategic Map
+    localStorage.setItem(`cleared_council_${save.stage}`, 'true');
+    localStorage.setItem(`cleared_logistics_${save.stage}`, 'true');
+    localStorage.setItem(`cleared_treasury_${save.stage}`, 'true');
+  }
 };
 
 export const deleteCampaignSlot = (id: string): void => {

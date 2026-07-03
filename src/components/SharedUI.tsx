@@ -30,7 +30,9 @@ import {
   GraduationCap,
   Compass,
   Scroll,
-  Coins
+  Coins,
+  Award,
+  Save
 } from 'lucide-react';
 import { Screen } from '../types';
 
@@ -72,8 +74,12 @@ export const TopBar: React.FC<{
     <header className="fixed top-0 left-0 w-full z-50 flex justify-between items-center px-4 md:px-10 py-3 bg-stone-950/90 backdrop-blur-sm border-b-4 border-stone-800/80 bronze-bevel">
       <div className="flex items-center gap-4 md:gap-8">
         <button 
-          className="lg:hidden text-saffron p-1"
-          onClick={onToggleMenu}
+          className="text-saffron p-1 hover:text-orange-300 transition-colors"
+          onClick={() => {
+            if (onToggleMenu) onToggleMenu();
+            window.dispatchEvent(new CustomEvent('panipat-toggle-sidebar'));
+          }}
+          title="Toggle Command Center Menu"
         >
           <Menu size={24} />
         </button>
@@ -128,6 +134,15 @@ export const TopBar: React.FC<{
 
       <div className="flex items-center gap-6">
       <div className="flex gap-4">
+        {screen !== Screen.MAIN_MENU && (
+          <button 
+            onClick={() => window.dispatchEvent(new CustomEvent('panipat-open-save-load'))}
+            className="text-saffron hover:text-orange-300 transition-all active:scale-90"
+            title="Campaign Registry (Save / Load)"
+          >
+            <Save size={20} />
+          </button>
+        )}
         {onShowBattleLog && (
           <button 
             onClick={onShowBattleLog}
@@ -204,6 +219,33 @@ export const SideNav: React.FC<{
   isOpen?: boolean;
   onClose?: () => void;
 }> = ({ screen, onNavigate, isOpen, onClose }) => {
+  const [isCollapsed, setIsCollapsed] = React.useState(() => {
+    return localStorage.getItem('panipat_sidebar_collapsed') === 'true';
+  });
+
+  React.useEffect(() => {
+    const handleToggleEvent = () => {
+      setIsCollapsed(prev => {
+        const next = !prev;
+        localStorage.setItem('panipat_sidebar_collapsed', String(next));
+        return next;
+      });
+    };
+
+    window.addEventListener('panipat-toggle-sidebar', handleToggleEvent);
+    return () => {
+      window.removeEventListener('panipat-toggle-sidebar', handleToggleEvent);
+    };
+  }, []);
+
+  React.useEffect(() => {
+    if (isCollapsed) {
+      document.body.classList.add('sidebar-collapsed');
+    } else {
+      document.body.classList.remove('sidebar-collapsed');
+    }
+  }, [isCollapsed]);
+
   const items = [
     { id: Screen.STRATEGIC_MAP, label: 'Grand Campaign', icon: MapIcon },
     { id: Screen.BATTLE, label: 'Active Battle', icon: Swords },
@@ -214,8 +256,11 @@ export const SideNav: React.FC<{
     { id: Screen.CARTOGRAPHY, label: 'Imperial Cartography', icon: Compass },
     { id: Screen.LOGISTICS, label: 'Supply Lines', icon: Package },
     { id: Screen.TREASURY, label: 'Imperial Mint', icon: RefreshCw },
+    { id: Screen.ACHIEVEMENTS, label: 'Imperial Seals', icon: Award },
     { id: Screen.VICTORY, label: 'Military Archives', icon: Archive },
   ];
+
+  const isCurrentlyOpen = isOpen || !isCollapsed;
 
   return (
     <>
@@ -232,7 +277,28 @@ export const SideNav: React.FC<{
         )}
       </AnimatePresence>
 
-      <aside className={`fixed left-0 top-0 h-full z-[70] pt-20 flex flex-col bg-stone-900 w-64 border-r-8 border-stone-800 shadow-2xl transition-transform duration-300 lg:translate-x-0 ${isOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+      <aside className={`fixed left-0 top-0 h-full z-[70] pt-20 flex flex-col bg-stone-900 w-64 border-r-8 border-stone-800 shadow-2xl transition-transform duration-300 ${isCurrentlyOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+        
+        {/* Floating Toggle Tab for Desktop */}
+        <button
+          type="button"
+          onClick={() => {
+            const next = !isCollapsed;
+            setIsCollapsed(next);
+            localStorage.setItem('panipat_sidebar_collapsed', String(next));
+          }}
+          className="hidden lg:flex absolute top-[45%] -right-10 w-10 h-10 bg-[#1c1917] hover:bg-stone-800 border-r-4 border-y-4 border-stone-800 rounded-r-md items-center justify-center text-saffron hover:text-orange-300 transition-all cursor-pointer shadow-lg hover:scale-110 active:scale-95"
+          title={isCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
+        >
+          {isCollapsed ? (
+            <ChevronRight size={18} className="animate-pulse" />
+          ) : (
+            <span className="rotate-180 block">
+              <ChevronRight size={18} />
+            </span>
+          )}
+        </button>
+
         <div className="lg:hidden absolute top-4 right-4">
           <button onClick={onClose} className="text-stone-400 hover:text-white">
             <X size={24} />

@@ -3,17 +3,17 @@ import { motion, AnimatePresence } from 'motion/react';
 import { 
   Sparkles, 
   Award, 
-  Crown, 
-  Music, 
-  Volume2, 
   Flame, 
   Compass, 
   Scroll, 
+  Volume2, 
   ChevronRight,
-  Shield
+  Shield,
+  Flag,
+  Skull
 } from 'lucide-react';
 
-interface PuneCelebrationVisualProps {
+interface DelhiEnvoyVisualProps {
   onComplete?: () => void;
 }
 
@@ -34,82 +34,82 @@ interface CutsceneChapter {
 const CINEMATIC_CHAPTERS: CutsceneChapter[] = [
   {
     id: 1,
-    stageName: "THE BRASS GATES SWING WIDE",
-    title: "Chapter I: The Sanctuary of Shaniwar Wada",
-    speaker: "Royal Court Herald",
-    speakerRole: "Master of Ceremonies",
-    narrative: "The monumental teak gates of Ganesh Durbar swing wide under the heavy light of a hundred glowing brass oil lamps. The court stands in absolute hush, incense smoke curling around the giant crimson-painted wooden pillars of the Peshwa's citadel.",
-    visualFocus: "gates",
+    stageName: "MANDATE FROM THE ROYAL COURT",
+    title: "Chapter I: The Peshwa's Decree",
+    speaker: "Royal Court Envoy",
+    speakerRole: "Keeper of the Golden Seal",
+    narrative: "Under the shadow of Shaniwar Wada, the Peshwa hand-delivers the royal decree to Sirdar Dattaji Shinde. The mandate is absolute: lead a lightning vanguard of Deccan cavalry straight to Delhi, establish defense alliances, and lock down the northern river basins before the Afghan armies can cross.",
+    visualFocus: "decree",
     imagePath: "/src/assets/images/shaniwar_wada_gates_cinematic_1783064539119.jpg",
-    icon: Compass,
+    icon: Scroll,
     themeColor: "from-amber-950/80 to-stone-950/95",
-    accentText: "A solemn, breathless anticipation fills the air..."
+    accentText: "A solemn charge to protect the northern skies..."
   },
   {
     id: 2,
-    stageName: "ENTRANCE OF THE COMMANDERS",
-    title: "Chapter II: Sirdars of the Deccan",
-    speaker: "Court Chronicler",
-    speakerRole: "Keeper of the Peshwa's Despatches",
-    narrative: "Sadashivrao Bhau and the young Crown Prince Vishwasrao stride down the scarlet Persian carpet. Behind them walks Ibrahim Khan Gardi, commander of the French-pattern Gardi musketeer brigade, in a magnificent royal blue uniform. Sirdars Malharrao Holkar and Jankoji Shinde bow in respect.",
-    visualFocus: "commanders",
+    stageName: "THE DECCAN CAVALRY MARGINS",
+    title: "Chapter II: 4,000 Iron Riders Assemble",
+    speaker: "Sirdar Jankoji Shinde",
+    speakerRole: "Vanguard Commander",
+    narrative: "Under the blazing sun of Gwalior, four thousand veteran horsemen raise their lances. Riding with unmatched speed and minimal baggage, they traverse the dusty plains like a seasonal storm, their horses' hooves drumming a thunderous beat across Central India.",
+    visualFocus: "cavalry",
     imagePath: "/src/assets/images/maratha_commanders_cinematic_1783064552255.jpg",
     icon: Shield,
-    themeColor: "from-red-950/80 to-stone-950/95",
-    accentText: "The conquerors of Udgir and Aurangabad return in triumph."
+    themeColor: "from-orange-950/80 to-stone-950/95",
+    accentText: "Decaying leaves and golden dust follow their march."
   },
   {
     id: 3,
-    stageName: "THE PESHWA'S BLESSING",
-    title: "Chapter III: The Royal Gadi",
-    speaker: "Peshwa Balaji Baji Rao (Nanasaheb)",
-    speakerRole: "Sovereign of the Maratha Confederacy",
-    narrative: "The Peshwa rises from the velvet cushions of the Royal Gadi. Overcoming his heavy grief of recent family loss, he steps down with open arms to embrace Sadashivrao Bhau. He blesses his youthful son Vishwasrao, presenting him with a master string of southern pearls and a saffron royal turban.",
-    visualFocus: "peshwa",
+    stageName: "ENTRY INTO THE NORTH",
+    title: "Chapter III: Gates of the Red Fort",
+    speaker: "Delhi Wazir",
+    speakerRole: "Emperor's Chief Advisor",
+    narrative: "Dattaji Shinde arrives at the banks of the Yamuna, his dust-coated chargers drinking from the river. The Mughal courtiers in the Red Fort watch in nervous awe as the saffron banners are planted. Treaties are forced, and the authority of Pune is established over the imperial capital.",
+    visualFocus: "delhi",
     imagePath: "/src/assets/images/peshwa_throne_cinematic_1783064567599.jpg",
-    icon: Crown,
-    themeColor: "from-orange-950/80 to-stone-950/95",
-    accentText: "'You carry the heavy weight of our ancestors' dreams, my children.'"
+    icon: Flag,
+    themeColor: "from-red-950/80 to-stone-950/95",
+    accentText: "The Maratha flag flies high above the northern plains!"
   },
   {
     id: 4,
-    stageName: "THE SAFFRON BANNER UNVEILED",
-    title: "Chapter IV: The Call to Hindusthan",
-    speaker: "Gopikabai and Royal Courtiers",
-    speakerRole: "Sovereign Assembly",
-    narrative: "Peshwa Nanasaheb raises the sacred Zari Patkha—the saffron standard of Hindupat Padshahi. Saffron flags unfurl from the balconies, Tutari horns blare in resonant echoes, and the entire Durbar erupts into roaring chants of 'Har Har Mahadev!' as a golden rain of coins and rose petals showers the commanders.",
-    visualFocus: "banner",
+    stageName: "THE RIVER OF DESTINY",
+    title: "Chapter IV: Defiance at Barari Ghat",
+    speaker: "General Dattaji Shinde",
+    speakerRole: "Hero of the Scindia House",
+    narrative: "But freezing winter fog brings ominous whispers. The local chiefs correspond secretly with Durrani, and the Maratha vanguard is isolated. On the muddy shores of Barari Ghat, surrounded by the enemy, Dattaji draws his sword and bellows his immortal cry: 'Bachenge toh aur bhi ladenge!'",
+    visualFocus: "defiance",
     imagePath: "/src/assets/images/saffron_banner_cinematic_1783064579263.jpg",
-    icon: Award,
+    icon: Skull,
     themeColor: "from-yellow-950/80 to-stone-950/95",
-    accentText: "The final decree is made. The Grand Empire shall march north!"
+    accentText: "No retreat, no surrender. A legend is born in the river mud!"
   }
 ];
 
-export const PuneCelebrationVisual: React.FC<PuneCelebrationVisualProps> = ({ onComplete }) => {
+export const DelhiEnvoyVisual: React.FC<DelhiEnvoyVisualProps> = ({ onComplete }) => {
   const [currentChapterIndex, setCurrentChapterIndex] = useState(0);
   const [progress, setProgress] = useState(0);
   const [muted, setMuted] = useState(false);
-  const [petals, setPetals] = useState<Array<{ id: number; left: number; delay: number; size: number; rotate: number; speed: number; shape: 'petal' | 'coin' }>>([]);
+  const [particles, setParticles] = useState<Array<{ id: number; left: number; delay: number; size: number; rotate: number; speed: number; type: 'leaf' | 'dust' }>>([]);
 
-  // Generate falling rose petals and gold Mohurs once on component mount
+  // Generate wind-blown dust and dry leaves
   useEffect(() => {
-    const generated = Array.from({ length: 45 }).map((_, i) => ({
+    const generated = Array.from({ length: 40 }).map((_, i) => ({
       id: i,
-      left: Math.random() * 100, // percentage across screen
-      delay: Math.random() * 8, // staggered animation starts up to 8s
-      size: Math.random() * 12 + 6, // sizes 6px to 18px
-      rotate: Math.random() * 360, // starting angle
-      speed: Math.random() * 5 + 4, // duration in seconds (4s to 9s)
-      shape: Math.random() > 0.4 ? 'petal' : 'coin' as const
+      left: Math.random() * 100,
+      delay: Math.random() * 8,
+      size: Math.random() * 10 + 5,
+      rotate: Math.random() * 360,
+      speed: Math.random() * 5 + 4,
+      type: Math.random() > 0.5 ? 'leaf' : 'dust' as const
     }));
-    setPetals(generated);
+    setParticles(generated);
   }, []);
 
-  // Chapter timer: automatic progress and auto-advance
+  // Timer for automatic progress
   useEffect(() => {
     setProgress(0);
-    const duration = 6000; // 6 seconds per chapter
+    const duration = 6500; // 6.5 seconds per chapter
     const intervalTime = 100;
     const step = (intervalTime / duration) * 100;
 
@@ -127,7 +127,6 @@ export const PuneCelebrationVisual: React.FC<PuneCelebrationVisualProps> = ({ on
     return () => clearInterval(timer);
   }, [currentChapterIndex]);
 
-  // Safely advance chapter when progress reaches 100
   useEffect(() => {
     if (progress >= 100) {
       const timeout = setTimeout(() => {
@@ -141,7 +140,6 @@ export const PuneCelebrationVisual: React.FC<PuneCelebrationVisualProps> = ({ on
     if (currentChapterIndex < CINEMATIC_CHAPTERS.length - 1) {
       setCurrentChapterIndex(prev => prev + 1);
     } else {
-      // Cutscene finished! Auto-complete
       if (onComplete) {
         onComplete();
       }
@@ -154,9 +152,9 @@ export const PuneCelebrationVisual: React.FC<PuneCelebrationVisualProps> = ({ on
   return (
     <div className="w-full h-full min-h-[550px] md:min-h-[650px] bg-stone-950 flex flex-col justify-between overflow-hidden relative select-none text-white font-sans">
       
-      {/* 1. CONTINUOUS AMBIENT PETAL & GOLD COIN SHOWER LAYER */}
+      {/* 1. PARTICLES LAYER */}
       <div className="absolute inset-0 pointer-events-none z-10 overflow-hidden">
-        {petals.map((item) => (
+        {particles.map((item) => (
           <div
             key={item.id}
             className="absolute top-[-20px] animate-fall"
@@ -168,193 +166,164 @@ export const PuneCelebrationVisual: React.FC<PuneCelebrationVisualProps> = ({ on
               transform: `rotate(${item.rotate}deg)`,
             }}
           >
-            {item.shape === 'petal' ? (
-              // Styled Crimson/Saffron Petal
+            {item.type === 'leaf' ? (
+              // Dry Autumn Leaf for cold northern vibe
               <div 
-                className="bg-gradient-to-tr from-red-600 to-rose-400 rounded-full opacity-80"
+                className="bg-gradient-to-tr from-amber-700 to-yellow-600 rounded-full opacity-60"
                 style={{
                   width: `${item.size}px`,
-                  height: `${item.size * 1.4}px`,
-                  borderRadius: '50% 0 50% 50%',
-                  boxShadow: '0 2px 6px rgba(185, 28, 28, 0.4)'
+                  height: `${item.size * 1.5}px`,
+                  borderRadius: '60% 10% 60% 40%',
+                  boxShadow: '0 2px 4px rgba(120, 53, 4, 0.3)'
                 }}
               />
             ) : (
-              // Styled Golden Mohur Coin
+              // Dusty golden air particle
               <div 
-                className="bg-gradient-to-r from-yellow-500 via-amber-400 to-yellow-600 rounded-full flex items-center justify-center border border-amber-300 opacity-90 animate-spin"
+                className="bg-yellow-500/40 rounded-full opacity-80 blur-[1px]"
                 style={{
-                  width: `${item.size}px`,
-                  height: `${item.size}px`,
-                  animationDuration: `${item.speed * 0.5}s`,
-                  boxShadow: '0 2px 6px rgba(245, 158, 11, 0.5)'
+                  width: `${item.size * 0.6}px`,
+                  height: `${item.size * 0.6}px`,
                 }}
-              >
-                <div className="w-[60%] h-[60%] rounded-full border-[0.5px] border-amber-100/45" />
-              </div>
+              />
             )}
           </div>
         ))}
       </div>
 
-      {/* 2. BACKGROUND DURBAR CINEMATIC CAMERA SCENE */}
+      {/* 2. BACKGROUND CINEMATIC PICTURE */}
       <div className="absolute inset-0 z-0 bg-stone-950">
-        {/* Dynamic graphics panel depending on chapter focus */}
         <AnimatePresence mode="wait">
           <motion.div
             key={currentChapter.visualFocus}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: 1.5, ease: "easeInOut" }}
+            transition={{ duration: 1.2, ease: "easeInOut" }}
             className="w-full h-full absolute inset-0 flex items-center justify-center p-4 md:p-8 overflow-hidden"
           >
-            {/* Full-bleed Cinematic Illustration with slow Ken Burns effect */}
             <div className="absolute inset-0 w-full h-full">
               <motion.img
                 src={currentChapter.imagePath}
                 alt={currentChapter.title}
                 referrerPolicy="no-referrer"
-                className="w-full h-full object-cover select-none pointer-events-none"
-                initial={{ scale: 1.12, x: -15, y: -10 }}
-                animate={{ scale: 1.02, x: 0, y: 0 }}
-                transition={{ duration: 6.2, ease: "linear" }}
+                className="w-full h-full object-cover select-none pointer-events-none opacity-40 filter sepia brightness-90"
+                initial={{ scale: 1.15, x: 10, y: 5 }}
+                animate={{ scale: 1.03, x: 0, y: 0 }}
+                transition={{ duration: 6.8, ease: "linear" }}
               />
-              {/* Radial lighting and shadow layers for cinematic depth */}
-              <div className="absolute inset-0 bg-radial-gradient from-transparent via-stone-950/25 to-stone-950/95 z-10" />
-              <div className="absolute inset-x-0 bottom-0 h-64 bg-gradient-to-t from-stone-950 via-stone-950/80 to-transparent z-10" />
-              <div className="absolute inset-x-0 top-0 h-40 bg-gradient-to-b from-stone-950 via-stone-950/40 to-transparent z-10" />
+              <div className="absolute inset-0 bg-radial-gradient from-transparent via-stone-950/30 to-stone-950/98 z-10" />
+              <div className="absolute inset-x-0 bottom-0 h-64 bg-gradient-to-t from-stone-950 via-stone-950/90 to-transparent z-10" />
+              <div className="absolute inset-x-0 top-0 h-40 bg-gradient-to-b from-stone-950 via-stone-950/50 to-transparent z-10" />
             </div>
 
-            {/* Foreground Overlays per chapter */}
+            {/* Middle Content */}
             <div className="relative z-20 w-full max-w-5xl h-full flex items-center justify-center">
-              {currentChapter.visualFocus === 'gates' && (
+              {currentChapter.visualFocus === 'decree' && (
                 <motion.div 
-                  initial={{ opacity: 0, y: 30 }}
+                  initial={{ opacity: 0, y: 25 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.6, duration: 0.8 }}
-                  className="bg-stone-950/85 border border-amber-600/35 p-6 md:p-8 rounded-xs backdrop-blur-md max-w-lg text-center bronze-bevel"
+                  transition={{ delay: 0.5, duration: 0.8 }}
+                  className="bg-stone-950/90 border border-amber-600/30 p-6 md:p-8 rounded-xs backdrop-blur-md max-w-lg text-center bronze-bevel"
                 >
                   <div className="flex justify-center mb-3">
                     <div className="w-12 h-12 bg-amber-500/10 rounded-full border border-amber-500/35 flex items-center justify-center animate-pulse">
-                      <Compass className="text-saffron w-6 h-6" />
+                      <Scroll className="text-saffron w-6 h-6" />
                     </div>
                   </div>
                   <h4 className="font-serif font-black text-md md:text-lg text-saffron uppercase tracking-widest mb-2">
-                    Fortress of Shaniwar Wada
+                    THE NORTHERN MANDATE
                   </h4>
                   <p className="text-[10px] md:text-xs font-mono text-stone-300 leading-relaxed uppercase tracking-wider">
-                    🏛️ Head of the Peshwa's administration. A giant citadel guarded by towering teakwood bastions, nine-spiked steel gates, and brave Mawala sentries.
+                    📜 Establish defensive alliances, secure Mughal tributary status, and prevent the Durrani confederation from cross-pollinating with Rohilla chiefs.
                   </p>
                 </motion.div>
               )}
 
-              {currentChapter.visualFocus === 'commanders' && (
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 w-full max-w-4xl px-4">
-                  {/* Sadashivrao Bhau */}
+              {currentChapter.visualFocus === 'cavalry' && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full max-w-3xl px-4">
                   <motion.div 
                     initial={{ x: -30, opacity: 0 }}
                     animate={{ x: 0, opacity: 1 }}
                     transition={{ delay: 0.4 }}
-                    className="bg-stone-950/85 border border-saffron/40 p-4 rounded-xs text-center backdrop-blur-sm relative"
+                    className="bg-stone-950/90 border border-saffron/30 p-5 rounded-xs text-center backdrop-blur-sm relative"
                   >
                     <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-saffron text-stone-950 text-[7px] font-mono font-black uppercase px-2.5 py-0.5 rounded-full tracking-wider">
-                      COMMANDER-IN-CHIEF
+                      VANGUARD CHIEF
                     </div>
-                    <div className="w-12 h-12 mx-auto rounded-full bg-gradient-to-tr from-amber-600 to-saffron flex items-center justify-center border border-stone-800 mb-2.5 text-stone-950 font-serif font-black text-sm">
-                      SB
+                    <div className="w-12 h-12 mx-auto rounded-full bg-gradient-to-tr from-amber-600 to-saffron flex items-center justify-center border border-stone-800 mb-2.5 text-stone-950 font-serif font-black text-xs">
+                      DS
                     </div>
-                    <h4 className="font-serif font-bold text-xs uppercase tracking-wide text-white">Sadashivrao Bhau</h4>
-                    <p className="text-[9px] font-mono text-saffron uppercase tracking-widest mt-1">Resolute General</p>
+                    <h4 className="font-serif font-bold text-xs uppercase tracking-wide text-white">Dattaji Shinde</h4>
+                    <p className="text-[9px] font-mono text-saffron uppercase tracking-widest mt-1">Fearless Sirdar</p>
                     <p className="text-[9.5px] text-stone-300 font-sans mt-2 leading-relaxed">
-                      Eager to protect the sovereign dreams of Maratha expansion and push the frontiers of Hindupat Padshahi to the Indus.
+                      Known for his indomitable warrior spirit, Dattaji acts as the spearhead of the empire's power projection.
                     </p>
                   </motion.div>
 
-                  {/* Vishwasrao */}
-                  <motion.div 
-                    initial={{ y: 30, opacity: 0 }}
-                    animate={{ y: 0, opacity: 1 }}
-                    transition={{ delay: 0.6 }}
-                    className="bg-stone-950/85 border-2 border-amber-500/50 p-5 rounded-xs text-center backdrop-blur-md relative scale-105 shadow-xl"
-                  >
-                    <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-amber-500 text-stone-950 text-[7px] font-mono font-black uppercase px-2.5 py-0.5 rounded-full tracking-wider">
-                      ROYAL HEIR
-                    </div>
-                    <div className="w-12 h-12 mx-auto rounded-full bg-gradient-to-tr from-yellow-500 to-amber-600 flex items-center justify-center border border-stone-800 mb-2.5 text-stone-950 font-serif font-black text-sm animate-pulse">
-                      VR
-                    </div>
-                    <h4 className="font-serif font-bold text-xs uppercase tracking-wide text-white">Vishwasrao</h4>
-                    <p className="text-[9px] font-mono text-amber-400 uppercase tracking-widest mt-1">Crown Prince</p>
-                    <p className="text-[9.5px] text-stone-300 font-sans mt-2 leading-relaxed">
-                      At just 17 years of age, he rides alongside the Sirdars to earn his glory and represent the ultimate authority of Pune.
-                    </p>
-                  </motion.div>
-
-                  {/* Ibrahim Khan Gardi */}
                   <motion.div 
                     initial={{ x: 30, opacity: 0 }}
                     animate={{ x: 0, opacity: 1 }}
-                    transition={{ delay: 0.8 }}
-                    className="bg-stone-950/85 border border-blue-500/40 p-4 rounded-xs text-center backdrop-blur-sm relative"
+                    transition={{ delay: 0.6 }}
+                    className="bg-stone-950/90 border border-amber-500/30 p-5 rounded-xs text-center backdrop-blur-sm relative"
                   >
-                    <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-blue-600 text-white text-[7px] font-mono font-black uppercase px-2.5 py-0.5 rounded-full tracking-wider">
-                      ARTILLERY SUPREMO
+                    <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-amber-500 text-stone-950 text-[7px] font-mono font-black uppercase px-2.5 py-0.5 rounded-full tracking-wider">
+                      GWALIOR HEIR
                     </div>
-                    <div className="w-12 h-12 mx-auto rounded-full bg-gradient-to-tr from-blue-700 to-cyan-500 flex items-center justify-center border border-stone-800 mb-2.5 text-white font-serif font-black text-sm">
-                      IK
+                    <div className="w-12 h-12 mx-auto rounded-full bg-gradient-to-tr from-yellow-500 to-amber-600 flex items-center justify-center border border-stone-800 mb-2.5 text-stone-950 font-serif font-black text-xs">
+                      JS
                     </div>
-                    <h4 className="font-serif font-bold text-xs uppercase tracking-wide text-white">Ibrahim Gardi</h4>
-                    <p className="text-[9px] font-mono text-blue-400 uppercase tracking-widest mt-1">Gardi Infantry</p>
+                    <h4 className="font-serif font-bold text-xs uppercase tracking-wide text-white">Jankoji Shinde</h4>
+                    <p className="text-[9px] font-mono text-amber-400 uppercase tracking-widest mt-1">Loyal Nephew</p>
                     <p className="text-[9.5px] text-stone-300 font-sans mt-2 leading-relaxed">
-                      French-trained artillery expert whose nine field-artillery battalions operate with unmatched European discipline.
+                      A brilliant young commander of the Scindia forces, ready to ride to the ends of Hindusthan under Dattaji's shield.
                     </p>
                   </motion.div>
                 </div>
               )}
 
-              {currentChapter.visualFocus === 'peshwa' && (
+              {currentChapter.visualFocus === 'delhi' && (
                 <motion.div 
                   initial={{ opacity: 0, scale: 0.95 }}
                   animate={{ opacity: 1, scale: 1 }}
                   transition={{ delay: 0.5 }}
-                  className="bg-stone-950/85 border border-amber-600/35 p-6 md:p-8 rounded-xs backdrop-blur-md max-w-lg text-center bronze-bevel"
+                  className="bg-stone-950/90 border border-red-800/40 p-6 md:p-8 rounded-xs backdrop-blur-md max-w-lg text-center bronze-bevel"
                 >
                   <div className="flex justify-center mb-3">
-                    <Crown className="text-saffron w-10 h-10 animate-pulse" />
+                    <Flag className="text-saffron w-10 h-10 animate-pulse" />
                   </div>
                   <h4 className="font-serif font-black text-md text-saffron uppercase tracking-widest mb-1">
-                    Nanasaheb's Blessing
+                    Red Fort Proclomation
                   </h4>
                   <p className="text-[10px] font-mono text-stone-400 uppercase tracking-widest mb-3">
-                    The Gadi of the Confederacy
+                    Securing the Mughal Throne
                   </p>
                   <blockquote className="font-serif italic text-xs md:text-sm text-stone-200 border-l-2 border-saffron/40 pl-3 text-left leading-relaxed">
-                    "Go forth with our collective blessing. Secure the imperial frontiers, make peace with the local chiefs, and unfurl the flag of our ancestors from Delhi to the Himalayas."
+                    "Pune's arm is long and swift. We stand on the Yamuna as protectors of this crown. Any invader who crosses the Indus must answer to the Scindia spears first!"
                   </blockquote>
                 </motion.div>
               )}
 
-              {currentChapter.visualFocus === 'banner' && (
+              {currentChapter.visualFocus === 'defiance' && (
                 <motion.div 
-                  initial={{ scale: 0.9, opacity: 0 }}
+                  initial={{ scale: 0.92, opacity: 0 }}
                   animate={{ scale: 1, opacity: 1 }}
                   transition={{ delay: 0.5 }}
                   className="flex flex-col items-center gap-4 text-center"
                 >
-                  <div className="bg-gradient-to-t from-saffron/15 to-stone-950/90 border border-saffron/40 p-6 rounded-xs backdrop-blur-md max-w-md shadow-2xl relative overflow-hidden">
-                    <div className="absolute top-0 inset-x-0 h-1 bg-gradient-to-r from-yellow-500 via-saffron to-orange-500" />
+                  <div className="bg-gradient-to-t from-red-950/30 to-stone-950/95 border-2 border-red-700/40 p-6 rounded-xs backdrop-blur-md max-w-md shadow-2xl relative overflow-hidden">
+                    <div className="absolute top-0 inset-x-0 h-1 bg-gradient-to-r from-red-600 via-orange-600 to-yellow-600" />
                     <div className="flex justify-center mb-2">
-                      <Award className="text-saffron w-12 h-12 animate-bounce" />
+                      <Skull className="text-red-500 w-12 h-12 animate-bounce" />
                     </div>
-                    <h4 className="font-serif font-black text-md text-saffron uppercase tracking-widest">
-                      Zari Patkha Unfurled
+                    <h4 className="font-serif font-black text-md text-red-400 uppercase tracking-widest">
+                      BARARI GHAT PROMISE
                     </h4>
                     <p className="text-[9.5px] font-mono text-stone-400 uppercase tracking-widest mb-2">
-                      Sacred Saffron Standard
+                      "Bachenge Toh Aur Bhi Ladenge"
                     </p>
-                    <p className="text-[11px] text-stone-300 leading-relaxed font-sans">
-                      The high standard represents Maratha honor, absolute sovereignty, and the ancestral protection of Shivaji Maharaj. As it stands high, the court is united!
+                    <p className="text-[11px] text-stone-300 leading-relaxed font-sans text-left">
+                      Isolated in a frozen mist, surrounded by Shuja-ud-Daula's betrayal and Abdali's heavy vanguard, Dattaji's defiant stand at Barari Ghat is set in stone. He will fight to his very last breath.
                     </p>
                   </div>
                 </motion.div>
@@ -368,14 +337,14 @@ export const PuneCelebrationVisual: React.FC<PuneCelebrationVisualProps> = ({ on
       <div className="relative z-20 w-full p-4 md:p-6 bg-gradient-to-b from-stone-950 via-stone-950/80 to-transparent flex justify-between items-center">
         <div className="flex items-center gap-3">
           <div className="p-2 bg-saffron/15 rounded-xs border border-saffron/30">
-            <Music className="text-saffron animate-bounce" size={16} />
+            <Compass className="text-saffron animate-bounce" size={16} />
           </div>
           <div>
             <span className="text-[8px] font-mono text-saffron uppercase tracking-[0.25em] block leading-none">
               HISTORICAL IMMERSIVE CUTSCENE
             </span>
             <h1 className="text-md md:text-lg font-serif uppercase tracking-wider text-white mt-1">
-              Ganesh Durbar Welcome
+              Dattaji Shinde Sent to Delhi
             </h1>
           </div>
         </div>
@@ -416,7 +385,6 @@ export const PuneCelebrationVisual: React.FC<PuneCelebrationVisualProps> = ({ on
         {/* Narrative Box */}
         <div className="bg-stone-950/95 border-2 border-saffron/35 p-5 md:p-6 rounded-xs shadow-2xl flex flex-col md:flex-row gap-5 items-start relative overflow-hidden">
           
-          {/* Subtle glowing lamp vignette in the box */}
           <div className="absolute right-0 top-0 w-32 h-full bg-gradient-to-l from-saffron/5 to-transparent pointer-events-none" />
 
           {/* Left Icon Panel */}
@@ -473,7 +441,6 @@ export const PuneCelebrationVisual: React.FC<PuneCelebrationVisualProps> = ({ on
             ))}
           </div>
 
-          {/* Auto playing warning */}
           <div className="text-[8px] font-mono text-stone-500 uppercase tracking-widest flex items-center gap-1.5">
             <div className="w-1.5 h-1.5 bg-saffron rounded-full animate-ping" />
             <span>Cinematic playing automatically...</span>

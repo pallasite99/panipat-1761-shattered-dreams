@@ -18,6 +18,7 @@ export enum Screen {
   LMS = 'LMS',
   CARTOGRAPHY = 'CARTOGRAPHY',
   LEARNING_HUB = 'LEARNING_HUB',
+  ACHIEVEMENTS = 'ACHIEVEMENTS',
 }
 
 export enum CampaignStage {
