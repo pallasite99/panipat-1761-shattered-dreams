@@ -135,6 +135,18 @@ export const Logistics: React.FC<{
     "⚔️ [LOGISTICS STANDING] Ready to review vanguard forces and dispatch supply caravan commands."
   ]);
 
+  // Track active season and equipment states
+  const [activeSeason, setActiveSeason] = useState<'winter' | 'monsoon' | 'summer'>('winter');
+  const [hasWinterWoolens, setHasWinterWoolens] = useState<boolean>(() => {
+    return localStorage.getItem('panipat_equipment_winter_woolens') === 'true';
+  });
+  const [hasMonsoonTarps, setHasMonsoonTarps] = useState<boolean>(() => {
+    return localStorage.getItem('panipat_equipment_monsoon_tarps') === 'true';
+  });
+  const [hasSummerWells, setHasSummerWells] = useState<boolean>(() => {
+    return localStorage.getItem('panipat_equipment_summer_wells') === 'true';
+  });
+
   // Save states to localStorage whenever they modify
   useEffect(() => {
     localStorage.setItem('panipat_campaign_treasury', treasuryMohurs.toString());
@@ -155,6 +167,52 @@ export const Logistics: React.FC<{
   useEffect(() => {
     localStorage.setItem('panipat_campaign_drill_level', drillLevel.toString());
   }, [drillLevel]);
+
+  useEffect(() => {
+    localStorage.setItem('panipat_equipment_winter_woolens', hasWinterWoolens.toString());
+  }, [hasWinterWoolens]);
+
+  useEffect(() => {
+    localStorage.setItem('panipat_equipment_monsoon_tarps', hasMonsoonTarps.toString());
+  }, [hasMonsoonTarps]);
+
+  useEffect(() => {
+    localStorage.setItem('panipat_equipment_summer_wells', hasSummerWells.toString());
+  }, [hasSummerWells]);
+
+  const buyEquipment = (equip: 'winter' | 'monsoon' | 'summer') => {
+    if (equip === 'winter') {
+      if (hasWinterWoolens) return;
+      if (treasuryMohurs < 18000) {
+        setLog(prev => ["❌ [UPKEEP FAILURE] Insufficient Mohurs to procure Winter Woolen Capes! (Needs 18,000 Mohurs)", ...prev.slice(0, 5)]);
+        return;
+      }
+      setTreasuryMohurs(prev => prev - 18000);
+      setHasWinterWoolens(true);
+      setMorale(prev => Math.min(100, prev + 15));
+      setLog(prev => ["❄️ [EQUIPMENT ACQUIRED] Distributed thick winter woolen blanketing and heavy Capes to all front divisions! Winter fog penalty diminished, Morale +15.", ...prev.slice(0, 5)]);
+    } else if (equip === 'monsoon') {
+      if (hasMonsoonTarps) return;
+      if (treasuryMohurs < 15000) {
+        setLog(prev => ["❌ [UPKEEP FAILURE] Insufficient Mohurs to install elevated Monsoon Tarps! (Needs 15,000 Mohurs)", ...prev.slice(0, 5)]);
+        return;
+      }
+      setTreasuryMohurs(prev => prev - 15000);
+      setHasMonsoonTarps(true);
+      setMorale(prev => Math.min(100, prev + 10));
+      setLog(prev => ["☔ [EQUIPMENT ACQUIRED] Constructed raised Monsoonal Grain Depots and tarpaulin covers! Saved food caravan rot, Monsoon rain penalty diminished, Morale +10.", ...prev.slice(0, 5)]);
+    } else if (equip === 'summer') {
+      if (hasSummerWells) return;
+      if (treasuryMohurs < 12000) {
+        setLog(prev => ["❌ [UPKEEP FAILURE] Insufficient Mohurs to excavate deep Well Networks! (Needs 12,000 Mohurs)", ...prev.slice(0, 5)]);
+        return;
+      }
+      setTreasuryMohurs(prev => prev - 12000);
+      setHasSummerWells(true);
+      setMorale(prev => Math.min(100, prev + 12));
+      setLog(prev => ["☀️ [EQUIPMENT ACQUIRED] Excavated high-capacity deep step-wells across the camp sector! Dehydration minimized, Summer heatwave penalty diminished, Morale +12.", ...prev.slice(0, 5)]);
+    }
+  };
 
   // Recruits a specific battalion
   const handleRecruit = (unit: HistoricalUnit) => {
@@ -391,6 +449,180 @@ export const Logistics: React.FC<{
                   <div className="flex justify-between items-center border-b border-stone-850 pb-2">
                     <h3 className="font-serif text-sm text-stone-300 uppercase tracking-widest font-bold">IMPERIAL LOGISTICAL ACTIONS</h3>
                     <span className="text-[9px] text-stone-500 font-mono">Exercise and secure supplies in winter</span>
+                  </div>
+
+                  {/* Campaign Season & Equipment Panel */}
+                  <div className="bg-stone-905/40 border border-stone-850 p-5 rounded-xs space-y-4">
+                    <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3">
+                      <div>
+                        <span className="text-[9px] text-saffron font-mono uppercase tracking-widest font-bold">
+                          🌡️ CURRENT ENVIRONMENTAL THREAT ASSESSMENT
+                        </span>
+                        <h4 className="font-serif text-base text-white uppercase font-black tracking-tight">
+                          Active Campaign Season Simulation
+                        </h4>
+                      </div>
+                      
+                      {/* Season Switcher */}
+                      <div className="flex bg-stone-950 p-1 border border-stone-850 rounded-xs self-start">
+                        {[
+                          { id: 'winter', label: '❄️ Winter Frost' },
+                          { id: 'monsoon', label: '☔ Monsoon Deluge' },
+                          { id: 'summer', label: '☀️ Scorching Summer' }
+                        ].map(s => (
+                          <button
+                            key={s.id}
+                            type="button"
+                            onClick={() => setActiveSeason(s.id as any)}
+                            className={`px-3 py-1 font-mono text-[9px] font-black uppercase tracking-wider rounded-xs transition-all cursor-pointer ${activeSeason === s.id ? 'bg-saffron text-stone-950 font-black' : 'text-stone-400 hover:text-stone-200'}`}
+                          >
+                            {s.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
+                      {/* Active Season Threat description Card */}
+                      <div className="p-4 bg-stone-950 border border-stone-850 rounded-xs space-y-3 md:col-span-1">
+                        <span className="text-[8px] font-mono font-bold text-stone-500 uppercase tracking-widest block">
+                          ENVIRONMENTAL EFFECT
+                        </span>
+                        {activeSeason === 'winter' && (
+                          <div className="space-y-1.5">
+                            <h5 className="font-serif font-black text-xs text-sky-400 uppercase">Winter Cold & Frost</h5>
+                            <p className="text-[11px] text-stone-400 leading-relaxed font-sans">
+                              Sub-zero freezes over the Yamuna and frosted morning fog cuts musket sightlines. Demands thick blanketing to prevent heavy upkeep leaks.
+                            </p>
+                            <span className="block text-[9px] font-mono text-rose-500 font-bold uppercase">
+                              ⚠️ Attrition Penalty: -20 Tons Food Upkeep
+                            </span>
+                          </div>
+                        )}
+                        {activeSeason === 'monsoon' && (
+                          <div className="space-y-1.5">
+                            <h5 className="font-serif font-black text-xs text-indigo-400 uppercase">Monsoon River Swell</h5>
+                            <p className="text-[11px] text-stone-400 leading-relaxed font-sans">
+                              Flooding clay banks and muddy roads delay standard supply wagons. Moisture ruins standard blackpowder paper containers.
+                            </p>
+                            <span className="block text-[9px] font-mono text-rose-500 font-bold uppercase">
+                              ⚠️ Attrition Penalty: -30% Total Vanguard Power
+                            </span>
+                          </div>
+                        )}
+                        {activeSeason === 'summer' && (
+                          <div className="space-y-1.5">
+                            <h5 className="font-serif font-black text-xs text-amber-500 uppercase">Scorching Dry Heat</h5>
+                            <p className="text-[11px] text-stone-400 leading-relaxed font-sans">
+                              Excessive deccan sun dehydration and dry dust winds drain vanguard horses. Demands deep field well networks to preserve cohesion.
+                            </p>
+                            <span className="block text-[9px] font-mono text-rose-500 font-bold uppercase">
+                              ⚠️ Attrition Penalty: -15 Camp Morale Limit
+                            </span>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Equipment Countermeasure Acquisition block */}
+                      <div className="p-4 bg-stone-950 border border-stone-850 rounded-xs space-y-3 md:col-span-2">
+                        <span className="text-[8px] font-mono font-bold text-stone-500 uppercase tracking-widest block">
+                          EQUIPMENT COUNTERMEASURE
+                        </span>
+                        
+                        <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
+                          {activeSeason === 'winter' && (
+                            <div className="space-y-1 flex-1">
+                              <h5 className="font-serif font-black text-xs text-white uppercase flex items-center gap-1.5">
+                                🧥 Thick Winter Woolen Capes & blankets
+                              </h5>
+                              <p className="text-[11px] text-stone-400 leading-relaxed">
+                                Distributes authenticated heavy warm woolen capes to defend all combat columns. <strong>Bypasses winter fog combat accuracy penalties on battlefields!</strong>
+                              </p>
+                              <div className="flex items-center gap-2 pt-1">
+                                <span className="text-[9px] font-mono text-stone-500 uppercase">STATUS:</span>
+                                {hasWinterWoolens ? (
+                                  <span className="text-[9px] font-mono text-emerald-400 font-black uppercase">✓ PROCURED & DISTRIBUTED</span>
+                                ) : (
+                                  <span className="text-[9px] font-mono text-amber-600 font-bold uppercase">⚫ NOT ACQUIRED</span>
+                                )}
+                              </div>
+                            </div>
+                          )}
+
+                          {activeSeason === 'monsoon' && (
+                            <div className="space-y-1 flex-1">
+                              <h5 className="font-serif font-black text-xs text-white uppercase flex items-center gap-1.5">
+                                ⛺ Raised Monsoonal Tarpaulin Grain Depots
+                              </h5>
+                              <p className="text-[11px] text-stone-400 leading-relaxed">
+                                Builds waterproof raised silos. <strong>Bypasses heavy rain slippage and cavalry speed penalties during battle!</strong>
+                              </p>
+                              <div className="flex items-center gap-2 pt-1">
+                                <span className="text-[9px] font-mono text-stone-500 uppercase">STATUS:</span>
+                                {hasMonsoonTarps ? (
+                                  <span className="text-[9px] font-mono text-emerald-400 font-black uppercase">✓ ESTABLISHED & SECURE</span>
+                                ) : (
+                                  <span className="text-[9px] font-mono text-amber-600 font-bold uppercase">⚫ NOT ACQUIRED</span>
+                                )}
+                              </div>
+                            </div>
+                          )}
+
+                          {activeSeason === 'summer' && (
+                            <div className="space-y-1 flex-1">
+                              <h5 className="font-serif font-black text-xs text-white uppercase flex items-center gap-1.5">
+                                🧱 Deep Step-Well Water Networks
+                              </h5>
+                              <p className="text-[11px] text-stone-400 leading-relaxed">
+                                Excavates solid deep masonry wells throughout central base camps. <strong>Bypasses extreme heat hydration fatigue penalties on battlefields!</strong>
+                              </p>
+                              <div className="flex items-center gap-2 pt-1">
+                                <span className="text-[9px] font-mono text-stone-500 uppercase">STATUS:</span>
+                                {hasSummerWells ? (
+                                  <span className="text-[9px] font-mono text-emerald-400 font-black uppercase">✓ EXCAVATED & ACTIVE</span>
+                                ) : (
+                                  <span className="text-[9px] font-mono text-amber-600 font-bold uppercase">⚫ NOT ACQUIRED</span>
+                                )}
+                              </div>
+                            </div>
+                          )}
+
+                          <div className="shrink-0">
+                            {activeSeason === 'winter' && (
+                              <button
+                                type="button"
+                                disabled={hasWinterWoolens}
+                                onClick={() => buyEquipment('winter')}
+                                className={`px-4 py-2 font-mono text-[9px] font-black uppercase tracking-wider rounded-xs cursor-pointer ${hasWinterWoolens ? 'bg-stone-900 text-stone-600 border border-stone-850 cursor-not-allowed' : 'bg-saffron text-stone-950 hover:bg-amber-400'}`}
+                              >
+                                {hasWinterWoolens ? "DISTRIBUTED" : "BUY FOR 18,000 M"}
+                              </button>
+                            )}
+                            {activeSeason === 'monsoon' && (
+                              <button
+                                type="button"
+                                disabled={hasMonsoonTarps}
+                                onClick={() => buyEquipment('monsoon')}
+                                className={`px-4 py-2 font-mono text-[9px] font-black uppercase tracking-wider rounded-xs cursor-pointer ${hasMonsoonTarps ? 'bg-stone-900 text-stone-600 border border-stone-850 cursor-not-allowed' : 'bg-saffron text-stone-950 hover:bg-amber-400'}`}
+                              >
+                                {hasMonsoonTarps ? "CONSTRUCTED" : "BUY FOR 15,000 M"}
+                              </button>
+                            )}
+                            {activeSeason === 'summer' && (
+                              <button
+                                type="button"
+                                disabled={hasSummerWells}
+                                onClick={() => buyEquipment('summer')}
+                                className={`px-4 py-2 font-mono text-[9px] font-black uppercase tracking-wider rounded-xs cursor-pointer ${hasSummerWells ? 'bg-stone-900 text-stone-600 border border-stone-850 cursor-not-allowed' : 'bg-saffron text-stone-950 hover:bg-amber-400'}`}
+                              >
+                                {hasSummerWells ? "CONSTRUCTED" : "BUY FOR 12,000 M"}
+                              </button>
+                            )}
+                          </div>
+                        </div>
+
+                      </div>
+                    </div>
                   </div>
 
                   {/* Drilling Troops details block */}

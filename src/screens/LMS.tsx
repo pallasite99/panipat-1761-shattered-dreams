@@ -38,13 +38,14 @@ import {
 } from '../data/lmsData';
 import { KGraph } from '../components/KGraph';
 import { TacticalSandbox } from '../components/TacticalSandbox';
+import { FlintlockDrillSimulator } from '../components/FlintlockDrillSimulator';
 
 export const LMS: React.FC<{
   onNavigate: (s: Screen) => void;
   onHelp?: () => void;
   onSettings?: () => void;
 }> = ({ onNavigate, onHelp, onSettings }) => {
-  const [activeTab, setActiveTab] = useState<'lessons' | 'formations' | 'chromaps' | 'decisions' | 'materials' | 'quiz'>('lessons');
+  const [activeTab, setActiveTab] = useState<'lessons' | 'formations' | 'drill' | 'chromaps' | 'decisions' | 'materials' | 'quiz'>('lessons');
   const [selectedPathway, setSelectedPathway] = useState<'Student' | 'Scholar'>('Student');
   const [selectedLesson, setSelectedLesson] = useState<Lesson | null>(null);
   const [selectedDoc, setSelectedDoc] = useState<DocumentArchive | null>(null);
@@ -109,6 +110,16 @@ export const LMS: React.FC<{
     const nextScores = { ...decisionScores, [scenarioId]: score };
     setDecisionScores(nextScores);
     localStorage.setItem('panipat_lms_decision_scores', JSON.stringify(nextScores));
+  };
+
+  const handleApplyDrillRewards = (rewards: { gold: number; morale: number; text: string }) => {
+    const curGold = parseInt(localStorage.getItem('panipat_campaign_treasury') || '145000', 10);
+    const curMorale = parseInt(localStorage.getItem('panipat_campaign_morale') || '75', 10);
+    
+    localStorage.setItem('panipat_campaign_treasury', (curGold + rewards.gold).toString());
+    localStorage.setItem('panipat_campaign_morale', Math.min(100, curMorale + rewards.morale).toString());
+    
+    alert(`👑 BARRACKS AWARD CONFERRED!\n\n${rewards.text}`);
   };
 
   const handleNextQuizQuestion = () => {
@@ -231,6 +242,7 @@ export const LMS: React.FC<{
             {[
               { id: 'lessons', label: '📖 Academy Syllabus' },
               { id: 'formations', label: '🛡️ Formations Sandbox' },
+              { id: 'drill', label: '🎯 Barracks Drill' },
               { id: 'chromaps', label: '⛓️ Knowledge Network' },
               { id: 'decisions', label: '⚖️ Decision Chronicles' },
               { id: 'materials', label: '📜 Manuscript Room' },
@@ -420,6 +432,17 @@ export const LMS: React.FC<{
                 </div>
 
                 <TacticalSandbox />
+              </motion.div>
+            )}
+
+            {/* Tab: Barracks Drill Simulator */}
+            {activeTab === 'drill' && (
+              <motion.div 
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="max-w-5xl mx-auto space-y-6"
+              >
+                <FlintlockDrillSimulator onApplyRewards={handleApplyDrillRewards} />
               </motion.div>
             )}
 

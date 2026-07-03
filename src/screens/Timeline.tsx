@@ -21,6 +21,8 @@ import {
 } from 'lucide-react';
 import { Screen, CampaignStage } from '../types';
 import { TopBar, SideNav } from '../components/SharedUI';
+import { PeshwaDespatchBook } from '../components/PeshwaDespatchBook';
+import { BattleReplayAnalyzer } from '../components/BattleReplayAnalyzer';
 
 interface TimelineEvent {
   stage: CampaignStage;
@@ -248,6 +250,7 @@ export const Timeline: React.FC<{
   campaignStage: CampaignStage;
 }> = ({ onNavigate, isMenuOpen, onToggleMenu, onMenuClose, onHelp, onSettings, campaignStage }) => {
   const [selectedEventId, setSelectedEventId] = useState<number>(0);
+  const [activeTab, setActiveTab] = useState<'chronicles' | 'despatches' | 'analyzer'>('chronicles');
   
   // Calculate player index on chronological timeline
   const activeStageIndex = TIMELINE_EVENTS.findIndex(e => e.stage === campaignStage);
@@ -270,10 +273,40 @@ export const Timeline: React.FC<{
       />
       <SideNav screen={Screen.TIMELINE} onNavigate={onNavigate} isOpen={isMenuOpen} onClose={onMenuClose} />
 
-      <main className="lg:pl-64 h-[calc(100vh-4rem)] pt-16 flex flex-col lg:flex-row bg-[#1D1714] text-stone-200">
+      <main className="lg:pl-64 h-[calc(100vh-4rem)] pt-16 flex flex-col bg-[#1D1714] text-stone-200 overflow-hidden">
         
-        {/* Left Interactive Timeline Scroll */}
-        <div className="w-full lg:w-[450px] border-r border-[#3a281e]/40 bg-stone-950/60 p-4 md:p-6 flex flex-col h-1/2 lg:h-full z-10 overflow-y-auto custom-scrollbar">
+        {/* Scribe navigation tab-bar */}
+        <div className="bg-[#18110b] border-b border-stone-850/80 px-4 md:px-6 py-3 flex flex-wrap items-center justify-between gap-4 shrink-0">
+          <div className="flex gap-2 overflow-x-auto scrollbar-none">
+            {[
+              { id: 'chronicles', label: '📖 Chronicles of 1761' },
+              { id: 'despatches', label: "📜 Peshwa's Despatch Book" },
+              { id: 'analyzer', label: '🧭 Sandbox Replay Analyzer' }
+            ].map(tab => (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => setActiveTab(tab.id as any)}
+                className={`px-3 py-1.5 md:px-4 py-1.5 font-mono text-[9.5px] font-black uppercase tracking-wider rounded border transition-all cursor-pointer whitespace-nowrap ${activeTab === tab.id ? 'bg-saffron text-stone-950 border-saffron font-black shadow' : 'bg-transparent text-stone-400 border-stone-800 hover:text-stone-200'}`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+          <div className="hidden sm:flex items-center gap-1.5 text-[9px] font-mono text-stone-500 uppercase">
+            <span>Imperial Archives</span>
+            <span>•</span>
+            <span className="text-saffron font-black">Historical Analysis Active</span>
+          </div>
+        </div>
+
+        {/* Dynamic content rendering with custom-scrollbar */}
+        <div className="flex-1 overflow-y-auto custom-scrollbar">
+          {activeTab === 'chronicles' && (
+            <div className="h-full flex flex-col lg:flex-row overflow-hidden">
+              
+              {/* Left Interactive Timeline Scroll */}
+              <div className="w-full lg:w-[450px] border-r border-[#3a281e]/40 bg-stone-950/60 p-4 md:p-6 flex flex-col h-1/2 lg:h-full z-10 overflow-y-auto custom-scrollbar">
           
           <div className="mb-6">
             <span className="text-[10px] text-saffron uppercase tracking-[0.3em] font-mono font-black block mb-1">
@@ -537,6 +570,22 @@ export const Timeline: React.FC<{
               </div>
             </motion.div>
           </AnimatePresence>
+        </div>
+
+        </div>
+        )}
+
+        {activeTab === 'despatches' && (
+          <div className="p-4 md:p-8 bg-[#1D1714]">
+            <PeshwaDespatchBook />
+          </div>
+        )}
+
+        {activeTab === 'analyzer' && (
+          <div className="p-4 md:p-8 bg-[#1D1714]">
+            <BattleReplayAnalyzer />
+          </div>
+        )}
         </div>
       </main>
     </div>

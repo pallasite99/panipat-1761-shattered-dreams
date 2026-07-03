@@ -168,8 +168,22 @@ export const DiplomacyDarbar: React.FC<DiplomacyDarbarProps> = ({
     return saved ? JSON.parse(saved) : {};
   });
 
-  const [activeTab, setActiveTab] = useState<'chat' | 'bios'>('chat');
+  const [activeTab, setActiveTab] = useState<'chat' | 'bios' | 'treaty'>('chat');
   const chatEndRef = useRef<HTMLDivElement | null>(null);
+
+  // Treaty designer states
+  const [treatyGold, setTreatyGold] = useState<number>(15000);
+  const [treatyTerritory, setTreatyTerritory] = useState<string>('none');
+  const [treatyPledge, setTreatyPledge] = useState<string>('none');
+  const [ratifiedTreaties, setRatifiedTreaties] = useState<{ [rulerId: string]: boolean }>(() => {
+    const saved = localStorage.getItem('panipat_diplomacy_ratified_treaties');
+    return saved ? JSON.parse(saved) : {};
+  });
+
+  // Dynamic player treasury tracking
+  const [playerTreasury, setPlayerTreasury] = useState<number>(() => {
+    return Number(localStorage.getItem('panipat_campaign_treasury') || '145000');
+  });
 
   // Synchronize localStorage
   useEffect(() => {
@@ -183,6 +197,18 @@ export const DiplomacyDarbar: React.FC<DiplomacyDarbarProps> = ({
   useEffect(() => {
     localStorage.setItem('panipat_diplomacy_rewards', JSON.stringify(claimedRewards));
   }, [claimedRewards]);
+
+  useEffect(() => {
+    localStorage.setItem('panipat_diplomacy_ratified_treaties', JSON.stringify(ratifiedTreaties));
+  }, [ratifiedTreaties]);
+
+  // Sync treasury from local storage whenever modal opens
+  useEffect(() => {
+    if (isOpen) {
+      const gold = Number(localStorage.getItem('panipat_campaign_treasury') || '145000');
+      setPlayerTreasury(gold);
+    }
+  }, [isOpen]);
 
   // Scroll to bottom of chat
   useEffect(() => {
@@ -541,11 +567,124 @@ export const DiplomacyDarbar: React.FC<DiplomacyDarbarProps> = ({
     setChatHistories(updatedChats);
   };
 
+  // Dynamic alignment score for treaties
+  const getFuzzyTreatyAlignment = () => {
+    let score = trust; // Starts at current trust level (0 - 100)
+    
+    // 1. Gold Subsidy impact
+    const goldImpact = Math.floor((treatyGold - 5000) / 350);
+    // Credibility multiplier: If player has enough gold, the offer is highly credible.
+    // If they offer more than they have, credibility is halved!
+    const credibilityMultiplier = playerTreasury >= treatyGold ? Math.min(1.3, Math.max(0.7, playerTreasury / 145000)) : 0.4;
+    score += Math.round(goldImpact * credibilityMultiplier);
+
+    // 2. Territorial compromise matching
+    if (ruler.id === 'shuja') {
+      if (treatyTerritory === 'delhi') score += 35;
+      else if (treatyTerritory === 'yamuna') score += 10;
+      else if (treatyTerritory === 'sirhind') score -= 10;
+    } else if (ruler.id === 'surajmal') {
+      if (treatyTerritory === 'none') score += 20; // values independence
+      else if (treatyTerritory === 'yamuna') score += 30;
+      else if (treatyTerritory === 'delhi') score -= 15;
+    } else if (ruler.id === 'madhosingh') {
+      if (treatyTerritory === 'yamuna') score += 35;
+      else if (treatyTerritory === 'delhi') score += 15;
+    } else if (ruler.id === 'alha') {
+      if (treatyTerritory === 'sirhind') score += 40;
+      else if (treatyTerritory === 'delhi') score -= 15;
+    } else if (ruler.id === 'najib') {
+      if (treatyTerritory === 'delhi') score += 30;
+      else if (treatyTerritory === 'sirhind') score += 20;
+    }
+
+    // 3. Military Pledge matching
+    if (ruler.id === 'shuja') {
+      if (treatyPledge === 'joint') score += 25;
+      else if (treatyPledge === 'vanguard') score += 10;
+    } else if (ruler.id === 'surajmal') {
+      if (treatyPledge === 'guerrilla') score += 35;
+      else if (treatyPledge === 'vanguard') score -= 20;
+      else if (treatyPledge === 'joint') score += 10;
+    } else if (ruler.id === 'madhosingh') {
+      if (treatyPledge === 'joint') score += 20;
+      else if (treatyPledge === 'guerrilla') score += 20;
+    } else if (ruler.id === 'alha') {
+      if (treatyPledge === 'joint') score += 30;
+    } else if (ruler.id === 'najib') {
+      if (treatyPledge === 'vanguard') score += 30;
+    }
+
+    return Math.min(100, Math.max(0, score));
+  };
+
+  const treatyAlignment = getFuzzyTreatyAlignment();
+
+  const handleRatifySecretTreaty = () => {
+    if (ratifiedTreaties[ruler.id]) return;
+    
+    if (treatyAlignment < 65) {
+      alert("❌ ALLIANCE REJECTED: Scribes notify you that the agreement alignment probability is too low (needs at least 65%)! Improve the gold subsidy, territorial, or military terms to secure their interest.");
+      return;
+    }
+
+    if (playerTreasury < treatyGold) {
+      alert("❌ TREASURY EXHAUSTED: You do not have enough Gold Mohurs in your campaign treasury to fulfill this treaty subsidy!");
+      return;
+    }
+
+    // Deduct gold & save
+    const nextGold = playerTreasury - treatyGold;
+    localStorage.setItem('panipat_campaign_treasury', nextGold.toString());
+    setPlayerTreasury(nextGold);
+
+    // Set trust to max or high level
+    const updatedTrust = Math.min(100, trust + 25);
+    setTrustRatings(prev => ({ ...prev, [ruler.id]: updatedTrust }));
+
+    // Mark as ratified
+    setRatifiedTreaties(prev => ({ ...prev, [ruler.id]: true }));
+
+    // Apply rewards dynamically based on alignment score
+    const baseReward = getRulerRewardDescription(ruler.id);
+    const scale = treatyAlignment / 100;
+    const troopsFinal = Math.round(baseReward.troops * scale);
+    const provisionsFinal = Math.round(baseReward.provisions * scale);
+    const moraleFinal = Math.round(baseReward.morale * scale);
+
+    onApplyRewards({
+      gold: 0, // we handled gold deduction manually here
+      troops: troopsFinal,
+      provisions: provisionsFinal,
+      morale: moraleFinal,
+      text: `📜 SECRET PACT SEALED: Secured full tactical alignment with ${ruler.name}! Subsidized ${treatyGold.toLocaleString()} Mohurs to acquire ${troopsFinal} auxiliary warriors, +${provisionsFinal} tons food supply lines, and +${moraleFinal}% command morale!`
+    });
+
+    // Add message to chat history
+    const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const updatedChats = { ...chatHistories };
+    updatedChats[ruler.id] = [
+      ...updatedChats[ruler.id],
+      {
+        sender: 'system',
+        text: `📜 IMPERIAL SECRET COVENANT RATIFIED! Subsidized: ${treatyGold.toLocaleString()} Mohurs. Acquired forces: ${troopsFinal} soldiers and +${provisionsFinal} provisions corridor.`,
+        timestamp: time
+      },
+      {
+        sender: 'ruler',
+        text: `"The royal seals are matched, commander. Our alliance remains a strict secret until the dawn of battle, but my forces are now moving into position."`,
+        timestamp: time
+      }
+    ];
+    setChatHistories(updatedChats);
+  };
+
   const handleResetDiplomacy = () => {
     if (window.confirm("Do you wish to rebuild the diplomatic trust and clear prior chat correspondence?")) {
       localStorage.removeItem('panipat_diplomacy_trust');
       localStorage.removeItem('panipat_diplomacy_chats');
       localStorage.removeItem('panipat_diplomacy_rewards');
+      localStorage.removeItem('panipat_diplomacy_ratified_treaties');
       
       const initialTrust: { [key: string]: number } = {};
       const initialChats: { [key: string]: Message[] } = {};
@@ -575,6 +714,7 @@ export const DiplomacyDarbar: React.FC<DiplomacyDarbarProps> = ({
       setTrustRatings(initialTrust);
       setChatHistories(initialChats);
       setClaimedRewards({});
+      setRatifiedTreaties({});
     }
   };
 
@@ -703,20 +843,31 @@ export const DiplomacyDarbar: React.FC<DiplomacyDarbarProps> = ({
             {/* Tab Swappers */}
             <div className="flex border-b border-[#8B5E3C]/20 bg-stone-950/30">
               <button 
+                type="button"
                 onClick={() => setActiveTab('chat')}
                 className={`flex-1 py-2 text-[10px] font-black uppercase tracking-widest font-serif transition-colors cursor-pointer
-                  ${activeTab === 'chat' ? 'bg-[#14100e] text-saffron border-b-2 border-saffron' : 'text-stone-400 hover:bg-stone-900/30 hover:text-stone-200'}
+                  ${activeTab === 'chat' ? 'bg-[#14100e] text-saffron border-b-2 border-saffron font-black' : 'text-stone-400 hover:bg-stone-900/30 hover:text-stone-200'}
                 `}
               >
-                📜 Diplomatic Scroll Chat
+                📜 Scroll Chat
               </button>
               <button 
-                onClick={() => setActiveTab('bios')}
+                type="button"
+                onClick={() => setActiveTab('treaty')}
                 className={`flex-1 py-2 text-[10px] font-black uppercase tracking-widest font-serif transition-colors cursor-pointer
-                  ${activeTab === 'bios' ? 'bg-[#14100e] text-saffron border-b-2 border-saffron' : 'text-stone-400 hover:bg-stone-900/30 hover:text-stone-200'}
+                  ${activeTab === 'treaty' ? 'bg-[#14100e] text-saffron border-b-2 border-saffron font-black' : 'text-stone-400 hover:bg-stone-900/30 hover:text-stone-200'}
                 `}
               >
-                🏰 Ruler Bio & Secrets
+                ⚖️ Secret Treaty Grid
+              </button>
+              <button 
+                type="button"
+                onClick={() => setActiveTab('bios')}
+                className={`flex-1 py-2 text-[10px] font-black uppercase tracking-widest font-serif transition-colors cursor-pointer
+                  ${activeTab === 'bios' ? 'bg-[#14100e] text-saffron border-b-2 border-saffron font-black' : 'text-stone-400 hover:bg-stone-900/30 hover:text-stone-200'}
+                `}
+              >
+                🏰 Bio & Secrets
               </button>
             </div>
 
@@ -747,6 +898,7 @@ export const DiplomacyDarbar: React.FC<DiplomacyDarbarProps> = ({
                       </div>
                     ) : trust >= 75 ? (
                       <button
+                        type="button"
                         onClick={() => handleClaimReward(ruler.id)}
                         className="py-1 px-3 bg-emerald-600 hover:bg-emerald-700 text-stone-950 rounded-sm font-serif font-black text-[9px] tracking-wider uppercase flex items-center gap-1 cursor-pointer transition-transform hover:scale-[1.04]"
                       >
@@ -820,6 +972,7 @@ export const DiplomacyDarbar: React.FC<DiplomacyDarbarProps> = ({
                     {getDialogueOptions().map((opt, i) => (
                       <button
                         key={i}
+                        type="button"
                         onClick={() => handleSelectOption(opt.option, opt.reply, opt.modifier)}
                         className="p-2 border border-stone-900 bg-stone-950/80 hover:bg-[#1f1712] hover:border-[#8B5E3C]/35 text-[10px] text-stone-300 hover:text-saffron font-serif font-black uppercase text-left rounded-sm transition-all duration-150 cursor-pointer flex justify-between items-center gap-2"
                       >
@@ -853,6 +1006,7 @@ export const DiplomacyDarbar: React.FC<DiplomacyDarbarProps> = ({
                   </div>
                   
                   <button
+                    type="button"
                     onClick={handleSendCustomLetter}
                     className="h-11 px-5 bg-saffron hover:bg-[#db7d29] text-stone-950 font-serif font-black uppercase text-[10px] tracking-widest rounded-sm flex items-center gap-1.5 transition-transform active:scale-95 cursor-pointer"
                   >
@@ -861,6 +1015,322 @@ export const DiplomacyDarbar: React.FC<DiplomacyDarbarProps> = ({
                   </button>
                 </div>
               </>
+            ) : activeTab === 'treaty' ? (
+              /* DYNAMIC INTERACTIVE TREATY DESIGN PANEL */
+              <div className="flex-1 p-4 md:p-5 overflow-y-auto space-y-4 text-left bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-stone-900/20 via-black to-black">
+                
+                {/* Header Banner */}
+                <div className="p-4 bg-stone-950 border border-stone-850 rounded-sm flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                  <div>
+                    <span className="text-[8px] font-mono font-bold text-[#8B5E3C] tracking-widest uppercase">
+                      ⚖️ SECRET COVENANT PROTOCOLS
+                    </span>
+                    <h3 className="font-serif text-sm md:text-base font-black text-white uppercase tracking-wide">
+                      Draft Alliance Treaty: {ruler.name}
+                    </h3>
+                    <p className="text-[10px] text-stone-400 font-sans mt-0.5 leading-normal">
+                      Assign silver subsidies, cede regional assets, and pledge military operational strategies to bind alliances.
+                    </p>
+                  </div>
+
+                  {/* Player Treasury Counter */}
+                  <div className="bg-stone-900 border border-stone-800 p-2 px-3 rounded flex items-center gap-2">
+                    <span className="text-sm">🪙</span>
+                    <div className="text-left font-mono">
+                      <span className="text-[8px] text-stone-500 uppercase block font-black leading-none mb-0.5">Campaign Treasury:</span>
+                      <span className="text-xs font-black text-saffron">{playerTreasury.toLocaleString()} Mohurs</span>
+                    </div>
+                  </div>
+                </div>
+
+                {ratifiedTreaties[ruler.id] ? (
+                  /* Sealed / Active Treaty View */
+                  <div className="p-8 text-center space-y-4 bg-stone-950/60 border-2 border-dashed border-emerald-600/30 rounded-md">
+                    <div className="w-16 h-16 rounded-full border-2 border-emerald-500 bg-emerald-950/20 flex items-center justify-center mx-auto text-3xl select-none">
+                      📜
+                    </div>
+                    <div className="max-w-md mx-auto text-center space-y-1.5">
+                      <h4 className="font-serif text-base font-black uppercase text-emerald-400 tracking-widest">SECRET COVENANT SECURED</h4>
+                      <p className="text-xs text-stone-300 leading-relaxed font-sans">
+                        You have successfully signed and sealed an imperial secret pact with <strong>{ruler.name}</strong>. Their auxiliary regiments have loaded their shields and their grain silos stand fully aligned to fuel your columns under coalition flags!
+                      </p>
+                    </div>
+
+                    <div className="pt-4 max-w-sm mx-auto">
+                      <div className="p-4 bg-stone-900/60 border border-stone-850 rounded-sm space-y-2.5 text-left font-mono text-[10px] text-stone-400">
+                        <div className="flex justify-between border-b border-stone-800/40 pb-1.5">
+                          <span>Subsidy Sent:</span>
+                          <span className="text-white font-bold">{treatyGold.toLocaleString()} Mohurs</span>
+                        </div>
+                        <div className="flex justify-between border-b border-stone-800/40 pb-1.5">
+                          <span>Ceded Asset:</span>
+                          <span className="text-saffron font-bold uppercase">{treatyTerritory === 'none' ? 'None' : treatyTerritory === 'delhi' ? 'Delhi Civil Governorship' : treatyTerritory === 'yamuna' ? 'Yamuna Toll Rights' : 'Sirhind Frontier Autonomy'}</span>
+                        </div>
+                        <div className="flex justify-between border-b border-stone-800/40 pb-1.5">
+                          <span>Pledged Doctrine:</span>
+                          <span className="text-cyan-400 font-bold uppercase">{treatyPledge === 'none' ? 'None' : treatyPledge === 'joint' ? 'Joint Defensive Shield' : treatyPledge === 'vanguard' ? 'Vanguard Autonomy' : 'Guerrilla Cavalry Autonomy'}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>Treaty Integrity:</span>
+                          <span className="text-emerald-400 font-bold">{treatyAlignment}% Align</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  /* Active Negotiation Grid and Controls */
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                    
+                    {/* Controls Column (Span 2) */}
+                    <div className="lg:col-span-2 space-y-4">
+                      
+                      {/* 1. Gold Subsidy */}
+                      <div className="p-4 bg-stone-950 border border-stone-850 rounded-sm text-left">
+                        <div className="flex justify-between items-center mb-1">
+                          <span className="text-[10px] text-stone-300 uppercase font-black tracking-wider font-mono">
+                            1. Silver War Subsidies (Gold Mohurs)
+                          </span>
+                          <span className="font-mono text-saffron text-xs font-black">{treatyGold.toLocaleString()} M</span>
+                        </div>
+                        <p className="text-[9px] text-stone-500 leading-relaxed font-sans mb-3">
+                          Fund active training costs and shield repairs. Underfunding alienates proud sovereigns.
+                        </p>
+                        
+                        <input
+                          type="range"
+                          min="5000"
+                          max="40000"
+                          step="2500"
+                          value={treatyGold}
+                          onChange={(e) => setTreatyGold(Number(e.target.value))}
+                          className="w-full h-1 bg-stone-850 rounded-lg appearance-none cursor-pointer accent-saffron"
+                        />
+                        <div className="flex justify-between text-[8px] text-stone-600 font-mono font-bold mt-1.5 select-none">
+                          <span>5,000 M (Token)</span>
+                          <span>20,000 M (Standard)</span>
+                          <span>40,000 M (Imperial)</span>
+                        </div>
+
+                        {playerTreasury < treatyGold && (
+                          <div className="mt-2 text-[9px] font-mono text-rose-500 font-bold uppercase animate-pulse">
+                            ⚠️ EXCEEDS CURRENT TREASURY RESERVES ({playerTreasury.toLocaleString()} M)!
+                          </div>
+                        )}
+                      </div>
+
+                      {/* 2. Territorial Compromises */}
+                      <div className="p-4 bg-stone-950 border border-stone-850 rounded-sm text-left">
+                        <span className="text-[10px] text-stone-300 uppercase font-black tracking-wider font-mono block mb-1">
+                          2. Cede Territorial Autonomy & Civil Assets
+                        </span>
+                        <p className="text-[9px] text-stone-500 leading-relaxed font-sans mb-3">
+                          Sacrifice local tax revenues or sovereign borders to satisfy imperial ambitions.
+                        </p>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                          {[
+                            { id: 'none', label: '❌ No territorial compromise', desc: 'Maintain strict territorial borders.' },
+                            { id: 'delhi', label: '🕌 Delhi Civil Governorship', desc: 'Cede post-war civil revenue administration of capital.' },
+                            { id: 'yamuna', label: '💧 Yamuna Toll Rights', desc: 'Surrender toll collection assets along major crossings.' },
+                            { id: 'sirhind', label: '🌾 Sirhind Frontier Autonomy', desc: 'Guarantee formal independent sovereign fief seals.' }
+                          ].map(t => (
+                            <button
+                              key={t.id}
+                              type="button"
+                              onClick={() => setTreatyTerritory(t.id)}
+                              className={`p-2.5 border rounded-xs text-left transition-all cursor-pointer ${treatyTerritory === t.id ? 'border-saffron bg-[#2b1f13]' : 'border-stone-900 bg-stone-950 hover:bg-stone-900/60'}`}
+                            >
+                              <div className="text-[10px] font-serif font-black text-white uppercase">{t.label}</div>
+                              <p className="text-[9px] text-stone-500 mt-0.5 leading-tight">{t.desc}</p>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* 3. Military Doctrines */}
+                      <div className="p-4 bg-stone-950 border border-stone-850 rounded-sm text-left">
+                        <span className="text-[10px] text-stone-300 uppercase font-black tracking-wider font-mono block mb-1">
+                          3. Pledge Military Operations Doctrines
+                        </span>
+                        <p className="text-[9px] text-stone-500 leading-relaxed font-sans mb-3">
+                          Commit specific strategic postures that coordinate with their historic military advantages.
+                        </p>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                          {[
+                            { id: 'none', label: '⚔️ Standard Coalition Orders', desc: 'Enforce central strategic command instructions.' },
+                            { id: 'joint', label: '🛡️ Joint Defensive Shield', desc: 'Detail guard platoons to secure regional crops.' },
+                            { id: 'vanguard', label: '⚡ Frontline Vanguard Autonomy', desc: 'Cede absolute tactical command of frontline assault.' },
+                            { id: 'guerrilla', label: '🐎 Guerrilla Cavalry Autonomy', desc: 'Abandon slow baggage train to execute light raids.' }
+                          ].map(p => (
+                            <button
+                              key={p.id}
+                              type="button"
+                              onClick={() => setTreatyPledge(p.id)}
+                              className={`p-2.5 border rounded-xs text-left transition-all cursor-pointer ${treatyPledge === p.id ? 'border-saffron bg-[#2b1f13]' : 'border-stone-900 bg-stone-950 hover:bg-stone-900/60'}`}
+                            >
+                              <div className="text-[10px] font-serif font-black text-white uppercase">{p.label}</div>
+                              <p className="text-[9px] text-stone-500 mt-0.5 leading-tight">{p.desc}</p>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                    </div>
+
+                    {/* Feedback Column (Span 1) */}
+                    <div className="space-y-4">
+                      
+                      {/* Alignment meter card */}
+                      <div className="p-4 bg-stone-950 border border-[#8B5E3C]/35 rounded-sm space-y-4">
+                        <div className="text-center">
+                          <span className="text-[8px] font-mono font-bold text-stone-500 tracking-widest uppercase">
+                            ALIGNMENT INTEGRITY
+                          </span>
+                          <h4 className="font-serif text-2xl font-black text-white uppercase tracking-tight mt-1">
+                            {treatyAlignment}%
+                          </h4>
+                          
+                          {/* Progress Bar */}
+                          <div className="w-full bg-stone-900 h-2 rounded-full mt-2.5 overflow-hidden border border-stone-850">
+                            <div 
+                              className={`h-full transition-all duration-300 ${treatyAlignment >= 75 ? 'bg-emerald-500' : treatyAlignment >= 65 ? 'bg-amber-500' : 'bg-red-600'}`}
+                              style={{ width: `${treatyAlignment}%` }}
+                            />
+                          </div>
+                        </div>
+
+                        <div className="space-y-2 pt-1 border-t border-stone-900 text-left">
+                          <span className="text-[8px] font-mono font-bold text-stone-500 uppercase tracking-widest block">
+                            LORD PREFERENCES
+                          </span>
+                          
+                          {/* Dynamic items based on current ruler */}
+                          <div className="space-y-2 font-mono text-[9px]">
+                            {ruler.id === 'shuja' && (
+                              <>
+                                <div className="flex items-center gap-1.5">
+                                  <span className={treatyTerritory === 'delhi' ? 'text-emerald-400 font-bold' : 'text-stone-600 font-bold'}>
+                                    {treatyTerritory === 'delhi' ? '✓' : '⚫'} Wants Delhi Governorship (+35)
+                                  </span>
+                                </div>
+                                <div className="flex items-center gap-1.5">
+                                  <span className={treatyPledge === 'joint' ? 'text-emerald-400 font-bold' : 'text-stone-600 font-bold'}>
+                                    {treatyPledge === 'joint' ? '✓' : '⚫'} Prefers Joint Defence (+25)
+                                  </span>
+                                </div>
+                              </>
+                            )}
+
+                            {ruler.id === 'surajmal' && (
+                              <>
+                                <div className="flex items-center gap-1.5">
+                                  <span className={treatyTerritory === 'yamuna' ? 'text-emerald-400 font-bold' : 'text-stone-600 font-bold'}>
+                                    {treatyTerritory === 'yamuna' ? '✓' : '⚫'} Demands Yamuna Tolls (+30)
+                                  </span>
+                                </div>
+                                <div className="flex items-center gap-1.5">
+                                  <span className={treatyPledge === 'guerrilla' ? 'text-emerald-400 font-bold' : 'text-stone-600 font-bold'}>
+                                    {treatyPledge === 'guerrilla' ? '✓' : '⚫'} Demands Guerrilla Doctrine (+35)
+                                  </span>
+                                </div>
+                              </>
+                            )}
+
+                            {ruler.id === 'madhosingh' && (
+                              <>
+                                <div className="flex items-center gap-1.5">
+                                  <span className={treatyTerritory === 'yamuna' ? 'text-emerald-400 font-bold' : 'text-stone-600 font-bold'}>
+                                    {treatyTerritory === 'yamuna' ? '✓' : '⚫'} Prefers Yamuna Assets (+35)
+                                  </span>
+                                </div>
+                                <div className="flex items-center gap-1.5">
+                                  <span className={treatyPledge === 'joint' || treatyPledge === 'guerrilla' ? 'text-emerald-400 font-bold' : 'text-stone-600 font-bold'}>
+                                    {treatyPledge === 'joint' || treatyPledge === 'guerrilla' ? '✓' : '⚫'} Wants Strategic Joint/Guerrilla (+20)
+                                  </span>
+                                </div>
+                              </>
+                            )}
+
+                            {ruler.id === 'alha' && (
+                              <>
+                                <div className="flex items-center gap-1.5">
+                                  <span className={treatyTerritory === 'sirhind' ? 'text-emerald-400 font-bold' : 'text-stone-600 font-bold'}>
+                                    {treatyTerritory === 'sirhind' ? '✓' : '⚫'} Demands Sirhind Autonomy (+40)
+                                  </span>
+                                </div>
+                                <div className="flex items-center gap-1.5">
+                                  <span className={treatyPledge === 'joint' ? 'text-emerald-400 font-bold' : 'text-stone-600 font-bold'}>
+                                    {treatyPledge === 'joint' ? '✓' : '⚫'} Demands Regional Defense (+30)
+                                  </span>
+                                </div>
+                              </>
+                            )}
+
+                            {ruler.id === 'najib' && (
+                              <>
+                                <div className="flex items-center gap-1.5">
+                                  <span className={treatyTerritory === 'delhi' ? 'text-emerald-400 font-bold' : 'text-stone-600 font-bold'}>
+                                    {treatyTerritory === 'delhi' ? '✓' : '⚫'} Demands Delhi Control (+30)
+                                  </span>
+                                </div>
+                                <div className="flex items-center gap-1.5">
+                                  <span className={treatyPledge === 'vanguard' ? 'text-emerald-400 font-bold' : 'text-stone-600 font-bold'}>
+                                    {treatyPledge === 'vanguard' ? '✓' : '⚫'} Demands Vanguard Command (+30)
+                                  </span>
+                                </div>
+                              </>
+                            )}
+
+                            <div className="flex items-center gap-1.5">
+                              <span className={treatyGold >= 20000 ? 'text-emerald-400 font-bold' : 'text-stone-500'}>
+                                {treatyGold >= 20000 ? '✓' : '⚫'} Respectable Subsidies ({treatyGold >= 20000 ? 'Satisfied' : 'Low'})
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="pt-2">
+                          <button
+                            type="button"
+                            disabled={treatyAlignment < 65 || playerTreasury < treatyGold}
+                            onClick={handleRatifySecretTreaty}
+                            className="w-full py-3 bg-gradient-to-r from-saffron to-[#a16207] hover:from-amber-400 hover:to-amber-600 disabled:opacity-20 text-stone-950 font-serif font-black text-xs uppercase tracking-wider rounded-xs cursor-pointer shadow-md transition-transform hover:scale-[1.02] active:scale-95"
+                          >
+                            📝 RATIFY SECRET PACT
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Reward preview card */}
+                      <div className="p-4 bg-stone-950 border border-stone-850 rounded-xs text-left space-y-2 font-mono text-[9px] text-stone-400">
+                        <span className="text-[8px] font-mono font-bold text-stone-500 uppercase tracking-widest block">
+                          ESTIMATED TREATY REWARDS (SCALED)
+                        </span>
+                        <div className="flex justify-between border-b border-stone-900 pb-1">
+                          <span>Subsidy Cost:</span>
+                          <span className="text-rose-400 font-bold">{treatyGold.toLocaleString()} Mohurs</span>
+                        </div>
+                        <div className="flex justify-between border-b border-stone-900 pb-1">
+                          <span>Auxiliary Troops:</span>
+                          <span className="text-white font-bold">+{Math.round(getRulerRewardDescription(ruler.id).troops * (treatyAlignment / 100))} Regiments</span>
+                        </div>
+                        <div className="flex justify-between border-b border-stone-900 pb-1">
+                          <span>Grain Provisions:</span>
+                          <span className="text-emerald-400 font-bold">+{Math.round(getRulerRewardDescription(ruler.id).provisions * (treatyAlignment / 100))} Tons</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>Morale Boost:</span>
+                          <span className="text-orange-400 font-bold">+{Math.round(getRulerRewardDescription(ruler.id).morale * (treatyAlignment / 100))}% Focus</span>
+                        </div>
+                      </div>
+
+                    </div>
+
+                  </div>
+                )}
+
+              </div>
             ) : (
               /* RULERS BIOGRAPHIES & SECRETS SECURE CARD */
               <div className="flex-1 p-5 md:p-8 overflow-y-auto space-y-6 text-left parchment text-stone-950">

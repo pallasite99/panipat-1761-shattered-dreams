@@ -427,6 +427,26 @@ class AudioEngine {
     }
     this.isRunning = false;
   }
+
+  /**
+   * Dynamically triggers procedural SFX (click or wax stamp) using Web Audio API synthesis
+   */
+  public playSfx(type: 'click' | 'stamp' | 'drill') {
+    this.init();
+    if (!this.ctx) return;
+    
+    if (this.ctx.state === 'suspended') {
+      this.ctx.resume();
+    }
+    
+    if (type === 'click') {
+      this.synthesizeMilitarySnare(0.02, 1600);
+    } else if (type === 'stamp') {
+      this.synthesizeNagadaHeavyDrum(50, 0.5);
+    } else if (type === 'drill') {
+      this.synthesizeMilitarySnare(0.1, 1200);
+    }
+  }
 }
 
 export const panipatAudioEngine = new AudioEngine();

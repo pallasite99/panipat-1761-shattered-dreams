@@ -921,8 +921,26 @@ export const BattleScene: React.FC<BattleProps> = ({ onNavigate, onAdvance, stag
     }
   };
 
-  const currentVisibility = Math.max(10, TIME_OF_DAY_CONFIGS[timeOfDay].visibility + WEATHER_CONFIGS[weather].visibilityMod);
-  const currentAccuracy = Math.max(15, Math.round((TIME_OF_DAY_CONFIGS[timeOfDay].accuracy + WEATHER_CONFIGS[weather].accuracyMod) * fuzzyResult.accuracyMultiplier));
+  // Campaign Season Equipment modifiers
+  const hasWinterWoolens = typeof window !== 'undefined' && localStorage.getItem('panipat_equipment_winter_woolens') === 'true';
+  const hasMonsoonTarps = typeof window !== 'undefined' && localStorage.getItem('panipat_equipment_monsoon_tarps') === 'true';
+  const hasSummerWells = typeof window !== 'undefined' && localStorage.getItem('panipat_equipment_summer_wells') === 'true';
+
+  let weatherAccuracyMod = WEATHER_CONFIGS[weather].accuracyMod;
+  let weatherVisibilityMod = WEATHER_CONFIGS[weather].visibilityMod;
+
+  if (weather === 'rain' && hasMonsoonTarps) {
+    weatherAccuracyMod += 12; // alleviate rain penalty
+    weatherVisibilityMod += 10;
+  } else if (weather === 'fog' && hasWinterWoolens) {
+    weatherAccuracyMod += 15; // alleviate fog penalty
+    weatherVisibilityMod += 15;
+  } else if (weather === 'extreme_heat' && hasSummerWells) {
+    weatherAccuracyMod += 10; // alleviate heat fatigue penalty
+  }
+
+  const currentVisibility = Math.max(10, TIME_OF_DAY_CONFIGS[timeOfDay].visibility + weatherVisibilityMod);
+  const currentAccuracy = Math.max(15, Math.round((TIME_OF_DAY_CONFIGS[timeOfDay].accuracy + weatherAccuracyMod) * fuzzyResult.accuracyMultiplier));
 
   // Difficulty multiplier
   const stageDifficulty = {
@@ -3192,6 +3210,22 @@ export const BattleScene: React.FC<BattleProps> = ({ onNavigate, onAdvance, stag
                 <p className="text-[8px] text-stone-400 font-mono leading-tight">
                   <span className="text-saffron font-bold">CRISP BATTLE IMPACT:</span> {WEATHER_CONFIGS[weather].desc} Visibility at <span className="text-white font-bold">{currentVisibility}%</span>, Base Combat Accuracy is <span className="text-[#ea580c] font-black">{currentAccuracy}%</span>.
                 </p>
+
+                {weather === 'rain' && hasMonsoonTarps && (
+                  <div className="bg-emerald-950/80 text-emerald-400 text-[7px] font-mono p-1 border border-emerald-800 rounded uppercase tracking-wide">
+                    ☔ Monsoon Tarps active: Mitigated -12% Rain accuracy & -10% Visibility penalties!
+                  </div>
+                )}
+                {weather === 'fog' && hasWinterWoolens && (
+                  <div className="bg-emerald-950/80 text-emerald-400 text-[7px] font-mono p-1 border border-emerald-800 rounded uppercase tracking-wide">
+                    🧥 Winter Woolens active: Mitigated -15% Cold Fog accuracy & -15% Visibility penalties!
+                  </div>
+                )}
+                {weather === 'extreme_heat' && hasSummerWells && (
+                  <div className="bg-emerald-950/80 text-emerald-400 text-[7px] font-mono p-1 border border-emerald-800 rounded uppercase tracking-wide">
+                    🧱 Deep Wells active: Mitigated -10% Extreme Heat accuracy fatigue!
+                  </div>
+                )}
               </div>
 
               {/* Specialized Weather & Hour Countermeasure Action Trigger */}
